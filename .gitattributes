@@ -1,0 +1,4 @@
+# Giữ LF cho mọi tệp để script chạy được trong container khi clone trên Windows.
+* text=auto eol=lf
+*.png binary
+*.pdf binary

@@ -1,0 +1,200 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+#
+# DX-Desk – Tầng 1 (DX-OS Open-Core). Chạy bằng `make up` ở thư mục gốc kho mã.
+# Mọi image được ghim phiên bản trong .env (không dùng thẻ latest).
+
+name: dx-desk
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # ---------------------------------------------------------------- Dữ liệu có cấu trúc
+  postgres:
+    image: postgres:${POSTGRES_VERSION}
+    <<: *restart
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      KEYCLOAK_DB: ${KEYCLOAK_DB}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      N8N_DB: ${N8N_DB}
+      N8N_DB_PASSWORD: ${N8N_DB_PASSWORD}
+      AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+      - ../../db/migrations:/migrations:ro
+      - ../../db/policies:/policies:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgrest:
+    image: postgrest/postgrest:${POSTGREST_VERSION}
+    <<: *restart
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${AUTHENTICATOR_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
+      PGRST_DB_ANON_ROLE: anon
+      # JWKS của Keycloak lưu thành tệp (PostgREST không tải khóa từ URL); do scripts/sync-jwks.sh cập nhật.
+      PGRST_JWT_SECRET: "@/etc/postgrest/jwks.json"
+      PGRST_SERVER_HOST: "0.0.0.0"
+      PGRST_SERVER_PORT: "3000"
+      PGRST_ADMIN_SERVER_PORT: "3001"
+    volumes:
+      - ../postgrest/jwks.json:/etc/postgrest/jwks.json:ro
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ---------------------------------------------------------------- Định danh, SSO, MFA
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
+    <<: *restart
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${KEYCLOAK_DB}
+      KC_DB_USERNAME: ${KEYCLOAK_DB}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL}
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ../keycloak/realm-dxdesk.json:/opt/keycloak/data/import/realm-dxdesk.json:ro
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+    healthcheck:
+      # Image Keycloak không có curl: gọi /health/ready (cổng quản lý 9000) bằng /dev/tcp của bash.
+      test:
+        - "CMD-SHELL"
+        - "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # ---------------------------------------------------------------- Cổng API
+  apisix:
+    image: apache/apisix:${APISIX_VERSION}
+    <<: *restart
+    depends_on:
+      postgrest:
+        condition: service_healthy
+    volumes:
+      - ../apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ../apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+    ports:
+      - "${APISIX_PORT}:9080"
+    healthcheck:
+      # Image APISIX không có curl: gọi /healthz bằng /dev/tcp của bash.
+      test:
+        - "CMD"
+        - "bash"
+        - "-c"
+        - "exec 3<>/dev/tcp/127.0.0.1/9080 && printf 'GET /healthz HTTP/1.0\r\n\r\n' >&3 && grep -q ok <&3"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  clamav:
+    image: clamav/clamav:${CLAMAV_VERSION}
+    <<: *restart
+    volumes:
+      - clamav-db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      # Lần đầu phải tải cơ sở dữ liệu mẫu virus nên khởi động chậm.
+      start_period: 300s
+
+  # ---------------------------------------------------------------- Dữ liệu phi cấu trúc
+  seaweedfs:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION}
+    <<: *restart
+    command: ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
+    volumes:
+      - seaweedfs-data:/data
+      # s3.json được scripts/init.sh sinh từ .env (không lưu khóa vào kho mã).
+      - ../seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/cluster/status >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  # ---------------------------------------------------------------- Tự động hóa (n8n, chạy ngoài kho mã)
+  # n8n 2.x không có shell, nên nạp workflow bằng hai dịch vụ chạy một lần cùng image
+  # (nhập rồi kích hoạt) trước khi dịch vụ n8n chính khởi động.
+  n8n-import:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: &n8n-env
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${N8N_DB}
+      DB_POSTGRESDB_USER: ${N8N_DB}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_RUNNERS_ENABLED: "true"
+    command: ["import:workflow", "--separate", "--input=/import/workflows"]
+    volumes:
+      - ../n8n/workflows:/import/workflows:ro
+
+  # Credentials của n8n (import:credentials) sẽ thêm ở tuần 4 khi workflow cần gọi API.
+  n8n-publish:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    restart: "no"
+    depends_on:
+      n8n-import:
+        condition: service_completed_successfully
+    environment: *n8n-env
+    # Mã workflow mẫu cố định trong infra/n8n/workflows/hello.json
+    command: ["publish:workflow", "--id=dxdeskHello001"]
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
+    <<: *restart
+    depends_on:
+      n8n-publish:
+        condition: service_completed_successfully
+    environment:
+      <<: *n8n-env
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      WEBHOOK_URL: http://localhost:${APISIX_PORT}/
+    healthcheck:
+      # Image n8n 2.x không có shell: dùng node có sẵn trong image.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5678/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  postgres-data:
+  clamav-db:
+  seaweedfs-data:
