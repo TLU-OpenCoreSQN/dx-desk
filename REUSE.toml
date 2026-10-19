@@ -1,0 +1,18 @@
+version = 1
+SPDX-PackageName = "dx-desk"
+SPDX-PackageSupplier = "TLU-OpenCoreSQN"
+SPDX-PackageDownloadLocation = "https://github.com/TLU-OpenCoreSQN/dx-desk"
+
+# Tệp không viết được chú thích giấy phép (JSON, Markdown, tệp cấu hình git, tệp giữ chỗ).
+[[annotations]]
+path = [
+  "**/*.json",
+  "**/*.md",
+  "**/.gitkeep",
+  ".gitignore",
+  ".gitattributes",
+  "LICENSE",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
+SPDX-License-Identifier = "Apache-2.0"

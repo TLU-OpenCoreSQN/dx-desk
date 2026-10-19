@@ -1,0 +1,10 @@
+# Bí mật và tệp sinh ra khi chạy
+.env
+infra/seaweedfs/s3.json
+infra/postgrest/jwks.json
+infra/postgrest/jwks.json.new
+*.tar.gz
+node_modules/
+dist/
+coverage/
+.DS_Store

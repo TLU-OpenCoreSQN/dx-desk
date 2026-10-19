@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+#
+# Route của cổng API. Tuần 2: chỉ định tuyến; token được chuyển nguyên vẹn xuống PostgREST
+# (PostgREST tự kiểm tra chữ ký). Tuần 3 (W3-07) bổ sung openid-connect, giới hạn tần suất, nhật ký.
+routes:
+  - id: healthz
+    uri: /healthz
+    plugins:
+      mocking:
+        content_type: text/plain
+        response_example: ok
+
+  - id: rest
+    uri: /rest/*
+    plugins:
+      proxy-rewrite:
+        regex_uri: ["^/rest/(.*)", "/$1"]
+    upstream:
+      type: roundrobin
+      nodes:
+        "postgrest:3000": 1
+
+  - id: n8n-webhook
+    uri: /webhook/*
+    upstream:
+      type: roundrobin
+      nodes:
+        "n8n:5678": 1
+#END

@@ -1,0 +1,78 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  reuse-lint:
+    name: reuse lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fsfe/reuse-action@v5
+
+  compose-config:
+    name: docker compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra cú pháp Compose
+        run: |
+          cp .env.example .env
+          docker compose --env-file .env -f infra/compose/docker-compose.yml config -q
+      - name: Không dùng thẻ latest
+        run: |
+          if grep -nE '^[A-Z_]+_VERSION=.*latest' .env.example; then
+            echo "Không được ghim phiên bản bằng latest" >&2
+            exit 1
+          fi
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra script
+        run: shellcheck scripts/*.sh infra/postgres/init/*.sh
+
+  # Khung build/kiểm thử cho ứng dụng: chỉ chạy khi thư mục đã có package.json
+  # (TV2 điền apps/api, TV3 điền apps/web).
+  apps:
+    name: build và test ứng dụng
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web, api, assistant]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra apps/${{ matrix.app }}
+        id: detect
+        run: |
+          if [ -f "apps/${{ matrix.app }}/package.json" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "apps/${{ matrix.app }} chưa có package.json, bỏ qua"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+      - name: Cài đặt, build, kiểm thử
+        if: steps.detect.outputs.present == 'true'
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          npm ci
+          npm run build --if-present
+          npm test --if-present

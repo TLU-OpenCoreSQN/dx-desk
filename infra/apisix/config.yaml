@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+#
+# APISIX chạy chế độ standalone: không cần etcd, route nằm trong apisix.yaml.
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
