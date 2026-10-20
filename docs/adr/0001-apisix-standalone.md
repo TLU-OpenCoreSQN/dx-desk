@@ -52,7 +52,7 @@ Chạy APISIX ở chế độ standalone với `config_provider: yaml`.
 
 ## Việc cần làm / chưa kiểm chứng
 
-- Thêm bước kiểm tra cú pháp `apisix.yaml` vào CI.
+- ~~Thêm bước kiểm tra cú pháp `apisix.yaml` vào CI.~~ Đã làm: job `kiểm tra apisix.yaml` chạy `scripts/check-apisix.sh`, nạp tệp bằng đúng image APISIX trong `.env.example`. Thử trên máy với bốn tệp lỗi: thiếu `#END`, sai cú pháp YAML và plugin không tồn tại bị chặn; `upstream.type` sai giá trị thì APISIX vẫn nhận (chỉ báo lỗi khi có yêu cầu thật tới route), nên kiểm tra này không bắt được loại lỗi đó.
 
 ## Biên bản thử nạp lại cấu hình (20/10/2026)
 
