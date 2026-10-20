@@ -9,7 +9,7 @@ set -eu
 
 ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)/}"
 set -a
-# shellcheck disable=SC1091
+# shellcheck disable=SC1090,SC1091
 . "${ROOT}.env"
 set +a
 
