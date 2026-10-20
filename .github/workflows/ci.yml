@@ -35,6 +35,14 @@ jobs:
             exit 1
           fi
 
+  apisix-config:
+    name: kiểm tra apisix.yaml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nạp apisix.yaml bằng image APISIX
+        run: sh scripts/check-apisix.sh
+
   shellcheck:
     name: shellcheck
     runs-on: ubuntu-latest
