@@ -56,6 +56,15 @@ if (action === 'up') {
   // PostgREST may still hold the old signing keys when the realm was recreated.
   compose('restart', 'postgrest');
   compose('up', '-d', '--wait', 'postgrest');
+  // Cùng khuôn mẫu nhưng cho địa chỉ upstream: `--build` làm compose RECREATE api/web, còn
+  // APISIX vẫn gửi request tới IP cũ của container đã chết -> 502 "No route to host"
+  // (CI #10/#17/#20/#21/#23/#24). Run #23 chứng minh hai cách không ăn thua: retry 60s trong
+  // harness vẫn 502 ở giây 63, và nginx_config.http.dns_resolver_valid=5 (job
+  // "kiểm tra apisix.yaml" chấp nhận key, image khởi động bình thường) cũng không khiến
+  // cổng bỏ địa chỉ cũ — bảng cân bằng của APISIX không phân giải lại theo nginx resolver.
+  // Restart cổng là biện pháp duy nhất đã kiểm chứng; chi phí là một lần cổng khởi động lại.
+  compose('restart', 'apisix');
+  compose('up', '-d', '--wait', 'apisix');
   console.log(`DX-Desk: http://localhost:${env.APISIX_PORT}`);
 } else if (action === 'migrate') {
   migrate();

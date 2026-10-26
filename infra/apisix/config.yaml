@@ -15,15 +15,10 @@ nginx_config:
     # 20m để chừa chỗ cho phần header của JSON; trần nghiệp vụ 10 MiB vẫn do API và
     # CHECK attachments.size_bytes chốt (API trả 413/422 trước khi chạm clamd).
     client_max_body_size: 20m
-    # Bằng chứng CI run #10/#17/#20/#21/#22: "dxdesk.mjs up" RECREATE api (image vừa build
-    # lại) nhưng cổng vẫn gửi request tới địa chỉ IP cũ của container đã chết
-    # ("connect() failed (113: No route to host) while connecting to upstream
-    # http://172.18.0.9:3000"). Run #21 bác giả thuyết "TTL ~30s nên retry là đủ": 502 vẫn
-    # còn ở giây thứ 79 sau recreate, nên địa chỉ cũ được giữ lâu hơn cửa sổ chờ của
-    # harness; các run xanh (#9/#18/#19) chỉ là tình huống IPAM cấp lại đúng IP cũ.
-    # Ép TTL xuống 5 giây để cổng theo kịp địa chỉ mới sau mỗi lần triển khai lại api/web.
-    # Key lấy theo conf/config.yaml.example của APISIX ("dns_resolver_valid: Override the
-    # default TTL of the DNS records", đặt trong nginx_config.http); job
-    # "kiểm tra apisix.yaml" nạp đúng tệp này bằng image APISIX thật nên key sai schema
-    # là job đỏ ngay, không phải chờ tới bước nghiệm thu stack.
-    dns_resolver_valid: 5
+    # KHÔNG thêm dns_resolver_valid ở đây: run #23/#24 đã bác. Set TTL 5 giây vẫn cho
+    # "connect() failed (113: No route to host) ... upstream http://172.18.0.9:3000" -> 502
+    # ở giây thứ 63 sau khi "dxdesk.mjs up" dựng lại api, trong khi job
+    # "kiểm tra apisix.yaml" xanh (chứng tỏ key hợp schema nhưng không có tác dụng):
+    # bảng cân bằng của APISIX giữ địa chỉ đã phân giải và không phân giải lại theo resolver
+    # của nginx. Biện pháp duy nhất đã kiểm chứng là restart cổng sau khi triển khai lại,
+    # đặt ở scripts/dxdesk.mjs (theo khuôn mẫu restart postgrest sẵn có).
