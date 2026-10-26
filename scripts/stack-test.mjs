@@ -23,9 +23,9 @@ async function check(name, operation) {
   try { await operation(); report.checks.push({ name, passed: true }); console.log(`PASS ${name}`); }
   catch (error) { report.checks.push({ name, passed: false, error: error.message }); throw error; }
 }
-async function request(path, token, body) {
+async function request(path, token, body, method = body ? 'POST' : 'GET') {
   const response = await fetch(gateway + path, {
-    method: body ? 'POST' : 'GET',
+    method,
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(15000),
@@ -47,7 +47,7 @@ async function login(username) {
   assert.ok(payload.access_token);
   return payload.access_token;
 }
-let tokenA, tokenB, tokenManager, created;
+let tokenA, tokenB, tokenAgent, tokenManager, created;
 try {
   await check('Gateway health', async () => assert.equal((await request('/healthz')).data, 'ok'));
   await check('Web served through APISIX', async () => {
@@ -61,7 +61,8 @@ try {
   });
   await check('Anonymous API denied', async () => assert.equal((await request('/api/me')).status, 401));
   await check('Keycloak users authenticate', async () => {
-    [tokenA, tokenB, tokenManager] = await Promise.all(['employee.a', 'employee.b', 'manager.1'].map(login));
+    [tokenA, tokenB, tokenAgent, tokenManager] = await Promise.all(
+      ['employee.a', 'employee.b', 'agent.1', 'manager.1'].map(login));
   });
   await check('Token accepted by API and PostgREST', async () => {
     assert.equal((await request('/api/me', tokenA)).data.username, 'employee.a');
@@ -77,12 +78,52 @@ try {
     category_id: '10000000-0000-4000-8000-000000000001',
     title: `[W2 smoke] VPN ${new Date().toISOString()}`,
     description: 'Bản ghi kiểm thử nghiệm thu tuần 2, có thể giữ làm dữ liệu minh chứng.',
+    // W3-02: migration 003 khai báo client_version + error_message bắt buộc cho danh mục 'vpn'.
+    // Mọi lời gọi POST /api/tickets phải gửi đủ, nếu không API trả 422 thay vì 201.
+    fields: { client_version: 'OpenVPN Connect 4.2', error_message: 'Kết nối bị ngắt sau 30 giây' },
   };
   await check('API creates a ticket and PostgreSQL audit', async () => {
     const response = await request('/api/tickets', tokenA, body);
-    assert.equal(response.status, 201); created = response.data;
+    assert.equal(response.status, 201, JSON.stringify(response.data));
+    created = response.data;
     report.created_ticket_id = created.id;
     assert.equal((await request(`/api/tickets/${created.id}/events`, tokenA)).data.data.length, 1);
+  });
+  await check('W3-03 SLA due date stored on creation', async () => {
+    assert.ok(created.sla_due_at, 'API phải trả sla_due_at');
+    assert.ok(new Date(created.sla_due_at) > new Date(created.created_at),
+      'sla_due_at = created_at + sla_policies.resolution_minutes');
+    assert.equal(Number(created.sla_paused_ms), 0, 'ticket vừa tạo chưa tạm dừng đếm SLA');
+  });
+  await check('W3-02 Poka-yoke rejects ticket missing category fields', async () => {
+    const { fields, ...withoutFields } = body;
+    const response = await request('/api/tickets', tokenA, withoutFields);
+    assert.equal(response.status, 422, JSON.stringify(response.data));
+    assert.match(String(response.data.message), /Thiếu trường bắt buộc/, 'thông báo tiếng Việt chỉ rõ trường thiếu');
+  });
+  // Máy trạng thái tuần 3 dùng phiếu riêng để phiếu minh chứng của lần chạy trước
+  // vẫn còn đúng 1 bản ghi ticket_events khi chạy --verify-preserved.
+  await check('W3-01 state machine over APISIX with ticket_events', async () => {
+    const workflow = await request('/api/tickets', tokenA,
+      { ...body, title: `[W3 smoke] quy trình ${new Date().toISOString()}` });
+    assert.equal(workflow.status, 201, JSON.stringify(workflow.data));
+    const id = workflow.data.id;
+    const patch = (payload, token) => request(`/api/tickets/${id}/status`, token, payload, 'PATCH');
+    assert.equal((await patch({ to: 'resolved', resolution_note: 'Xử lý gọn trong một bước.' }, tokenA)).status, 422,
+      'cạnh ngoài máy trạng thái (new -> resolved) phải bị chặn');
+    for (const to of ['triaged', 'assigned', 'in_progress']) {
+      const response = await patch({ to }, tokenAgent);
+      assert.equal(response.status, 200, JSON.stringify(response.data));
+      assert.equal(response.data.status, to);
+    }
+    assert.equal((await patch({ to: 'resolved' }, tokenAgent)).status, 422,
+      'chuyển sang resolved mà thiếu resolution_note thì bị chặn');
+    assert.equal((await patch({ to: 'resolved', resolution_note: 'Đã cài lại client VPN, kiểm tra kết nối 3 lần ổn định.' }, tokenAgent)).data.status, 'resolved');
+    assert.equal((await patch({ to: 'closed' }, tokenAgent)).status, 403,
+      'resolved -> closed dành riêng cho người tạo phiếu');
+    assert.equal((await patch({ to: 'closed', note: 'Đã dùng lại được kết nối VPN.' }, tokenA)).data.status, 'closed');
+    const events = await request(`/api/tickets/${id}/events`, tokenA);
+    assert.equal(events.data.data.length, 6, '1 bản ghi tạo + 5 lần chuyển trạng thái hợp lệ, lời gọi bị chặn không ghi thêm');
   });
   await check('TN-02 same identity sees API-written row through PostgREST', async () => {
     const response = await request(`/rest/tickets?id=eq.${created.id}`, tokenA);
