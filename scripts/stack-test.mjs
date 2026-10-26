@@ -32,7 +32,9 @@ async function request(path, token, body, method = body ? 'POST' : 'GET') {
   });
   const data = await response.text();
   let json; try { json = JSON.parse(data); } catch { json = data; }
-  return { status: response.status, data: json };
+  // WWW-Authenticate do cổng APISIX đặt khi openid-connect từ chối token; giữ lại để
+  // log CI chỉ ra được lý do (error_description) thay vì chỉ thấy 401.
+  return { status: response.status, data: json, www: response.headers.get('www-authenticate') };
 }
 async function login(username) {
   const response = await fetch(issuer + '/protocol/openid-connect/token', {
@@ -65,8 +67,13 @@ try {
       ['employee.a', 'employee.b', 'agent.1', 'manager.1'].map(login));
   });
   await check('Token accepted by API and PostgREST', async () => {
-    assert.equal((await request('/api/me', tokenA)).data.username, 'employee.a');
-    assert.equal((await request('/rest/categories', tokenA)).status, 200);
+    // Kèm nguyên trạng thái + body vào message: khi cổng APISIX từ chối token, đây là
+    // chỗ duy nhất nhìn thấy lý do thật (401 của openid-connect hay 401 của API).
+    const me = await request('/api/me', tokenA);
+    assert.equal(me.status, 200, `GET /api/me -> ${me.www} ${JSON.stringify(me.data)}`);
+    assert.equal(me.data.username, 'employee.a', `GET /api/me ${me.status} ${me.www} -> ${JSON.stringify(me.data)}`);
+    const categories = await request('/rest/categories', tokenA);
+    assert.equal(categories.status, 200, `GET /rest/categories -> ${JSON.stringify(categories.data)}`);
   });
   if (previousTicketId) await check('Ticket from previous startup is preserved', async () => {
     const response = await request(`/api/tickets/${previousTicketId}`, tokenA);
