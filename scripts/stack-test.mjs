@@ -36,11 +36,11 @@ async function request(path, token, body, method = body ? 'POST' : 'GET') {
   // log CI chỉ ra được lý do (error_description) thay vì chỉ thấy 401.
   return { status: response.status, data: json, www: response.headers.get('www-authenticate') };
 }
-// `dxdesk.mjs up` RECREATE api/web khi image vừa build lại. APISIX vẫn giữ địa chỉ IP cũ
-// trong DNS cache (valid=30s) nên dù container đã healthy, cổng vẫn trả 502
-// "no route to host" trong vài chục giây: CI run #40341625485 chết đúng chỗ này, còn run
-// #40341613068 cùng SHA qua được vì IPAM cấp lại đúng IP cũ. Chờ cổng tự phân giải lại
-// thay vì khởi động lại hạ tầng từ bên trong bài nghiệm thu.
+// `dxdesk.mjs up` RECREATE api/web khi image vừa build lại, và cổng APISIX tiếp tục gửi
+// request tới địa chỉ IP CŨ của container đã chết (CI #10/#17/#20/#21: "113: No route to
+// host" upstream http://172.18.0.9:3000 -> 502). Run #21 chứng minh 502 này không tự hết
+// trong 60 giây, nên `infra/apisix/config.yaml` ép dns_resolver_valid=5; cửa sổ retry ở
+// đây chỉ để dung hòa đúng khoảng chờ phân giải lại đó, không che lỗi 5xx của API.
 async function requestSettled(path, token) {
   const deadline = Date.now() + 60000;
   let response;
