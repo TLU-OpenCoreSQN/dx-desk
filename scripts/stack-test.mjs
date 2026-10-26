@@ -36,6 +36,20 @@ async function request(path, token, body, method = body ? 'POST' : 'GET') {
   // log CI chỉ ra được lý do (error_description) thay vì chỉ thấy 401.
   return { status: response.status, data: json, www: response.headers.get('www-authenticate') };
 }
+// `dxdesk.mjs up` RECREATE api/web khi image vừa build lại. APISIX vẫn giữ địa chỉ IP cũ
+// trong DNS cache (valid=30s) nên dù container đã healthy, cổng vẫn trả 502
+// "no route to host" trong vài chục giây: CI run #40341625485 chết đúng chỗ này, còn run
+// #40341613068 cùng SHA qua được vì IPAM cấp lại đúng IP cũ. Chờ cổng tự phân giải lại
+// thay vì khởi động lại hạ tầng từ bên trong bài nghiệm thu.
+async function requestSettled(path, token) {
+  const deadline = Date.now() + 60000;
+  let response;
+  for (;;) {
+    response = await request(path, token);
+    if (![502, 503, 504].includes(response.status) || Date.now() >= deadline) return response;
+    await new Promise(r => setTimeout(r, 1000));
+  }
+}
 async function login(username) {
   const response = await fetch(issuer + '/protocol/openid-connect/token', {
     method: 'POST', signal: AbortSignal.timeout(15000),
@@ -53,13 +67,14 @@ let tokenA, tokenB, tokenAgent, tokenManager, created;
 try {
   await check('Gateway health', async () => assert.equal((await request('/healthz')).data, 'ok'));
   await check('Web served through APISIX', async () => {
-    const response = await request('/');
+    const response = await requestSettled('/');
     assert.equal(response.status, 200);
     assert.match(response.data, /<html/i);
   });
   await check('API ready through APISIX', async () => {
-    const response = await request('/api/health');
-    assert.equal(response.status, 200); assert.equal(response.data.status, 'ok');
+    const response = await requestSettled('/api/health');
+    assert.equal(response.status, 200, `GET /api/health -> ${JSON.stringify(response.data)}`);
+    assert.equal(response.data.status, 'ok');
   });
   await check('Anonymous API denied', async () => assert.equal((await request('/api/me')).status, 401));
   await check('Keycloak users authenticate', async () => {
