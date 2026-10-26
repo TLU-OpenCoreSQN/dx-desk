@@ -1,0 +1,21 @@
+{
+  "name": "@dxdesk/verification",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "integration": "node run-integration.mjs",
+    "check": "node check-config.mjs",
+    "browser": "node browser-smoke.mjs",
+    "native-sso": "node native-sso.mjs",
+    "migrations": "node migration-test.mjs"
+  },
+  "dependencies": {
+    "embedded-postgres": "17.10.0-beta.17",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

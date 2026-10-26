@@ -6,11 +6,24 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 |---|---|---|
 | [adr/](adr/README.md) | Vì sao hệ thống được thiết kế như vậy, thử nghiệm nào đã làm và kết quả ra sao | Đang viết |
 | `kien-truc.md` | Ba tầng DX-OS, ánh xạ H-P-D-I, Zero-Trust (Keycloak, APISIX, RLS), luồng một ticket | Tuần 5–7 |
-| `du-lieu.md` | Lược đồ CSDL, chính sách RLS, danh mục JSON-LD và siêu dữ liệu DCAT | Tuần 3–7 |
-| `cai-dat.md` | Yêu cầu phần cứng, hồ sơ `full` và `demo-light`, cài từ máy sạch, xử lý sự cố | Tuần 7 |
+| [du-lieu.md](du-lieu.md) | Schema/RLS tuần 2; JSON-LD/DCAT ở mốc sau | Đã có bản tuần 2 |
+| [cai-dat.md](cai-dat.md) | Cài đặt/kiểm thử tuần 2, Windows/Linux, xử lý sự cố | Đã có bản tuần 2 |
 | `van-hanh.md` | Khởi động, dừng, đặt lại; nạp lại workflow n8n và realm Keycloak; log; sao lưu | Tuần 5 |
 | `huong-dan-su-dung.md` | Thao tác theo vai trò Employee, Agent, Manager | Tuần 7 |
-| `api/` | Đặc tả OpenAPI của Service Desk API, cách xác thực và gọi qua APISIX | Tuần 7 |
+| [api/](api/contract.md) | Contract và OpenAPI cho các endpoint tuần 2 | Đã có bản tuần 2 |
+
+## Tài liệu tuần 2
+
+
+
+- [Kế hoạch và tiến độ có ô tick](ke-hoach-tuan-2.md).
+- [Cài đặt Windows/Linux và kiểm thử](cai-dat.md).
+- [Schema và quyền dữ liệu](du-lieu.md).
+- [API contract](api/contract.md) và [OpenAPI](api/openapi.yaml).
+- [Kịch bản demo/nghiệm thu](demo-tuan-2.md).
+- [Báo cáo kiểm thử và bàn giao](bao-cao-kiem-thu-tuan-2.md).
+- [Danh sách Issue chuẩn bị cho GitHub](github-issues-tuan-2.md).
+- [Chuẩn bị phát hành và việc cần người phụ trách](phat-hanh-tuan-2.md).
 
 ## Quy ước
 

@@ -1,10 +1,17 @@
 # Bí mật và tệp sinh ra khi chạy
 .env
+.env.*
+!.env.example
 infra/seaweedfs/s3.json
 infra/postgrest/jwks.json
 infra/postgrest/jwks.json.new
+infra/n8n/credentials/credentials.json
 *.tar.gz
 node_modules/
 dist/
 coverage/
 .DS_Store
+work/
+.local/
+test-results/
+*.tsbuildinfo

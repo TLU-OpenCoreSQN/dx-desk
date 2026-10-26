@@ -23,6 +23,7 @@ services:
       N8N_DB: ${N8N_DB}
       N8N_DB_PASSWORD: ${N8N_DB_PASSWORD}
       AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
+      API_DB_PASSWORD: ${API_DB_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../postgres/init:/docker-entrypoint-initdb.d:ro
@@ -46,6 +47,9 @@ services:
       PGRST_DB_ANON_ROLE: anon
       # JWKS của Keycloak lưu thành tệp (PostgREST không tải khóa từ URL); do scripts/sync-jwks.sh cập nhật.
       PGRST_JWT_SECRET: "@/etc/postgrest/jwks.json"
+      PGRST_JWT_AUD: ${OIDC_AUDIENCE}
+      PGRST_DB_PRE_REQUEST: private.check_request
+      PGRST_APP_SETTINGS_JWT_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       PGRST_SERVER_HOST: "0.0.0.0"
       PGRST_SERVER_PORT: "3000"
       PGRST_ADMIN_SERVER_PORT: "3001"
@@ -78,7 +82,7 @@ services:
     volumes:
       - ../keycloak/realm-dxdesk.json:/opt/keycloak/data/import/realm-dxdesk.json:ro
     ports:
-      - "${KEYCLOAK_PORT}:8080"
+      - "127.0.0.1:${KEYCLOAK_PORT}:8080"
     healthcheck:
       # Image Keycloak không có curl: gọi /health/ready (cổng quản lý 9000) bằng /dev/tcp của bash.
       test:
@@ -96,11 +100,15 @@ services:
     depends_on:
       postgrest:
         condition: service_healthy
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
     volumes:
       - ../apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ../apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
     ports:
-      - "${APISIX_PORT}:9080"
+      - "127.0.0.1:${APISIX_PORT}:9080"
     healthcheck:
       # Image APISIX không có curl: gọi /healthz bằng /dev/tcp của bash.
       test:
@@ -112,6 +120,42 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+
+  api:
+    build:
+      context: ../../apps/api
+    <<: *restart
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      DATABASE_URL: postgres://api_login:${API_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      OIDC_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
+      OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  web:
+    build:
+      context: ../../apps/web
+      args:
+        VITE_KEYCLOAK_URL: ${WEB_KEYCLOAK_URL}
+        VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+        VITE_KEYCLOAK_CLIENT_ID: ${WEB_KEYCLOAK_CLIENT_ID}
+    <<: *restart
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   clamav:
     image: clamav/clamav:${CLAMAV_VERSION}
@@ -194,7 +238,20 @@ services:
       retries: 20
       start_period: 30s
 
+  ollama:
+    image: ollama/ollama:${OLLAMA_VERSION}
+    profiles: ["benchmark"]
+    <<: *restart
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+
 volumes:
   postgres-data:
   clamav-db:
+  ollama-data:
   seaweedfs-data:

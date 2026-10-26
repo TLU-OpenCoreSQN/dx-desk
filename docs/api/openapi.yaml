@@ -1,0 +1,254 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+openapi: 3.0.3
+info:
+  title: DX-Desk Service Desk API
+  version: 0.1.0
+  description: Khung API tuần 2. Tất cả thao tác nghiệp vụ áp dụng PostgreSQL RLS.
+servers:
+  - url: http://localhost:9080/api
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: API và database sẵn sàng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+                  service: { type: string }
+                  version: { type: string }
+        "503": { $ref: "#/components/responses/Error" }
+  /me:
+    get:
+      operationId: me
+      responses:
+        "200":
+          description: Danh tính của token đã xác thực
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  username: { type: string }
+                  roles:
+                    type: array
+                    items: { type: string, enum: [Employee, Agent, Manager] }
+        "401": { $ref: "#/components/responses/Error" }
+  /categories:
+    get:
+      operationId: categories
+      responses:
+        "200":
+          description: Danh mục đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        code: { type: string }
+                        name: { type: string }
+                        description: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+  /tickets:
+    get:
+      operationId: listTickets
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Offset" }
+      responses:
+        "200":
+          description: Yêu cầu nhìn thấy theo RLS, mới nhất trước
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Ticket" }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createTicket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [category_id, title, description]
+              properties:
+                category_id: { type: string, format: uuid }
+                title: { type: string, minLength: 5, maxLength: 200 }
+                description: { type: string, minLength: 10, maxLength: 5000 }
+                priority: { type: string, enum: [low, normal, high, critical], default: normal }
+      responses:
+        "201":
+          description: Đã tạo ticket và audit trong cùng giao dịch
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ticket" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /tickets/{id}:
+    get:
+      operationId: getTicket
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "200":
+          description: Chi tiết ticket
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ticket" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /tickets/{id}/events:
+    get:
+      operationId: ticketEvents
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "200":
+          description: Lịch sử có quyền đọc
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        ticket_id: { type: string, format: uuid }
+                        actor_id: { type: string, format: uuid }
+                        event_type: { type: string }
+                        payload: { type: object }
+                        created_at: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /device-requests:
+    get:
+      operationId: listDeviceRequests
+      parameters:
+        - { $ref: "#/components/parameters/Limit" }
+        - { $ref: "#/components/parameters/Offset" }
+      responses:
+        "200":
+          description: Yêu cầu thiết bị theo quyền hiện tại
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/DeviceRequest" }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createDeviceRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [device_type, reason]
+              properties:
+                device_type: { type: string, enum: [laptop, monitor, keyboard, mouse, other] }
+                reason: { type: string, minLength: 10, maxLength: 2000 }
+                quantity: { type: integer, minimum: 1, maximum: 10, default: 1 }
+      responses:
+        "201":
+          description: Yêu cầu thiết bị trạng thái pending
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeviceRequest" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak RS256, issuer realm dxdesk, audience dxdesk-api
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+    Limit:
+      in: query
+      name: limit
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+    Offset:
+      in: query
+      name: offset
+      schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+  responses:
+    Error:
+      description: Lỗi xác thực, quyền hoặc dữ liệu; 404 cũng được dùng khi RLS ẩn bản ghi
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode: { type: integer }
+              message:
+                oneOf:
+                  - { type: string }
+                  - { type: array, items: { type: string } }
+  schemas:
+    Ticket:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        requester_id: { type: string, format: uuid }
+        category_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        priority: { type: string, enum: [low, normal, high, critical] }
+        status: { type: string, enum: [new, triaged, assigned, in_progress, resolved, closed, cancelled] }
+        assigned_to: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    DeviceRequest:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        requester_id: { type: string, format: uuid }
+        device_type: { type: string, enum: [laptop, monitor, keyboard, mouse, other] }
+        reason: { type: string }
+        quantity: { type: integer }
+        status: { type: string, enum: [pending, approved, rejected, fulfilled] }
+        created_at: { type: string, format: date-time }

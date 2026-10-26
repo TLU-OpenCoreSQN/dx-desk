@@ -10,7 +10,7 @@
 ## Định nghĩa "xong"
 
 - Mã đã gộp vào `main` qua pull request được duyệt, CI xanh.
-- Mọi tệp mới có header `SPDX-License-Identifier: Apache-2.0`; tệp không viết được chú thích (JSON, Markdown…) được khai báo trong `REUSE.toml`.
+- Mọi tệp mới có header giấy phép Apache-2.0 theo mẫu bên dưới; tệp không viết được chú thích (JSON, Markdown…) được khai báo trong `REUSE.toml`.
 - Chạy được từ máy sạch bằng `cp .env.example .env && make up`, không phải sửa tay tệp nào khác.
 - Có kiểm thử tự động cho quy tắc nghiệp vụ mới.
 - README, `docs/` hoặc OpenAPI được cập nhật nếu thay đổi cách cài đặt hoặc API.

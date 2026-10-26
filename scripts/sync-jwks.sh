@@ -24,5 +24,9 @@ else
   # Ghi đè nội dung (giữ nguyên inode) vì tệp được bind-mount vào container PostgREST.
   cat "$TMP" > "$TARGET"
   rm -f "$TMP"
-  docker compose --env-file "${ROOT}.env" -f "${ROOT}infra/compose/docker-compose.yml" restart postgrest
+  # A new installation has no PostgREST container yet. Recreate after sync in make up.
+  # For a running stack restart only when the service is currently running.
+  if [ -n "$(docker compose --env-file "${ROOT}.env" -f "${ROOT}infra/compose/docker-compose.yml" ps -q --status running postgrest)" ]; then
+    docker compose --env-file "${ROOT}.env" -f "${ROOT}infra/compose/docker-compose.yml" restart postgrest
+  fi
 fi

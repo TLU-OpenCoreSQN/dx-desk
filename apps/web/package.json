@@ -1,0 +1,39 @@
+{
+  "name": "dx-desk-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && node scripts/licenses.mjs",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "keycloak-js": "26.2.4",
+    "lucide-react": "0.453.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "7.18.4"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.0.1",
+    "@testing-library/user-event": "14.5.2",
+    "@types/node": "22.19.15",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "5.2.0",
+    "jsdom": "25.0.1",
+    "postcss": "8.5.31",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.6.3",
+    "vite": "7.3.7",
+    "vitest": "4.1.12",
+    "@tailwindcss/postcss": "4.3.3"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.12"
+  }
+}

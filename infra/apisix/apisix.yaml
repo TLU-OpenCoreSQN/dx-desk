@@ -27,4 +27,20 @@ routes:
       type: roundrobin
       nodes:
         "n8n:5678": 1
+
+  - id: service-desk-api
+    uri: /api/*
+    priority: 20
+    upstream:
+      type: roundrobin
+      nodes:
+        "api:3000": 1
+
+  - id: web
+    uri: /*
+    priority: -10
+    upstream:
+      type: roundrobin
+      nodes:
+        "web:80": 1
 #END

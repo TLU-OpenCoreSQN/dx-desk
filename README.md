@@ -3,7 +3,9 @@
 Hệ thống tiếp nhận và tự động xử lý yêu cầu IT nội bộ, xây dựng trên nền tảng DX-OS Open-Core theo mô hình H-P-D-I.
 Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung Phần mềm nguồn mở (đội TLU-OpenCoreSQN, Trường Đại học Thủy lợi).
 
-> Trạng thái: **v0.1.0 (đang phát triển)** – mới có Tầng 1 (nền tảng). Ứng dụng DX-Desk và ứng dụng "Xin cấp thiết bị" sẽ bổ sung ở các tuần sau.
+> Trạng thái: **chuẩn bị v0.1.0 — tuần 2**. Có Tầng 1, schema/RLS, khung API NestJS
+> và web React. Kết quả kiểm chứng và các việc chưa nghiệm thu được cập nhật tại
+> [kế hoạch tuần 2](docs/ke-hoach-tuan-2.md). Chưa coi đây là bản đã phát hành.
 
 ## Tầng 1 gồm những gì
 
@@ -18,9 +20,9 @@ Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung P
 
 ## Yêu cầu
 
-- Docker Engine và Docker Compose v2 (đang kiểm thử với Docker 29, Compose 5)
-- GNU Make
-- Khoảng 4 GB RAM trống cho Tầng 1 (ClamAV chiếm nhiều nhất); chưa tính dịch vụ AI
+- Docker Engine và Docker Compose v2; cấu hình đã kiểm bằng Compose 2.40.3.
+- GNU Make hoặc Node.js >=22.12 để chạy script đa nền tảng trên Windows.
+- Máy demo mục tiêu 16 GB RAM; mức sử dụng thực tế sẽ được đo trong TN-05.
 
 ## Chạy từ mã nguồn
 
@@ -34,6 +36,42 @@ make ps                  # xem trạng thái
 
 Các lệnh khác: `make down` (dừng, giữ dữ liệu), `make reset` (xóa dữ liệu và dựng lại từ đầu), `make logs SERVICE=keycloak`.
 Lần đầu ClamAV cần vài phút để tải cơ sở dữ liệu mẫu virus.
+
+Trên Windows PowerShell, có Docker Desktop chạy Linux containers:
+
+```powershell
+Copy-Item .env.example .env
+node scripts/dxdesk.mjs up
+node scripts/dxdesk.mjs verify
+```
+
+Web: **http://localhost:9080**. Đăng nhập qua Keycloak rồi tạo/xem yêu cầu IT,
+xem lịch sử và tạo yêu cầu thiết bị tối thiểu. Frontend dùng React/TypeScript,
+Vite, Tailwind; backend NestJS/TypeScript; database PostgreSQL.
+Mọi request web đi qua APISIX. Employee chỉ xem dữ liệu của mình, Agent/Manager
+đọc dữ liệu hỗ trợ, Critical chỉ dành cho Manager.
+
+Tài liệu: [cài đặt](docs/cai-dat.md), [dữ liệu](docs/du-lieu.md),
+[hợp đồng API](docs/api/contract.md), [OpenAPI](docs/api/openapi.yaml),
+[demo tuần 2](docs/demo-tuan-2.md), [ADR](docs/adr/README.md).
+Kết quả đã chạy và phần còn thiếu: [báo cáo kiểm thử tuần 2](docs/bao-cao-kiem-thu-tuan-2.md).
+
+## Kiểm thử
+
+```sh
+npm ci --prefix apps/api
+npm test --prefix apps/api
+npm ci --prefix apps/web
+npm run build --prefix apps/web
+npm test --prefix apps/web
+npm ci --prefix tools/testing
+npm run integration --prefix tools/testing
+```
+
+Integration dùng PostgreSQL portable và PostgREST thật, không cần Docker.
+Nghiệm thu đầy đủ Keycloak/APISIX/n8n cần Docker:
+`node scripts/stack-test.mjs --restart-n8n`.
+Các số đo TN-05 được tạo bằng `node scripts/benchmark.mjs` khi có máy demo.
 
 ## Kiểm tra nhanh
 
@@ -61,7 +99,9 @@ Tài khoản quản trị Keycloak nằm trong `.env`.
 | `infra/compose` | `docker-compose.yml` của Tầng 1 |
 | `infra/keycloak`, `infra/apisix`, `infra/n8n`, `infra/postgres` | Cấu hình dạng mã: realm, route, workflow, khởi tạo CSDL |
 | `db/migrations`, `db/policies` | Lược đồ CSDL và chính sách RLS (chạy khi khởi tạo PostgreSQL) |
-| `apps/` | Ứng dụng Tầng 2 (web, api, assistant, device-request) |
+| `apps/web`, `apps/api` | React và NestJS tuần 2; trang thiết bị dùng chung web |
+| `apps/assistant`, `apps/device-request` | Giữ chỗ cho các mốc sau; không phải dịch vụ đã chạy |
+| `tools/testing` | Harness PostgreSQL portable + PostgREST và kiểm tra cấu hình |
 | `scripts/` | Script hỗ trợ `make up` |
 | `docs/` | Tài liệu và quyết định kiến trúc (`docs/adr/`) |
 
