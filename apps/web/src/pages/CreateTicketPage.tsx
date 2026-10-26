@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -9,12 +9,15 @@ import {
   CheckCircle2,
   HelpCircle,
   ShieldAlert,
+  ClipboardList,
 } from 'lucide-react';
 import { createTicket, getCategories } from '../services/api';
-import { Category, TicketPriority } from '../types/api';
+import { Category, RequirementField, TicketPriority } from '../types/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Alert } from '../components/common/Alert';
 import { ErrorMessage } from '../components/common/ErrorMessage';
+
+const isDateField = (field: RequirementField): boolean => field.key.toLowerCase().includes('until');
 
 export const CreateTicketPage: React.FC = () => {
   const navigate = useNavigate();
@@ -30,9 +33,9 @@ export const CreateTicketPage: React.FC = () => {
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [priority, setPriority] = useState<TicketPriority>('normal');
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
 
-  // Validation & submission states
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+  const [submitAttempted, setSubmitAttempted] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [serverError, setServerError] = useState<unknown>(null);
   const [successTicketId, setSuccessTicketId] = useState<string | null>(null);
@@ -62,7 +65,10 @@ export const CreateTicketPage: React.FC = () => {
     };
   }, []);
 
-  const validate = (): boolean => {
+  const selectedCategory = categories.find((c) => c.id === categoryId) || null;
+  const requirementFields: RequirementField[] = selectedCategory?.requirement_fields || [];
+
+  const baseErrors = useMemo(() => {
     const errors: Record<string, string> = {};
 
     if (!categoryId.trim()) {
@@ -87,17 +93,43 @@ export const CreateTicketPage: React.FC = () => {
       errors.priority = 'Chỉ tài khoản Quản lý (Manager) mới có quyền tạo phiếu mức Khẩn cấp.';
     }
 
-    setClientErrors(errors);
-    return Object.keys(errors).length === 0;
+    return errors;
+  }, [categoryId, title, description, priority, isManager]);
+
+  const missingRequiredFields = requirementFields.filter(
+    (f) => f.required && !(fieldValues[f.key] || '').trim()
+  );
+
+  const missingFieldLabels: string[] = [];
+  if (baseErrors.categoryId) missingFieldLabels.push('Danh mục sự cố');
+  if (baseErrors.title) missingFieldLabels.push('Tiêu đề phiếu (từ 5 đến 200 ký tự)');
+  if (baseErrors.description) missingFieldLabels.push('Mô tả chi tiết sự cố (từ 10 đến 5000 ký tự)');
+  if (baseErrors.priority) missingFieldLabels.push('Mức ưu tiên (Khẩn cấp chỉ dành cho Quản lý)');
+  for (const f of missingRequiredFields) {
+    missingFieldLabels.push(`${f.label} (bắt buộc theo danh mục)`);
+  }
+
+  const canSubmit = Object.keys(baseErrors).length === 0 && missingRequiredFields.length === 0;
+  const showError = (key: string, value: string) =>
+    Boolean(submitAttempted || (value.trim().length > 0 && baseErrors[key]));
+
+  const handleCategoryChange = (value: string) => {
+    setCategoryId(value);
+    setFieldValues({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
+    setSubmitAttempted(true);
 
-    if (!validate()) {
+    if (!canSubmit) {
       return;
     }
+
+    const filledValues = Object.fromEntries(
+      Object.entries(fieldValues).filter(([, value]) => value.trim().length > 0)
+    );
 
     try {
       setIsSubmitting(true);
@@ -106,6 +138,7 @@ export const CreateTicketPage: React.FC = () => {
         title: title.trim(),
         description: description.trim(),
         priority,
+        ...(requirementFields.length > 0 ? { fields: filledValues } : {}),
       });
 
       setSuccessTicketId(ticket.id);
@@ -166,6 +199,8 @@ export const CreateTicketPage: React.FC = () => {
                 setTitle('');
                 setDescription('');
                 setPriority('normal');
+                setFieldValues({});
+                setSubmitAttempted(false);
               }}
               className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors"
             >
@@ -204,9 +239,9 @@ export const CreateTicketPage: React.FC = () => {
                 <select
                   id="ticket-category"
                   value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className={`w-full text-xs border rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 ${
-                    clientErrors.categoryId
+                    showError('categoryId', categoryId)
                       ? 'border-rose-400 focus:ring-rose-500'
                       : 'border-slate-300 focus:ring-teal-500'
                   }`}
@@ -222,10 +257,58 @@ export const CreateTicketPage: React.FC = () => {
                   )}
                 </select>
               )}
-              {clientErrors.categoryId && (
-                <p className="text-xs text-rose-600 mt-1">{clientErrors.categoryId}</p>
+              {showError('categoryId', categoryId) && (
+                <p className="text-xs text-rose-600 mt-1">{baseErrors.categoryId}</p>
               )}
             </div>
+
+            {/* Dynamic requirement fields for the selected category */}
+            {requirementFields.length > 0 && (
+              <fieldset className="space-y-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                <legend className="px-1 text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <ClipboardList className="w-3.5 h-3.5 text-teal-600" />
+                  Thông tin bắt buộc theo danh mục
+                </legend>
+                {requirementFields.map((field) => {
+                  const value = fieldValues[field.key] || '';
+                  const fieldMissing = submitAttempted && field.required && !value.trim();
+                  return (
+                    <div key={field.key}>
+                      <label
+                        htmlFor={`requirement-${field.key}`}
+                        className="block text-xs font-semibold text-slate-700 mb-1"
+                      >
+                        {field.label}{' '}
+                        {field.required && <span className="text-rose-500">*</span>}
+                      </label>
+                      <input
+                        id={`requirement-${field.key}`}
+                        name={field.key}
+                        type={isDateField(field) ? 'date' : 'text'}
+                        required={field.required}
+                        value={value}
+                        onChange={(e) =>
+                          setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))
+                        }
+                        aria-required={field.required}
+                        aria-invalid={fieldMissing}
+                        placeholder={isDateField(field) ? '' : `VD: nội dung cho "${field.label}"`}
+                        className={`w-full text-xs border rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 ${
+                          fieldMissing
+                            ? 'border-rose-400 focus:ring-rose-500'
+                            : 'border-slate-300 focus:ring-teal-500'
+                        }`}
+                      />
+                      {fieldMissing && (
+                        <p className="text-xs text-rose-600 mt-1">
+                          Vui lòng nhập “{field.label}” (trường bắt buộc của danh mục).
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </fieldset>
+            )}
 
             {/* Title field */}
             <div>
@@ -254,13 +337,13 @@ export const CreateTicketPage: React.FC = () => {
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={250}
                 className={`w-full text-xs border rounded-lg p-2.5 focus:outline-none focus:ring-2 ${
-                  clientErrors.title
+                  showError('title', title)
                     ? 'border-rose-400 focus:ring-rose-500'
                     : 'border-slate-300 focus:ring-teal-500'
                 }`}
               />
-              {clientErrors.title && (
-                <p className="text-xs text-rose-600 mt-1">{clientErrors.title}</p>
+              {showError('title', title) && (
+                <p className="text-xs text-rose-600 mt-1">{baseErrors.title}</p>
               )}
             </div>
 
@@ -330,8 +413,8 @@ export const CreateTicketPage: React.FC = () => {
                   <span>Mức "Khẩn cấp" chỉ dành riêng cho tài khoản Quản lý (Manager).</span>
                 </p>
               )}
-              {clientErrors.priority && (
-                <p className="text-xs text-rose-600 mt-1">{clientErrors.priority}</p>
+              {baseErrors.priority && (
+                <p className="text-xs text-rose-600 mt-1">{baseErrors.priority}</p>
               )}
             </div>
 
@@ -363,15 +446,31 @@ export const CreateTicketPage: React.FC = () => {
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={5500}
                 className={`w-full text-xs border rounded-lg p-3 focus:outline-none focus:ring-2 leading-relaxed ${
-                  clientErrors.description
+                  showError('description', description)
                     ? 'border-rose-400 focus:ring-rose-500'
                     : 'border-slate-300 focus:ring-teal-500'
                 }`}
               />
-              {clientErrors.description && (
-                <p className="text-xs text-rose-600 mt-1">{clientErrors.description}</p>
+              {showError('description', description) && (
+                <p className="text-xs text-rose-600 mt-1">{baseErrors.description}</p>
               )}
             </div>
+
+            {/* Poka-yoke: list of fields still missing before submit is possible */}
+            {missingFieldLabels.length > 0 && (
+              <div
+                id="missing-fields-summary"
+                className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-900"
+                aria-live="polite"
+              >
+                <p className="font-semibold mb-1">Chưa thể gửi phiếu — còn thiếu hoặc chưa hợp lệ:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {missingFieldLabels.map((label) => (
+                    <li key={label}>{label}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Note on Week 2 attachments */}
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500">
@@ -392,7 +491,16 @@ export const CreateTicketPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || categoriesLoading}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors disabled:opacity-50"
+                aria-disabled={!canSubmit}
+                aria-describedby="missing-fields-summary"
+                onClick={() => {
+                  if (!canSubmit) setSubmitAttempted(true);
+                }}
+                className={`inline-flex items-center gap-2 px-5 py-2.5 text-white text-xs font-bold rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors ${
+                  canSubmit && !isSubmitting && !categoriesLoading
+                    ? 'bg-teal-600 hover:bg-teal-700'
+                    : 'bg-teal-600 opacity-50 cursor-not-allowed'
+                }`}
               >
                 {isSubmitting ? (
                   <>

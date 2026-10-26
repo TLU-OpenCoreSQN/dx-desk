@@ -3,8 +3,8 @@
 openapi: 3.0.3
 info:
   title: DX-Desk Service Desk API
-  version: 0.1.0
-  description: Khung API tuần 2. Tất cả thao tác nghiệp vụ áp dụng PostgreSQL RLS.
+  version: 0.2.0
+  description: Khung API tuần 3 — thêm máy trạng thái ticket, Poka-yoke và SLA. Tất cả thao tác nghiệp vụ áp dụng PostgreSQL RLS.
 servers:
   - url: http://localhost:9080/api
 security:
@@ -63,6 +63,14 @@ paths:
                         code: { type: string }
                         name: { type: string }
                         description: { type: string }
+                        requirement_fields:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              key: { type: string }
+                              label: { type: string }
+                              required: { type: boolean }
         "401": { $ref: "#/components/responses/Error" }
   /tickets:
     get:
@@ -100,15 +108,23 @@ paths:
                 title: { type: string, minLength: 5, maxLength: 200 }
                 description: { type: string, minLength: 10, maxLength: 5000 }
                 priority: { type: string, enum: [low, normal, high, critical], default: normal }
+                fields:
+                  type: object
+                  additionalProperties: { type: string }
+                  description: Giá trị các trường bắt buộc theo categories.requirement_fields
       responses:
         "201":
-          description: Đã tạo ticket và audit trong cùng giao dịch
+          description: >-
+            Đã tạo ticket và audit trong cùng giao dịch. Employee tạo danh mục
+            'access' nhận trạng thái khởi đầu pending_approval; priority critical
+            chỉ Manager được phép.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Ticket" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /tickets/{id}:
     get:
       operationId: getTicket
@@ -123,6 +139,38 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /tickets/{id}/status:
+    patch:
+      operationId: updateTicketStatus
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [to]
+              properties:
+                to: { type: string, enum: [new, triaged, assigned, in_progress, waiting_user, pending_approval, resolved, closed, cancelled] }
+                note: { type: string, maxLength: 2000 }
+                resolution_note: { type: string, minLength: 5, maxLength: 2000 }
+      responses:
+        "200":
+          description: >-
+            Chuyển trạng thái hợp lệ theo máy trạng thái; ticket_events được ghi
+            trong cùng giao dịch. Vào waiting_user tạm dừng đồng hồ SLA, rời
+            waiting_user cộng dồn vào sla_paused_ms.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ticket" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { description: Vai trò hiện tại không được phép chuyển cạnh này }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { description: Cạnh vô hiệu theo máy trạng thái (trạng thái cuối hoặc không được phép) }
+        "422": { description: Thiếu resolution_note khi chuyển sang resolved, hoặc trạng thái không hợp lệ }
   /tickets/{id}/events:
     get:
       operationId: ticketEvents
@@ -238,8 +286,14 @@ components:
         title: { type: string }
         description: { type: string }
         priority: { type: string, enum: [low, normal, high, critical] }
-        status: { type: string, enum: [new, triaged, assigned, in_progress, resolved, closed, cancelled] }
+        status: { type: string, enum: [new, triaged, assigned, in_progress, waiting_user, pending_approval, resolved, closed, cancelled] }
         assigned_to: { type: string, format: uuid, nullable: true }
+        resolution_note: { type: string, nullable: true, minLength: 5, maxLength: 2000 }
+        request_fields:
+          type: object
+          additionalProperties: { type: string }
+        sla_due_at: { type: string, format: date-time, nullable: true }
+        sla_paused_ms: { type: integer, minimum: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     DeviceRequest:

@@ -8,7 +8,7 @@ import { NestFactory } from '@nestjs/core';
 import type { Response } from 'express';
 import { JwtGuard } from './auth';
 import { Database } from './database';
-import { DeskController, HealthController } from './controllers';
+import { DeskController, HealthController, workflowExceptionForCode } from './controllers';
 
 @Catch()
 class Errors implements ExceptionFilter {
@@ -19,7 +19,12 @@ class Errors implements ExceptionFilter {
       return;
     }
     const code = (error as { code?: string })?.code;
-    if (code === '42501') {
+    // W3-01: trigger guard máy trạng thái raise SQLSTATE 4500x -> thông báo cố định
+    // tiếng Việt, không bao giờ chuyển raw message/SQL từ PostgreSQL ra client.
+    const workflow = workflowExceptionForCode(code);
+    if (workflow) {
+      response.status(workflow.status).json({ statusCode: workflow.status, message: workflow.message });
+    } else if (code === '42501') {
       response.status(403).json({ statusCode: 403, message: 'Bạn không có quyền thực hiện thao tác này.' });
     } else if (['23503', '23514', '22P02', '23502'].includes(code ?? '')) {
       response.status(400).json({ statusCode: 400, message: 'Dữ liệu không hợp lệ. Kiểm tra danh mục và các trường bắt buộc.' });

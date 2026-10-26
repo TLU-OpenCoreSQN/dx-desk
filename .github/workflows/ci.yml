@@ -73,7 +73,7 @@ jobs:
           npm test
 
   rls-integration:
-    name: TN-02 PostgreSQL và PostgREST
+    name: TN-02 RLS + máy trạng thái tuần 3 (PostgreSQL/PostgREST)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

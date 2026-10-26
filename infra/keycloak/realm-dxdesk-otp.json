@@ -1,0 +1,150 @@
+{
+  "realm": "dxdesk",
+  "displayName": "DX-Desk (ban OTP cho demo)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "accessTokenLifespan": 900,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "roles": {
+    "realm": [
+      { "name": "Employee", "description": "Nhân viên gửi yêu cầu IT" },
+      { "name": "Agent", "description": "Kỹ thuật viên xử lý ticket" },
+      { "name": "Manager", "description": "Quản lý, được đặt mức Critical và duyệt yêu cầu" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dxdesk-web",
+      "name": "DX-Desk web (React)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:5173/*", "http://localhost:9080/*"],
+      "webOrigins": ["+"],
+      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "+" },
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "dxdesk-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "db-role",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "role",
+            "claim.value": "authenticated",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "dxdesk-api",
+      "name": "DX-Desk Service Desk API",
+      "enabled": true,
+      "bearerOnly": true
+    },
+    {
+      "clientId": "appsmith",
+      "name": "Appsmith (thử nghiệm TN-01)",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "appsmith-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:8081/*"],
+      "webOrigins": ["+"],
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "dxdesk-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "db-role",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "role",
+            "claim.value": "authenticated",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "employee.a",
+      "email": "employee.a@dxdesk.local",
+      "firstName": "Nhân viên",
+      "lastName": "A",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": ["CONFIGURE_TOTP"],
+      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
+      "realmRoles": ["Employee"]
+    },
+    {
+      "username": "employee.b",
+      "email": "employee.b@dxdesk.local",
+      "firstName": "Nhân viên",
+      "lastName": "B",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": ["CONFIGURE_TOTP"],
+      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
+      "realmRoles": ["Employee"]
+    },
+    {
+      "username": "agent.1",
+      "email": "agent.1@dxdesk.local",
+      "firstName": "Kỹ thuật viên",
+      "lastName": "1",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": ["CONFIGURE_TOTP"],
+      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
+      "realmRoles": ["Agent"]
+    },
+    {
+      "username": "manager.1",
+      "email": "manager.1@dxdesk.local",
+      "firstName": "Quản lý",
+      "lastName": "1",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": ["CONFIGURE_TOTP"],
+      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
+      "realmRoles": ["Manager"]
+    }
+  ]
+}

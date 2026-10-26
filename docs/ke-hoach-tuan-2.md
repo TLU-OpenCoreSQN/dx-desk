@@ -96,7 +96,7 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 - [x] Thêm job TN-02 và job nghiệm thu stack; chưa chạy GitHub.
 - [x] REUSE snapshot nguồn đạt; lockfile khớp dependency; npm ci web/API đạt.
 - [x] Chạy build, unit/integration/browser, audit, config, ShellCheck, REUSE và diff tại máy.
-- [ ] CI GitHub xanh trên PR/main — chưa push nên chưa có kết quả.
+- [ ] CI GitHub xanh trên PR/main — chưa push nên chưa có kết quả (đính chính 26/10: xem chặng 9).
 
 ### W2-03 — Docker Compose Tầng 1 và ứng dụng
 
@@ -404,7 +404,7 @@ khởi động lại máy, công bố release hoặc gửi thông tin ra ngoài.
   và trạng thái cần restart trước khi tiếp tục.
 - [ ] Docker chạy được: `node scripts/dxdesk.mjs up`, sửa lỗi thực tế nếu có,
   chạy `node scripts/stack-test.mjs --restart-n8n`.
-- [ ] Chạy `up` lần hai và `node scripts/stack-test.mjs --verify-preserved`.
+- [ ] Chạy `up` lần hai và `node scripts/stack-test.mjs --verify-preserved` — chưa chạy được (thiếu Docker). Harness `migration-test.mjs` tại máy có kiểm "Second run preserves data" nhưng đó không phải `stack-test.mjs`.
 - [ ] Chạy kiểm trình duyệt qua APISIX, đồng bộ báo cáo và đóng gói review mới.
 - [ ] TN-05 vẫn cần máy demo mục tiêu 16 GB và Ollama/model; RAM máy hiện tại
   khoảng 40 GB không phải môi trường mục tiêu, không ghi số đo thay thế là đạt.
@@ -413,3 +413,24 @@ khởi động lại máy, công bố release hoặc gửi thông tin ra ngoài.
 
 **Điểm tiếp tục chặng 8:** đã kiểm tra máy và ghi checklist; chờ quyết định cài
 WSL2/Docker Desktop trước khi thay đổi hệ thống. Không có cài đặt đang chạy nền.
+
+### 26/10/2026 - Chặng 9: đính chính trạng thái (không viết lại nhật ký cũ)
+
+Các mục ở chặng 6-8 ghi "chưa push/PR/CI" là đúng tại thời điểm 21/10 nhưng đã
+lỗi thời; đính chính ở đây để nhật ký vẫn giữ nguyên tính trung thực của nó:
+
+- [x] Số lượng test nền đã thay đổi: `node tools/testing/run-integration.mjs` hiện
+  **9/9 PASS** (thêm test máy trạng thái tuần 3), `apps/api` 22 unit test,
+  `apps/web` 64 test, harness migration **4/4 PASS** trong đó có
+  "Second run preserves data and migration timestamps" chạy tại máy.
+- [ ] Bước "Khởi chạy lần hai, giữ dữ liệu" (mục 113 và 385) vẫn **chưa có nghiệm thu**
+  ở cả máy lẫn CI: câu PASS "Second run preserves data and migration timestamps" là
+  của `tools/testing/migration-test.mjs` (PostgreSQL nhúng, không có APISIX/Keycloak/
+  PostgREST), KHÔNG phải `scripts/stack-test.mjs --verify-preserved` trên stack Docker.
+- [ ] Trạng thái push/PR/CI GitHub **không kiểm chứng được từ workspace này**:
+  `git remote -v` rỗng, không có `remotes/origin/*`, nhánh `develop-quyennnv`
+  không có upstream. Mọi thông tin "PR #3, CI #9 xanh, CI #10 đỏ" đến từ giao diện
+  GitHub trong phiên trước, không phải từ `git` trên máy. Người phụ trách cần cấu
+  hình remote (hoặc làm việc từ bản clone có remote) rồi mới push/tạo PR/tag.
+- [ ] TN-05 (máy demo 16 GB) và review của đội/Telegram BTC: vẫn chưa thực hiện.
+

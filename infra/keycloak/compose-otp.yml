@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+#
+# Hồ sơ OTP (W3-07): nạp kèm tệp này để Keycloak import bản realm có sẵn
+# requiredActions CONFIGURE_TOTP cho 4 user demo thay vì realm chuẩn.
+# Cách dùng (xem chi tiết và hệ quả với harness SSO trong docs/cai-dat.md, mục
+# "Bật OTP cho demo"):
+#   docker compose --env-file .env -f infra/compose/docker-compose.yml \
+#     -f infra/keycloak/compose-otp.yml up -d keycloak
+# Docker Compose gộp mount theo đường dẫn đích trong container: bản ghi cùng
+# `target` ở tệp sau thay thế mount realm-dxdesk.json mặc định.
+# Chỉ có hiệu lực khi realm được import (máy sạch hoặc sau khi xóa realm cũ);
+# với stack đang chạy, dùng hướng dẫn kcadm.sh trong docs/cai-dat.md.
+
+services:
+  keycloak:
+    volumes:
+      - ./realm-dxdesk-otp.json:/opt/keycloak/data/import/realm-dxdesk.json:ro

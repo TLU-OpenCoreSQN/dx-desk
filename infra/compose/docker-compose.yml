@@ -130,12 +130,18 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
+      # ADR 0007 (QĐ-3): API quét tệp đính kèm qua clamd TRƯỚC khi ghi vào SeaweedFS,
+      # nên API chờ clamd sẵn sàng (lần đầu freshclam tải cơ sở dữ liệu virus, chậm).
+      clamav:
+        condition: service_healthy
     environment:
       PORT: "3000"
       DATABASE_URL: postgres://api_login:${API_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       OIDC_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
       OIDC_AUDIENCE: ${OIDC_AUDIENCE}
+      # Địa chỉ clamd nội bộ cho giao thức INSTREAM qua TCP (không công bố ra host).
+      CLAMD_ADDR: "clamav:3310"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
@@ -158,6 +164,8 @@ services:
       retries: 10
 
   clamav:
+    # clamd trong mạng nội bộ compose nghe TCP 3310 để API quét tệp (ADR 0007);
+    # không công bố cổng này ra host.
     image: clamav/clamav:${CLAMAV_VERSION}
     <<: *restart
     volumes:

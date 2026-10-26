@@ -192,6 +192,8 @@ export const TicketListPage: React.FC = () => {
                 <option value="new">Mới tạo</option>
                 <option value="triaged">Đã phân loại</option><option value="assigned">Đã phân công</option><option value="cancelled">Đã hủy</option>
                 <option value="in_progress">Đang xử lý</option>
+                <option value="waiting_user">Chờ phản hồi</option>
+                <option value="pending_approval">Chờ phê duyệt</option>
                 <option value="resolved">Đã giải quyết</option>
                 <option value="closed">Đã đóng</option>
               </select>

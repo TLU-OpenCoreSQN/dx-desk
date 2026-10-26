@@ -5,6 +5,7 @@ import EmbeddedPostgres from 'embedded-postgres';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, cp, readFile, writeFile, unlink } from 'node:fs/promises';
+import { readdirSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,8 +47,11 @@ let started = false;
 try {
   await pg.initialise(); await pg.start(); started = true; await pg.createDatabase('dxdesk_test');
   query('CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; GRANT USAGE ON SCHEMA public TO anon, authenticated');
-  migrate(); assert.equal(query('SELECT count(*) FROM migration_meta.applied'), '4');
-  report.checks.push('First run applies all four SQL files');
+  migrate();
+  const expectedFiles = ['migrations', 'policies']
+    .reduce((n, d) => n + readdirSync(resolve(directory, 'sql', d)).filter(f => f.endsWith('.sql')).length, 0);
+  assert.equal(query('SELECT count(*) FROM migration_meta.applied'), String(expectedFiles));
+  report.checks.push(`First run applies all ${expectedFiles} SQL files`);
   query("INSERT INTO public.tickets(requester_id,category_id,title,description) VALUES ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','Preserve this ticket','Migration rerun must keep this ticket')");
   const ledger = query('SELECT string_agg(name || checksum || applied_at::text, chr(10) ORDER BY name) FROM migration_meta.applied');
   migrate();

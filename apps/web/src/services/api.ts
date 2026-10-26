@@ -10,6 +10,7 @@ import {
   PaginatedResponse,
   Ticket,
   TicketEvent,
+  UpdateTicketStatusPayload,
   UserProfile,
 } from '../types/api';
 import { ensureFreshToken, getAccessToken, expireSession } from './keycloak';
@@ -165,6 +166,20 @@ export async function getTicketEvents(id: string): Promise<{ data: TicketEvent[]
 export async function createTicket(payload: CreateTicketPayload): Promise<Ticket> {
   return request<Ticket>('/tickets', {
     method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Ticket status transition endpoint
+ * PATCH /api/tickets/:id/status
+ */
+export async function updateTicketStatus(
+  id: string,
+  payload: UpdateTicketStatusPayload
+): Promise<Ticket> {
+  return request<Ticket>(`/tickets/${encodeURIComponent(id)}/status`, {
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }

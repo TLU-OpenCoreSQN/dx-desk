@@ -78,7 +78,15 @@ try {
     export const getParsedSubject = () => '00000000-0000-4000-8000-000000000001';
   ` }));
   await page.unroute('**/api/**');
-  const category = { id: '10000000-0000-4000-8000-000000000001', code: 'vpn', name: 'Mạng và VPN' };
+  // requirement_fields khớp với danh mục 'vpn' trong db/migrations/003_ticket_workflow.sql.
+  const category = {
+    id: '10000000-0000-4000-8000-000000000001', code: 'vpn', name: 'Mạng và VPN',
+    requirement_fields: [
+      { key: 'client_version', label: 'Phiên bản client VPN', required: true },
+      { key: 'error_message', label: 'Dòng lỗi hiển thị', required: true },
+      { key: 'device_os', label: 'Hệ điều hành', required: false },
+    ],
+  };
   const tickets = [], devices = [], writes = [];
   let rejectSession = false;
   await page.route('**/api/**', async route => {
@@ -98,20 +106,32 @@ try {
     else json = { data: path === '/api/tickets' ? tickets : devices, limit: 25, offset: 0 };
     await route.fulfill({ status, json: json ?? {} });
   });
-  await check('Employee ticket form: validation, no Critical, exact create payload', async () => {
+  await check('Employee ticket form: Poka-yoke theo danh mục, no Critical, exact create payload', async () => {
     await page.goto(origin + '/tickets/new');
     await page.getByLabel(/Danh mục/).selectOption(category.id);
+    const submit = page.getByRole('button', { name: /Gửi phiếu/ });
+    await page.getByText('Thông tin bắt buộc theo danh mục').waitFor();
     assert.equal(await page.getByRole('button', { name: /Khẩn cấp/ }).isDisabled(), true);
+    assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'nút Gửi phải khóa khi còn thiếu trường');
+    await page.getByText(/Chưa thể gửi phiếu/).waitFor();
     await page.getByLabel(/Tiêu đề/).fill('VPN');
-    await page.getByRole('button', { name: /Gửi phiếu/ }).click();
+    // aria-disabled vẫn cho click để lộ từng lỗi trường — Playwright phải bỏ qua bước kiểm tra enabled.
+    await submit.click({ force: true });
     await page.getByText(/Tiêu đề.*quá ngắn/i).waitFor();
     assert.equal(writes.length, 0);
     await page.getByLabel(/Tiêu đề/).fill('Lỗi VPN tại phòng làm việc');
     await page.getByLabel(/Mô tả/).fill('VPN bị ngắt khi đăng nhập vào mạng nội bộ.');
+    assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'thiếu trường bắt buộc của danh mục');
+    await page.getByLabel(/Phiên bản client VPN/).fill('OpenVPN 4.2');
+    await page.getByLabel(/Dòng lỗi hiển thị/).fill('Kết nối bị ngắt sau 30 giây');
+    assert.equal(await submit.getAttribute('aria-disabled'), 'false');
     await page.screenshot({ path: resolve(reportDir, 'web-mobile-ticket-form.png'), fullPage: true });
-    await page.getByRole('button', { name: /Gửi phiếu/ }).click();
+    await submit.click();
     await page.getByText(/Tạo phiếu.*thành công|gửi phiếu.*thành công/i).first().waitFor();
-    assert.deepEqual(Object.keys(writes[0].body).sort(), ['category_id', 'description', 'priority', 'title']);
+    assert.deepEqual(Object.keys(writes[0].body).sort(), ['category_id', 'description', 'fields', 'priority', 'title']);
+    assert.deepEqual(writes[0].body.fields, {
+      client_version: 'OpenVPN 4.2', error_message: 'Kết nối bị ngắt sau 30 giây',
+    }, 'chỉ gửi trường đã điền, trường tùy chọn bỏ trống không gửi');
     assert.equal(writes[0].body.title, 'Lỗi VPN tại phòng làm việc');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: resolve(reportDir, 'web-mobile-ticket-created.png'), fullPage: true });

@@ -49,14 +49,29 @@ async function call(base, path, key = 'a', body, customToken) {
   });
   return { status: response.status, body: await response.json() };
 }
+async function patch(base, path, key, body) {
+  const response = await fetch(base + path, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${tokens[key]}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(10000),
+  });
+  return { status: response.status, body: await response.json() };
+}
+// Danh mục vpn có requirement_fields từ hợp đồng tuần 3 (migration 003) -> dữ liệu test mặc định phải kèm fields.
 const newTicket = (title, extra = {}) => ({
-  category_id: category, title, description: 'Chi tiết thử nghiệm quyền truy cập tuần 2.', ...extra,
+  category_id: category, title, description: 'Chi tiết thử nghiệm quyền truy cập tuần 2.',
+  fields: { client_version: 'OpenVPN 4.2', error_message: 'Kết nối bị ngắt sau 30 giây' }, ...extra,
 });
 async function create(key, title, extra) {
   const result = await call(apiUrl, '/api/tickets', key, newTicket(title, extra));
   assert.equal(result.status, 201, JSON.stringify(result.body));
   return result.body;
 }
+// PostgREST ghi thẳng vào cột: 'fields' là key của hợp đồng API (thuộc W3-02), không phải cột tickets.
+const restTicket = (title, extra = {}) => {
+  const { fields, ...columns } = newTicket(title, extra);
+  return columns;
+};
 async function freePort() {
   const server = createServer();
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -145,7 +160,8 @@ test('TN-02: real database has seven protected domain tables and reference data'
     FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'`);
   assert.equal(result.rowCount, 7);
   assert.ok(result.rows.every(row => row.relrowsecurity && row.relforcerowsecurity));
-  assert.equal((await call(apiUrl, '/api/categories')).body.data.length, 4);
+  // Hợp đồng tuần 3 (migration 003): thêm danh mục access + system-error -> 6 loại active.
+  assert.equal((await call(apiUrl, '/api/categories')).body.data.length, 6);
   assert.equal((await call(apiUrl, '/api/health', null)).status, 200);
   assert.equal((await call(apiUrl, '/api/me')).body.id, users.a.sub);
 });
@@ -188,15 +204,15 @@ test('TN-02: API write and PostgREST read apply the same ownership policy', asyn
 test('TN-02: Critical denied for Employee and Agent on both paths; Manager succeeds', async () => {
   for (const key of ['a', 'agent']) {
     assert.equal((await call(apiUrl, '/api/tickets', key, newTicket('Critical bị chặn', { priority: 'critical' }))).status, 403);
-    assert.equal((await call(restUrl, '/tickets', key, newTicket('Critical REST bị chặn', { priority: 'critical' }))).status, 403);
+    assert.equal((await call(restUrl, '/tickets', key, restTicket('Critical REST bị chặn', { priority: 'critical' }))).status, 403);
   }
   assert.equal((await create('manager', 'Critical hợp lệ', { priority: 'critical' })).priority, 'critical');
-  assert.equal((await call(restUrl, '/tickets', 'manager', newTicket('Manager REST tạo', { priority: 'critical' }))).status, 201);
+  assert.equal((await call(restUrl, '/tickets', 'manager', restTicket('Manager REST tạo', { priority: 'critical' }))).status, 201);
 });
 test('ownership/status spoofing, invalid FK and malformed input fail without partial audit rows', async () => {
   const before = Number((await admin.query('SELECT count(*) FROM public.ticket_events')).rows[0].count);
   assert.equal((await call(apiUrl, '/api/tickets', 'a', newTicket('Mạo danh chủ sở hữu', { requester_id: users.b.sub }))).status, 400);
-  assert.equal((await call(restUrl, '/tickets', 'a', newTicket('REST giả trạng thái', { status: 'closed' }))).status, 403);
+  assert.equal((await call(restUrl, '/tickets', 'a', restTicket('REST giả trạng thái', { status: 'closed' }))).status, 403);
   assert.equal((await call(apiUrl, '/api/tickets', 'a', newTicket('Sai danh mục', { category_id: users.b.sub }))).status, 403);
   assert.equal((await call(apiUrl, '/api/tickets', 'a', newTicket('Tiêu đề hợp lệ', { description: '  ' }))).status, 400);
   assert.equal((await call(apiUrl, '/api/tickets?limit=1000')).status, 400);
@@ -240,4 +256,72 @@ test('audit and attachments cannot be forged; other employee cannot read related
   assert.equal((await call(restUrl, '/ticket_events', 'a', {
     ticket_id: ticket.id, actor_id: users.b.sub, event_type: 'created',
   })).status, 403);
+});
+test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', async () => {
+  const ticket = await create('a', 'Luồng tuần 3 VPN');
+  const due = new Date(ticket.sla_due_at).getTime() - new Date(ticket.created_at).getTime();
+  assert.equal(due, 1440 * 60_000, 'normal = 1440 phút theo sla_policies.resolution_minutes');
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}`, 'b')).status, 404);
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'triaged' })).status, 403);
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to: 'closed' })).status, 422);
+  const steps = [
+    ['agent', { to: 'triaged' }], ['agent', { to: 'assigned' }], ['agent', { to: 'in_progress' }],
+    ['agent', { to: 'waiting_user', note: 'Cần ảnh chụp lỗi' }],
+  ];
+  for (const [key, body] of steps) {
+    const r = await patch(apiUrl, `/api/tickets/${ticket.id}/status`, key, body);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+  }
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to: 'resolved' })).status, 422);
+  await new Promise(r => setTimeout(r, 1200));
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'in_progress' })).status, 200);
+  const resumed = (await call(apiUrl, `/api/tickets/${ticket.id}`, 'a')).body;
+  assert.ok(resumed.sla_paused_ms >= 1000, `sla_paused_ms=${resumed.sla_paused_ms} phải cộng dồn thời gian chờ`);
+  assert.equal(resumed.waiting_since ?? null, null);
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to: 'resolved' })).status, 422);
+  const resolved = (await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent',
+    { to: 'resolved', resolution_note: 'Cài lại VPN client 4.3, kết nối ổn định' })).body;
+  assert.equal(resolved.status, 'resolved');
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to: 'closed' })).status, 403);
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'closed' })).body.status, 'closed');
+  const events = (await call(apiUrl, `/api/tickets/${ticket.id}/events`, 'a')).body.data;
+  assert.equal(events.length, 8, 'created + 7 lần chuyển trạng thái');
+  assert.deepEqual(events[1].payload, { from: 'new', to: 'triaged', note: '' });
+  assert.equal(events.find(e => e.payload.to === 'waiting_user').payload.note, 'Cần ảnh chụp lỗi');
+  // PostgREST ghi trực tiếp vẫn bị guard trigger chặn. SQLSTATE tự định nghĩa (45xxx) không có
+  // ánh xạ HTTP riêng nên cổng PostgREST trả 400; API đường chính map 45xxx → 403/422 theo contract.md.
+  const blocked = await patch(restUrl, `/tickets?id=eq.${ticket.id}`, 'agent', { status: 'new' });
+  assert.equal(blocked.status, 400, JSON.stringify(blocked.body));
+  assert.equal(blocked.body.code, '45001');
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}`, 'a')).body.status, 'closed');
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/events`, 'a')).body.data.length, 8,
+    'guard từ chối không được ghi thêm ticket_events');
+  // Trạng thái cuối là 409; đường reopen resolved→in_progress phải có note mới mỗi lần xử lý.
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'cancelled' })).status, 409);
+  const reopen = await create('a', 'Ticket reopen VPN');
+  for (const [key, body] of [['agent', { to: 'triaged' }], ['agent', { to: 'assigned' }],
+    ['agent', { to: 'in_progress' }], ['agent', { to: 'resolved', resolution_note: 'Đổi DNS cục bộ' }]]) {
+    assert.equal((await patch(apiUrl, `/api/tickets/${reopen.id}/status`, key, body)).status, 200);
+  }
+  assert.equal((await patch(apiUrl, `/api/tickets/${reopen.id}/status`, 'agent', { to: 'in_progress' })).status, 200);
+  assert.equal((await patch(apiUrl, `/api/tickets/${reopen.id}/status`, 'agent', { to: 'resolved' })).status, 422,
+    'note cũ không được tái sử dụng cho lần xử lý mới');
+  assert.equal((await patch(apiUrl, `/api/tickets/${reopen.id}/status`, 'agent',
+    { to: 'resolved', resolution_note: 'Nâng driver card mạng, kiểm tra lại' })).body.status, 'resolved');
+  // Employee tạo yêu cầu 'access' tự vào hàng chờ phê duyệt; Agent/Manager duyệt, chỉ Manager từ chối.
+  const access = await create('a', 'Xin quyền truy cập CRM', {
+    category_id: '10000000-0000-4000-8000-000000000005',
+    fields: { system_name: 'CRM', permission_level: 'ReadOnly', valid_until: '2026-12-31' },
+  });
+  assert.equal(access.status, 'pending_approval');
+  assert.equal((await patch(apiUrl, `/api/tickets/${access.id}/status`, 'a', { to: 'assigned' })).status, 403);
+  assert.equal((await patch(apiUrl, `/api/tickets/${access.id}/status`, 'agent', { to: 'assigned' })).body.status, 'assigned');
+  const denied = await create('a', 'Xin quyền Admin file server', {
+    category_id: '10000000-0000-4000-8000-000000000005',
+    fields: { system_name: 'File Server', permission_level: 'Admin', valid_until: '2026-12-31' },
+  });
+  assert.equal((await patch(apiUrl, `/api/tickets/${denied.id}/status`, 'manager',
+    { to: 'new', note: 'Thiếu căn cứ cấp quyền' })).body.status, 'new');
+  // Bị từ chối thì phải đi lại từ đầu: từ 'new' không được nhảy thẳng tới 'assigned'.
+  assert.equal((await patch(apiUrl, `/api/tickets/${denied.id}/status`, 'manager', { to: 'assigned' })).status, 422);
 });

@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { TicketPriority, UserRole } from '../../types/api';
+import { isTicketStatus, STATUS_LABELS, STATUS_TONES } from '../../lib/ticketWorkflow';
 
 interface PriorityBadgeProps {
   priority: TicketPriority | string;
@@ -49,43 +50,45 @@ interface StatusBadgeProps {
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
-  switch (status.toLowerCase()) {
-    case 'new':
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800 border border-cyan-200">
-          Mới tạo
-        </span>
-      );
-    case 'triaged':
-    case 'assigned':
-    case 'cancelled':
-    case 'approved':
-    case 'rejected':
-    case 'fulfilled':
-      return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">{{ triaged: 'Đã phân loại', assigned: 'Đã phân công', cancelled: 'Đã hủy', approved: 'Đã duyệt', rejected: 'Từ chối', fulfilled: 'Đã cấp thiết bị' }[status.toLowerCase()]}</span>;
+  const key = status.toLowerCase();
+  if (isTicketStatus(key)) {
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${STATUS_TONES[key].badge}`}
+      >
+        {STATUS_LABELS[key]}
+      </span>
+    );
+  }
+  switch (key) {
     case 'pending':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
           Chờ xử lý
         </span>
       );
-    case 'in_progress':
     case 'open':
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
           Đang xử lý
         </span>
       );
-    case 'resolved':
+    case 'approved':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-          Đã giải quyết
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+          Đã duyệt
         </span>
       );
-    case 'closed':
+    case 'rejected':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-          Đã đóng
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+          Từ chối
+        </span>
+      );
+    case 'fulfilled':
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+          Đã cấp thiết bị
         </span>
       );
     default:

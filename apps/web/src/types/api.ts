@@ -15,11 +15,18 @@ export interface UserProfile {
   roles: UserRole[];
 }
 
+export interface RequirementField {
+  key: string;
+  label: string;
+  required: boolean;
+}
+
 export interface Category {
   id: string;
   code: string;
   name: string;
   description?: string | null;
+  requirement_fields?: RequirementField[] | null;
 }
 
 export type TicketPriority = 'low' | 'normal' | 'high' | 'critical';
@@ -51,6 +58,13 @@ export interface CreateTicketPayload {
   title: string;
   description: string;
   priority?: TicketPriority;
+  fields?: Record<string, string>;
+}
+
+export interface UpdateTicketStatusPayload {
+  to: string;
+  note?: string;
+  resolution_note?: string;
 }
 
 export type DeviceType = 'laptop' | 'monitor' | 'keyboard' | 'mouse' | 'other';

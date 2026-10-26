@@ -1,4 +1,4 @@
-# Cài đặt và kiểm thử tuần 2
+# Cài đặt và kiểm thử (tuần 2–3)
 
 ## Chạy đầy đủ bằng Docker
 
@@ -122,6 +122,70 @@ duyệt và quyền đọc trên API/PostgREST, mobile không tràn ngang, refre
 khác ảnh fixture `web-*`. Harness dùng tài khoản demo trong realm và database test
 riêng dưới `.local/sso-test-*`, không kết nối database vận hành.
 Xem [hướng dẫn native chính thức Keycloak](https://www.keycloak.org/getting-started/getting-started-zip).
+
+## Bật OTP cho demo (W3-07)
+
+Mặc định realm `infra/keycloak/realm-dxdesk.json` KHÔNG bật OTP: harness `tools/testing/native-sso.mjs`
+và nghiệm thu CI đăng nhập bằng password grant (direct access); thêm `CONFIGURE_TOTP` vào
+`requiredActions` của 4 user demo ngay trong realm chuẩn sẽ làm các luồng đó hỏng. Vì vậy OTP
+làm dạng hồ sơ tùy chọn, bật khi diễn demo và tắt khi chạy harness.
+
+Cách 1 — bật/tắt trên stack đang chạy bằng `kcadm.sh` (khuyên dùng; giữ nguyên dữ liệu):
+
+```sh
+set -a; . ./.env; set +a
+docker compose --env-file .env -f infra/compose/docker-compose.yml exec keycloak \
+  /opt/keycloak/bin/kcadm.sh config credentials --server http://127.0.0.1:8080 \
+  --realm master --user "$KEYCLOAK_ADMIN" --password "$KEYCLOAK_ADMIN_PASSWORD"
+
+# Xem id của user demo (chữ số UUID trong kết quả):
+docker compose --env-file .env -f infra/compose/docker-compose.yml exec keycloak \
+  /opt/keycloak/bin/kcadm.sh get users -r dxdesk -q username=employee.a
+
+# Bật CONFIGURE_TOTP (thay <ID> bằng UUID; REST Keycloak cũng chấp nhận username ở vị trí này):
+docker compose --env-file .env -f infra/compose/docker-compose.yml exec keycloak \
+  /opt/keycloak/bin/kcadm.sh update users/<ID> -r dxdesk -s 'requiredActions=["CONFIGURE_TOTP"]'
+
+# Tắt trở lại trước khi chạy harness/CI:
+#   ... update users/<ID> -r dxdesk -s 'requiredActions=[]'
+```
+
+Lần đăng nhập trình duyệt tiếp theo của user đó, Keycloak bắt đầu bằng màn hình quét mã QR
+trình authenticator rồi mới cho vào ứng dụng; các lần sau yêu cầu mã TOTP 6 số (chu kỳ 30 giây,
+HmacSHA1 — khai trong cả hai tệp realm). Khi user đã quét QR xong mà muốn đặt lại, xóa TOTP
+của user trong Admin Console (mục Credentials) rồi làm lại.
+
+Cách 2 — dựng máy sạch/CI với OTP bật sẵn cho cả 4 user: realm dự phòng
+`infra/keycloak/realm-dxdesk-otp.json` (bản sao realm chuẩn thêm `requiredActions`), nạp qua
+hồ sơ compose chồng:
+
+```sh
+docker compose --env-file .env \
+  -f infra/compose/docker-compose.yml \
+  -f infra/keycloak/compose-otp.yml up -d
+```
+
+Lưu ý: import chỉ tạo realm khi chưa tồn tại (xem mục Migration), nên cách này dành cho máy
+sạch hoặc sau `down -v`; với stack đang chạy dùng cách 1.
+
+Nghiệm thu M2 số 1 ("đăng nhập SSO + OTP, tạo ticket VPN có ảnh chụp màn hình"): bật OTP cho
+`employee.a` bằng cách 1, đăng nhập web qua Keycloak bằng trình duyệt, quét QR bằng ứng dụng
+TOTP bất kỳ (FreeOTP/Authenticator), nhập mã, tạo ticket VPN kèm ảnh chụp màn hình, kiểm tra
+ticket ở trạng thái `new` và có bản ghi `ticket_events`. Chứng minh harness không hỏng: tắt
+OTP (hoặc dùng user khác chưa bật) rồi chạy `node tools/testing/native-sso.mjs`.
+Chưa chạy thật các lệnh trên — máy phát triển chưa có Docker, tất cả các lệnh `docker compose
+exec ... kcadm.sh` **chờ Docker/CI kiểm chứng**; cú pháp theo tài liệu kcadm của Keycloak 26.
+
+## Theo dõi nhật ký yêu cầu qua cổng APISIX
+
+- `docker compose --env-file .env -f infra/compose/docker-compose.yml logs apisix` — nhật ký
+  error/runtime của APISIX (image ghi error.log ra stdout; không có curl trong container).
+- `docker compose ... exec apisix cat /usr/local/apisix/logs/access.log` — access log mặc định
+  của APISIX ghi lại từng yêu cầu đi qua cổng (kèm request id); không cần cài plugin ghi log.
+- Tuần 3, route `/api/*` còn ghi thêm giới hạn tần suất `limit-req` (30 req/giây/source, burst
+  10, trả 429 kèm thông báo tiếng Việt) và kiểm chữ ký token Keycloak bằng `openid-connect`
+  chế độ `bearer_only + use_jwks`; `/api/health` đi qua route riêng nên healthcheck CI không
+  cần token. Hành vi 401/429 thực tế **chờ CI/stack Docker**.
 
 ## Migration và cập nhật
 
