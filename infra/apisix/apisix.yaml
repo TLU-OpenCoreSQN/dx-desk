@@ -7,10 +7,12 @@
 # Rà soát W3-07 cho PATCH /api/tickets/:id/status:
 # - Không route nào khai báo `methods`, nên APISIX chấp nhận mọi HTTP method, kể cả PATCH;
 #   endpoint mới đi đúng route service-desk-api mà không cần khai báo gì thêm.
-# - Chữ ký token Keycloak được kiểm ngay tại cổng bằng openid-connect chế độ
-#   bearer_only + use_jwks. Không dùng jwt-auth vì jwt-auth yêu cầu consumer do APISIX
-#   tự cấp; ở đây Keycloak là bên phát hành token (xem Apache APISIX discussion #13571
-#   và hướng dẫn keycloak-oidc chính thức trong tài liệu APISIX).
+# - Chữ ký token KHÔNG được kiểm tại cổng (xem khối route service-desk-api bên dưới):
+#   openid-connect chế độ bearer_only + use_jwks không lấy được jwks_uri vì Keycloak sinh
+#   URL theo KC_HOSTNAME công khai (http://localhost:…) không tới được từ trong container
+#   APISIX, nên cổng trả 401 cho cả token hợp lệ (bằng chứng: CI run #15). Kiểm chữ ký
+#   hiện ở tầng API (OIDC_JWKS_URL nội bộ). jwt-auth không dùng được vì cần consumer do
+#   APISIX tự cấp, trái mô hình standalone (ADR 0001).
 # - Phân quyền theo vai trò (Employee/Agent/Manager) vẫn do tầng API và RLS quyết định
 #   (ADR 0002, ADR 0003); cổng chỉ chặn token giả hoặc hết hạn và giới hạn tần suất.
 # - Nhật ký yêu cầu: access log bật mặc định trong image APISIX (logs/access.log trong
@@ -57,15 +59,22 @@ routes:
     uri: /api/*
     priority: 20
     plugins:
-      openid-connect:
-        client_id: dxdesk-api
-        # schema bắt buộc có client_secret; chế độ bearer_only + use_jwks chỉ kiểm chữ ký
-        # qua JWKS của Keycloak nên giá trị này không dùng đến trong luồng nghiệp vụ.
-        client_secret: standalone-unused
-        discovery: http://keycloak:8080/realms/dxdesk/.well-known/openid-configuration
-        use_jwks: true
-        bearer_only: true
-        ssl_verify: false
+      # W3-07 (CHỜ LÀM LẠI — có bằng chứng CI): không bật openid-connect ở route này.
+      # Plugin luôn lấy jwks_uri TỪ discovery document của Keycloak, mà Keycloak sinh
+      # URL đó theo KC_HOSTNAME = ${KEYCLOAK_PUBLIC_URL} (http://localhost:…). Từ trong
+      # container APISIX, localhost:8080 không phải Keycloak nên mọi request có token
+      # hợp lệ đều bị 401. Nhật ký CI run #15 (job "nghiệm thu stack tuần 2"):
+      #   openidc.lua:1244: accessing jwks url
+      #   (http://localhost:8080/realms/dxdesk/protocol/openid-connect/certs) failed: connection refused
+      #   -> openid-connect exits with http status code 401, client: 172.18.0.1
+      # chữ ký token VẪN được kiểm ở tầng API bằng OIDC_JWKS_URL nội bộ
+      # (http://keycloak:8080/…/certs) — đường đó đã xanh trên CI từ tuần 2; RLS quyết
+      # định quyền theo vai trò (ADR 0002/0003). Phương án cho tuần 4 (cần ADR + CI kiểm
+      # chứng vì mỗi lần chỉ sửa được bằng stack thật):
+      #   (1) bỏ KC_HOSTNAME để Keycloak sinh URL theo Host của từng bên gọi, rồi đặt
+      #       claim_validator.issuer.valid_issuers = issuer công khai trong route; hoặc
+      #   (2) bearer_only + introspection_endpoint nội bộ, đòi dxdesk-api là confidential
+      #       client và chọn introspection_endpoint_auth_method phù hợp.
       limit-req:
         rate: 30
         burst: 10

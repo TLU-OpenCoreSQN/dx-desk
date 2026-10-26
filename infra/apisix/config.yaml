@@ -6,3 +6,12 @@ deployment:
   role: data_plane
   role_data_plane:
     config_provider: yaml
+
+nginx_config:
+  http:
+    # APISIX đóng gói sẵn client_max_body_size = 1m (docs security-threat-model của APISIX).
+    # Đính kèm tuần 3 đi nền base64 trong JSON nên 10 MiB nhị phân ~ 13,98 MB văn bản:
+    # với trần 1m cổng sẽ chặn 413 trước khi tệp tới API và clamd kịp quét.
+    # 20m để chừa chỗ cho phần header của JSON; trần nghiệp vụ 10 MiB vẫn do API và
+    # CHECK attachments.size_bytes chốt (API trả 413/422 trước khi chạm clamd).
+    client_max_body_size: 20m
