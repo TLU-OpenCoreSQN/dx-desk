@@ -5,9 +5,15 @@ import {
   NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query,
   Req, ServiceUnavailableException, UnprocessableEntityException, UseGuards,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { AuthRequest, JwtGuard } from './auth';
 import { Database } from './database';
-import { CreateDeviceRequest, CreateTicket, ListQuery, UpdateTicketStatus } from './dto';
+import { scanWithClamd } from './clamd';
+import { putObject } from './seaweedfs';
+import {
+  ALLOWED_CONTENT_TYPES, CreateDeviceRequest, CreateTicket, ListQuery,
+  MAX_ATTACHMENT_BYTES, UpdateTicketStatus, UploadAttachment,
+} from './dto';
 import { TransitionViolation, validateTransition } from './state-machine';
 import { activeRoles, checkRequirementFields, criticalViolation, initialStatusFor } from './rules';
 
@@ -180,6 +186,94 @@ export class DeskController {
       `INSERT INTO public.device_requests(device_type, reason, quantity)
        VALUES ($1, $2, $3) RETURNING *`,
       [body.device_type, body.reason, body.quantity ?? 1],
+    )).rows[0]);
+  }
+}
+
+/**
+ * W3-06 (ADR 0007, QĐ-3): luồng tải tệp đính kèm — QUÉT clamd TRƯỚC, chỉ LƯU SeaweedFS
+ * khi sạch, rồi INSERT metadata. RLS là nguồn ủy quyền (nhiều bước DB đi qua db.asUser).
+ *
+ * Ánh xạ HTTP theo ADR:
+ *   clean      -> 201, trả bản ghi metadata (scan_status='clean').
+ *   infected   -> 422, KHÔNG gọi SeaweedFS, ghi metadata scan_status='infected'.
+ *   clamd lỗi/timeout -> 503, ghi metadata scan_status='failed'.
+ *
+ * Giới hạn dựng TRƯỚC khi chạm clamd: allow-list content-type + trần 10 MiB trên byte
+ * đã giải mã. file_name do client gửi chỉ lưu vào cột, không dùng làm đường dẫn/object key.
+ */
+@Controller('api')
+@UseGuards(JwtGuard)
+export class AttachmentsController {
+  constructor(private readonly db: Database) {}
+
+  private limits() {
+    // Env chỉ được PHÉP hạ trần xuống (DB CHECK vẫn chốt 10 MiB); timeout clamd có thể chỉnh.
+    const configured = Number(process.env.ATTACHMENT_MAX_BYTES ?? MAX_ATTACHMENT_BYTES);
+    const maxBytes = Number.isFinite(configured) && configured > 0
+      ? Math.min(configured, MAX_ATTACHMENT_BYTES) : MAX_ATTACHMENT_BYTES;
+    const timeoutMs = Number(process.env.CLAMD_TIMEOUT_MS ?? 5000);
+    return { maxBytes, timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 5000 };
+  }
+
+  @Post('tickets/:id/attachments')
+  async uploadAttachment(
+    @Req() request: AuthRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UploadAttachment,
+  ) {
+    // (1) Chặn type + kích thước TRƯỚC khi kết nối clamd/lưu object.
+    if (!(ALLOWED_CONTENT_TYPES as readonly string[]).includes(body.content_type)) {
+      throw new BadRequestException('Loại tệp không được phép tải lên.');
+    }
+    const bytes = Buffer.from(body.content_base64, 'base64');
+    const { maxBytes, timeoutMs } = this.limits();
+    if (bytes.length === 0 || bytes.length > maxBytes) {
+      throw new UnprocessableEntityException('Tệp đính kèm rỗng hoặc vượt trần 10 MiB.');
+    }
+
+    // (2) Cổng nhìn thấy theo RLS — chạy TRƯỚC bước lưu để một ticket không được phép
+    //     nhìn thấy không thể để lại object mồ côi trong SeaweedFS.
+    await this.db.asUser(request.claims, async client => {
+      const visible = await client.query('SELECT 1 FROM public.tickets WHERE id = $1', [id]);
+      if (!visible.rowCount) throw new NotFoundException('Không tìm thấy yêu cầu.');
+    });
+
+    // (3) Quét stream qua clamd INSTREAM (địa chỉ từ compose: CLAMD_ADDR).
+    const scan = await scanWithClamd(process.env.CLAMD_ADDR ?? '', bytes, { maxBytes, timeoutMs });
+    // Object key do server sinh — không chứa tên tệp của client.
+    const objectKey = `attachments/${id}/${randomUUID()}`;
+
+    if (scan.outcome === 'clean') {
+      try {
+        await putObject(objectKey, body.content_type, bytes);
+      } catch {
+        // clamd sạch nhưng SeaweedFS lỗi: KHÔNG INSERT clean; ghi failed và báo 503.
+        await this.record(request, id, body, objectKey, bytes.length, 'failed');
+        throw new ServiceUnavailableException('Không lưu được tệp đính kèm. Vui lòng thử lại.');
+      }
+      return this.record(request, id, body, objectKey, bytes.length, 'clean');
+    }
+
+    if (scan.outcome === 'infected') {
+      // KHÔNG gọi SeaweedFS; object_key vẫn reserved nhưng không có object thật đứng sau.
+      await this.record(request, id, body, objectKey, bytes.length, 'infected');
+      throw new UnprocessableEntityException('Tệp đính kèm bị đánh dấu mã độc nên đã bị chặn.');
+    }
+
+    // clamd unreachable/timeout/malformed -> fail-closed.
+    await this.record(request, id, body, objectKey, bytes.length, 'failed');
+    throw new ServiceUnavailableException('Dịch vụ quét virus chưa sẵn sàng. Vui lòng thử lại.');
+  }
+
+  /** Ghi metadata qua SECURITY DEFINER private.record_attachment (chống giả mạo scan_status). */
+  private record(
+    request: AuthRequest, ticketId: string, body: UploadAttachment,
+    objectKey: string, sizeBytes: number, scanStatus: 'clean' | 'infected' | 'failed',
+  ) {
+    return this.db.asUser(request.claims, async client => (await client.query(
+      `SELECT * FROM private.record_attachment($1, $2, $3, $4, $5, $6)`,
+      [ticketId, body.file_name, objectKey, body.content_type, sizeBytes, scanStatus],
     )).rows[0]);
   }
 }

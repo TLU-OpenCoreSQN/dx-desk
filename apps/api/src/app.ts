@@ -5,10 +5,12 @@ import {
   ArgumentsHost, Catch, ExceptionFilter, HttpException, Module, ValidationPipe,
 } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { json } from 'express';
 import type { Response } from 'express';
 import { JwtGuard } from './auth';
 import { Database } from './database';
-import { DeskController, HealthController, workflowExceptionForCode } from './controllers';
+import { AttachmentsController, DeskController, HealthController, workflowExceptionForCode } from './controllers';
 
 @Catch()
 class Errors implements ExceptionFilter {
@@ -38,13 +40,18 @@ class Errors implements ExceptionFilter {
 }
 
 @Module({
-  controllers: [HealthController, DeskController],
+  controllers: [HealthController, DeskController, AttachmentsController],
   providers: [Database, JwtGuard],
 })
 export class AppModule {}
 
 export async function createApp() {
-  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule, { logger: ['error', 'warn'], bodyParser: false },
+  );
+  // Tệp đính kèm đi nền base64 trong JSON: 10 MiB nhị phân ~ 13.98 MB base64, nên trần
+  // body parser phải lớn hơn mặc định 100kb; giới hạn 10 MiB thật vẫn được áp ở controller.
+  app.use(json({ limit: '16mb' }));
   app.useGlobalPipes(new ValidationPipe({
     transform: true, whitelist: true, forbidNonWhitelisted: true,
   }));

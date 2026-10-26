@@ -30,6 +30,33 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
   cũng bị chặn như qua API. Lưu ý: PostgREST không ánh xạ SQLSTATE tự định nghĩa 45xxx nên
   cổng ghi thẳng trả **HTTP 400** kèm `code` = 45001/45002/45003 (API đường chính trả
   403/422 theo bảng lỗi); giao dịch luôn rollback, không phát sinh `ticket_events`.
+- `POST /api/tickets/:id/attachments` (MỚI tuần 3, ADR 0007): thân **JSON**
+  `{file_name:string(1..255), content_type:<allow-list>, content_base64:<base64>}`,
+  sau giải mã phải `> 0` và `<= 10 MiB` (khớp CHECK `attachments.size_bytes`).
+  HTTP 201 trả bản ghi metadata (`Attachment`, `scan_status:"clean"`).
+  **ĐỘ LỆCH với ADR** (ghi "multipart"): dùng base64 vì `apps/api/package.json` bị CI ghim
+  bằng `npm ci` và `multer` KHÔNG phải dependency khai báo — thêm multer sẽ phá `package-lock`.
+  Ghi thành mục mở ở cuối file.
+  `content_type` cho phép: `image/png image/jpeg image/gif image/webp application/pdf text/plain`.
+  `file_name` chỉ lưu vào cột, KHÔNG dùng làm object key (server sinh `attachments/<ticket>/<uuid>`).
+
+## Luồng quét tệp đính kèm (W3-06, ADR 0007 QĐ-3)
+
+API là nơi sở hữu trần dung lượng và thứ tự an toàn. clamd chạy qua TCP `CLAMD_ADDR`
+(mặc định `clamav:3310` trong compose), SeaweedFS filer qua `SEAWEEDFS_ENDPOINT`
+(`http://seaweedfs:8332`). Thứ tự KHÔNG tạo object mồ côi:
+
+1. Chặn **trước khi** đụng clamd: allow-list `content_type` (400) + trần 10 MiB trên byte
+   đã giải mã (422) + cổng nhìn thấy ticket theo RLS (404 — không quét, không lưu).
+2. Stream **toàn bộ** byte vào clamd bằng INSTREAM (`nINSTREAM\n`, mỗi chunk 4-byte
+   big-endian độ dài, kết thúc bằng chunk độ dài 0) — tệp chưa từng chạm đĩa.
+3. `clean` → PUT object lên SeaweedFS filer → INSERT metadata `scan_status='clean'` (201).
+4. `infected` → **không** gọi SeaweedFS, INSERT metadata `scan_status='infected'`, trả 422.
+5. clamd `timeout/unreachable` (hoặc SeaweedFS lỗi sau khi sạch) → INSERT `scan_status='failed'`, trả 503.
+
+Metadata chỉ ghi được qua hàm `private.record_attachment(...)` (SECURITY DEFINER,
+migration 004) — `authenticated` không có INSERT trên `attachments` nên không giả mạo
+được `scan_status` qua PostgREST. Đọc tệp qua presigned URL là việc tuần 4 (chưa làm).
 
 ## Máy trạng thái 8 trạng thái (9 giá trị chữ thường)
 
@@ -81,6 +108,10 @@ lưu `fields` đã kiểm tra theo danh mục).
 | Body ngoài DTO, enum sai, tiêu đề/mô tả sai độ dài | 400 | (ValidationPipe liệt kê từng trường) |
 | RLS từ chối ghi (spoof trạng thái khởi tạo khác `new`/`pending_approval`-access) | 403 | Bạn không có quyền thực hiện thao tác này. |
 | Không thấy ticket theo RLS | 404 | Không tìm thấy yêu cầu. |
+| Tệp đính kèm quá cỡ (> 10 MiB) hoặc rỗng | 422 | Tệp đính kèm rỗng hoặc vượt trần 10 MiB. |
+| `content_type` ngoài allow-list (tệp đính kèm) | 400 | Loại tệp không được phép tải lên. |
+| clamd báo tệp nhiễm mã độc | 422 | Tệp đính kèm bị đánh dấu mã độc nên đã bị chặn. |
+| clamd timeout/không phản hồi, hoặc SeaweedFS lỗi | 503 | Dịch vụ quét virus chưa sẵn sàng. Vui lòng thử lại. / Không lưu được tệp đính kèm. Vui lòng thử lại. |
 | Ràng buộc dữ liệu phía DB (CK/NOT NULL/FK) | 400 | Dữ liệu không hợp lệ. Kiểm tra danh mục và các trường bắt buộc. |
 | Lỗi nội bộ / DB | 500 / 503 | Không thể xử lý yêu cầu… / Cơ sở dữ liệu chưa sẵn sàng. |
 
@@ -93,4 +124,15 @@ RLS áp dụng giống nhau qua API và PostgREST; máy trạng thái + vai trò
 `private.guard_ticket_update()` thực thi ở mức DB (SQLSTATE 45001/45002/45003 được API
 map về các message ở bảng trên). Audit `ticket_events` do PostgreSQL sinh trong cùng giao
 dịch, không nhận thẳng từ browser. Schema `private` và tài khoản database không phơi cho web.
-Nghiệp vụ còn lại của các tuần sau: phân công `assigned_to`, dashboard, upload/quét tệp, SLA breach flag.
+Nghiệp vụ còn lại của các tuần sau: phân công `assigned_to`, dashboard, SLA breach flag.
+
+## Mục mở (M2-06, chờ Docker/CI)
+
+- **Thân request base64 thay vì multipart**: độ lệch có chủ đích so với ADR 0007 vì `multer`
+  không phải dependency khai báo (`npm ci` ghim lock). Nếu sau này muốn đúng multipart,
+  phải khai báo `multer` + regenerate `package-lock.json` (TV2/TV1 review) — hiện chưa làm.
+- **Kiểm chứng engine ClamAV thật bằng chuỗi EICAR 68 byte** trên `clamd:3310` thật — đơn vị
+  và tích hợp chỉ dùng clamd GIẢ (node:net) để chứng minh ghép nối + giao thức, KHÔNG chạy
+  libclamav. **Chờ CI/Docker** (nghiệm thu M2 số 3).
+- **presigned GET URL ký hạn ngắn** để mở tệp sạch — SeaweedFS chưa công bố cổng ra host;
+  đường đọc tệp là việc tuần 4.

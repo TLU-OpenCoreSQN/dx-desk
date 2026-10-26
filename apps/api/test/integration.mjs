@@ -3,6 +3,7 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { createServer as createTcpServer } from 'node:net';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
@@ -27,6 +28,10 @@ const users = {
 const category = '10000000-0000-4000-8000-000000000001';
 let app, db, jwksServer, restProcess, apiUrl, restUrl, privateKey, publicKey, issuer;
 let restLogs = '';
+// clamd + SeaweedFS giả cho W3-06 (upload): chứng minh ghép nối API<->TCP clamd<->HTTP filer
+// và đường ghi metadata qua migration 004 + RLS, nhưng KHÔNG chạy engine ClamAV thật.
+let clamdServer, seaweedServer;
+const seaweedPuts = [];
 const tokens = {};
 const claims = key => ({
   sub: users[key].sub, role: 'authenticated', realm_access: { roles: users[key].roles },
@@ -111,9 +116,47 @@ before(async () => {
   issuer = `http://127.0.0.1:${jwksServer.address().port}/realms/test`;
   const apiDatabaseUrl = new URL(adminUrl);
   apiDatabaseUrl.username = 'api_login'; apiDatabaseUrl.password = 'api_test';
+  // clamd giả: parse khung INSTREAM, nếu payload chứa chuỗi "EICAR" thì trả FOUND (mô phỏng
+  // đúng ánh xạ mà engine thật sẽ gây ra), ngược lại trả OK. Không chạy libclamav.
+  clamdServer = createTcpServer(socket => {
+    let buffer = Buffer.alloc(0);
+    let done = false;
+    socket.on('data', chunk => {
+      buffer = Buffer.concat([buffer, chunk]);
+      if (done) return;
+      const newline = buffer.indexOf(0x0a);
+      if (newline === -1) return;
+      let position = newline + 1;
+      const body = [];
+      for (;;) {
+        if (position + 4 > buffer.length) return;
+        const length = buffer.readUInt32BE(position);
+        position += 4;
+        if (length === 0) { done = true; break; }
+        if (position + length > buffer.length) return;
+        body.push(buffer.subarray(position, position + length));
+        position += length;
+      }
+      const payload = Buffer.concat(body);
+      socket.write(payload.includes('EICAR') ? 'stream: Eicar-Signature FOUND\n' : 'stream: OK\n');
+    });
+    socket.on('error', () => {});
+  });
+  clamdServer.listen(0, '127.0.0.1'); await once(clamdServer, 'listening');
+  seaweedServer = createServer((request, response) => {
+    const chunks = [];
+    request.on('data', c => chunks.push(c));
+    request.on('end', () => {
+      seaweedPuts.push({ method: request.method, url: request.url, body: Buffer.concat(chunks) });
+      response.statusCode = 200; response.end('OK');
+    });
+  });
+  seaweedServer.listen(0, '127.0.0.1'); await once(seaweedServer, 'listening');
   Object.assign(process.env, {
     DATABASE_URL: apiDatabaseUrl.href, OIDC_ISSUER: issuer, OIDC_AUDIENCE: 'dxdesk-api',
     OIDC_JWKS_URL: issuer + '/certs', DB_POOL_MAX: '2',
+    CLAMD_ADDR: `127.0.0.1:${clamdServer.address().port}`, CLAMD_TIMEOUT_MS: '2000',
+    SEAWEEDFS_ENDPOINT: `http://127.0.0.1:${seaweedServer.address().port}`,
   });
   app = await createApp(); await app.listen(0, '127.0.0.1');
   apiUrl = await app.getUrl(); db = app.get(Database);
@@ -152,6 +195,8 @@ after(async () => {
   }
   if (app) await app.close();
   if (jwksServer) await new Promise(resolve => jwksServer.close(resolve));
+  if (clamdServer) await new Promise(resolve => clamdServer.close(resolve));
+  if (seaweedServer) await new Promise(resolve => seaweedServer.close(resolve));
   await admin.end();
 });
 
@@ -324,4 +369,64 @@ test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', as
     { to: 'new', note: 'Thiếu căn cứ cấp quyền' })).body.status, 'new');
   // Bị từ chối thì phải đi lại từ đầu: từ 'new' không được nhảy thẳng tới 'assigned'.
   assert.equal((await patch(apiUrl, `/api/tickets/${denied.id}/status`, 'manager', { to: 'assigned' })).status, 422);
+});
+
+// W3-06: tải tệp đính kèm — clamd GIẢ (node:net) + SeaweedFS GIẢ (node:http) nhưng
+// PostgreSQL/RLS THẬT và hàm private.record_attachment của migration 004 THẬT.
+// Chứng minh ghép nối và thứ tự chống orphan; KHÔNG chạy engine ClamAV thật (EICAR chỉ mô phỏng).
+const uploadBody = (contentBase64, contentType = 'text/plain', fileName = 'file.txt') =>
+  ({ file_name: fileName, content_type: contentType, content_base64: contentBase64 });
+
+test('W3-06: upload quét clamd, lưu SeaweedFS khi sạch, ghi metadata theo RLS trên PostgreSQL thật', async () => {
+  const ticket = await create('a', 'Ticket đính kèm W3-06');
+  const clean = Buffer.from('DX-DESK benign payload for the upload wiring test').toString('base64');
+  const cleanBytes = Buffer.from(clean, 'base64');
+
+  // (1) SẠCH -> 201 + scan_status clean + đúng MỘT PUT mang nguyên thân nhị phân.
+  const before = seaweedPuts.length;
+  const ok = await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a', uploadBody(clean, 'text/plain', 'notes.txt'));
+  assert.equal(ok.status, 201, JSON.stringify(ok.body));
+  assert.equal(ok.body.scan_status, 'clean');
+  assert.equal(Number(ok.body.size_bytes), cleanBytes.length, 'pg có thể trả bigint dạng chuỗi');
+  assert.equal(ok.body.file_name, 'notes.txt');
+  assert.match(ok.body.object_key, new RegExp(`^attachments/${ticket.id}/[0-9a-f-]{36}$`));
+  assert.doesNotMatch(ok.body.object_key, /notes\.txt/, 'object key do server sinh, không chứa tên client');
+  assert.equal(seaweedPuts.length, before + 1);
+  assert.equal(seaweedPuts[before].method, 'PUT');
+  assert.equal(seaweedPuts[before].url, `/${ok.body.object_key}`);
+  assert.ok(seaweedPuts[before].body.equals(cleanBytes), 'byte đưa vào SeaweedFS phải đúng bằng nội dung upload');
+  assert.equal((await admin.query('SELECT scan_status FROM public.attachments WHERE id=$1', [ok.body.id])).rows[0].scan_status, 'clean');
+
+  // (2) NHIỄM (payload chứa EICAR -> clamd giả trả FOUND) -> 422, KHÔNG PUT mới, row infected.
+  const eicar = Buffer.from('X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*').toString('base64');
+  const beforeInfected = seaweedPuts.length;
+  const bad = await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a', uploadBody(eicar, 'text/plain', 'eicar.txt'));
+  assert.equal(bad.status, 422, JSON.stringify(bad.body));
+  assert.equal(seaweedPuts.length, beforeInfected, 'tệp nhiễm không được bao giờ chạm SeaweedFS');
+  const infectedRows = (await admin.query(
+    `SELECT file_name FROM public.attachments WHERE ticket_id=$1 AND scan_status='infected'`, [ticket.id],
+  )).rows;
+  assert.equal(infectedRows.length, 1);
+  assert.equal(infectedRows[0].file_name, 'eicar.txt');
+
+  // (3) clamd không reachable (cổng chết) -> 503 + row failed.
+  const deadClamd = process.env.CLAMD_ADDR;
+  process.env.CLAMD_ADDR = `127.0.0.1:${await freePort()}`;
+  const failed = await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a', uploadBody(clean));
+  process.env.CLAMD_ADDR = deadClamd;
+  assert.equal(failed.status, 503, JSON.stringify(failed.body));
+  assert.equal((await admin.query(
+    `SELECT count(*)::int AS c FROM public.attachments WHERE ticket_id=$1 AND scan_status='failed'`, [ticket.id],
+  )).rows[0].c, 1);
+
+  // (4) RLS: Employee khác tải vào ticket của 'a' -> 404 (cổng nhìn thấy chạy TRƯỚC khi quét/lưu).
+  const beforeRls = seaweedPuts.length;
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'b', uploadBody(clean))).status, 404);
+  assert.equal(seaweedPuts.length, beforeRls);
+
+  // (5) Chặn ở tầng DTO trước khi đụng clamd: content type ngoài allow-list và base64 rác -> 400.
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a',
+    uploadBody(clean, 'application/x-msdownload'))).status, 400);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a',
+    uploadBody('not!!!valid#base64'))).status, 400);
 });

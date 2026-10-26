@@ -198,6 +198,52 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /tickets/{id}/attachments:
+    post:
+      operationId: uploadAttachment
+      summary: Tải tệp đính kèm kèm quét virus clamd (ADR 0007)
+      description: >-
+        DEVIATION từ ADR 0007 (ghi "multipart"): body là JSON với nội dung nhị phân mã
+        base64, vì package.json bị CI ghim bằng `npm ci` và multer không phải dependency
+        khai báo. API quét stream qua clamd INSTREAM/TCP TRƯỚC, chỉ PUT object lên
+        SeaweedFS khi sạch, rồi insert metadata; infected => 422 (không ghi SeaweedFS,
+        metadata scan_status='infected'); clamd lỗi/timeout => 503 (scan_status='failed').
+        file_name chỉ lưu vào cột, không dùng làm object key (server sinh key).
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file_name, content_type, content_base64]
+              properties:
+                file_name: { type: string, minLength: 1, maxLength: 255 }
+                content_type:
+                  type: string
+                  enum: [image/png, image/jpeg, image/gif, image/webp, application/pdf, text/plain]
+                content_base64:
+                  type: string
+                  format: byte
+                  description: Nhị phân base64; sau giải mã phải > 0 và <= 10 MiB (khớp CHECK attachments.size_bytes)
+      responses:
+        "201":
+          description: Tệp sạch đã lưu vào SeaweedFS, metadata scan_status='clean'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attachment" }
+        "400":
+          description: "Content type ngoài allow-list, base64 rác hoặc body ngoài DTO"
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404":
+          description: "Ticket không nhìn thấy theo RLS (không quét, không lưu)"
+        "422":
+          description: "Tệp quá cỡ/rỗng, hoặc clamd báo nhiễm (không ghi SeaweedFS, ghi metadata infected)"
+        "503":
+          description: "clamd không trả lời/timeout hoặc SeaweedFS lỗi (metadata scan_status='failed')"
   /device-requests:
     get:
       operationId: listDeviceRequests
@@ -305,4 +351,18 @@ components:
         reason: { type: string }
         quantity: { type: integer }
         status: { type: string, enum: [pending, approved, rejected, fulfilled] }
+        created_at: { type: string, format: date-time }
+    Attachment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ticket_id: { type: string, format: uuid }
+        uploaded_by: { type: string, format: uuid }
+        file_name: { type: string, maxLength: 255 }
+        object_key:
+          type: string
+          description: "Key do server sinh: attachments/<ticket>/<uuid>"
+        content_type: { type: string }
+        size_bytes: { type: integer, minimum: 1, maximum: 10485760 }
+        scan_status: { type: string, enum: [clean, infected, failed] }
         created_at: { type: string, format: date-time }

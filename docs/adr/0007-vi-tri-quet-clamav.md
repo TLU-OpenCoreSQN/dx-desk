@@ -29,7 +29,7 @@ Ràng buộc:
 
 Luồng chốt (mã ở `apps/api`, do TV2 hiện thực; ghép nối hạ tầng đã nằm trong kho):
 
-1. Trình duyệt gọi `POST /api/tickets/:id/attachments` qua APISIX (multipart ≤ 10 MiB theo CHECK của `attachments.size_bytes`; body của route `/api/*` được APISIX chuyển tiếp nguyên trạng tới API — API là nơi sở hữu trần dung lượng, không phải cổng).
+1. Trình duyệt gọi `POST /api/tickets/:id/attachments` qua APISIX với body JSON `{file_name, content_type, content_base64}` (tệp nhị phân ≤ 10 MiB theo CHECK của `attachments.size_bytes`; nền base64 phình ~1,33 lần nên JSON tới ~13,98 MB). Đính chính lúc hiện thực W3-06: cổng **không** chuyển tiếp vô hạn — APISIX đóng gói sẵn `client_max_body_size: 1m`, vì vậy `infra/apisix/config.yaml` phải nâng lên `20m`, nếu không tệp hợp lệ bị 413 chặn trước khi clamd kịp quét. API vẫn là nơi sở hữu trần dung lượng nghiệp vụ (10 MiB trên byte đã giải mã) và thứ tự an toàn.
 2. API đọc stream từng phần, bơm vào clamd qua INSTREAM/TCP `clamav:3310` ngay trên bộ nhớ — tệp chưa từng chạm đĩa.
 3. clamd báo sạch (hoặc chỉ báo EICAR) → API `PUT` object lên SeaweedFS S3 với `object_key` do server sinh; insert `attachments` với `scan_status='clean'`.
 4. clamd báo nhiễm → API trả 422 kèm mã lỗi tiếng Việt, **không ghi SeaweedFS**, ghi bản ghi audit `scan_status='infected'` (object không tồn tại nên không thể "mở bằng URL ký").
@@ -56,9 +56,10 @@ Ghép nối trong kho (đã sửa tuần này): `infra/compose/docker-compose.ym
 
 ## Hệ quả
 
-- Điều dễ hơn: nghiệm thu M2 số 3 chỉ cần một lời gọi API + một presigned GET; không đụng cấu hình nginx của gateway; một clamd duy nhất đúng ngân sách G4.
+- Điều dễ hơn: nghiệm thu M2 số 3 chỉ cần một lời gọi API + một presigned GET; một clamd duy nhất đúng ngân sách G4.
+- Điều phải sửa ở cổng (đính chính khi hiện thực): tuy việc quét nằm trong API, thân request vẫn **đi qua nginx của APISIX**, và APISIX đóng gói sẵn `client_max_body_size: 1m` (tài liệu security-threat-model). Tệp 10 MiB nền base64 là ~13,98 MB JSON, nên `infra/apisix/config.yaml` phải nâng lên `20m`; nếu không, tệp hợp lệ bị 413 chặn trước khi tới clamd. Giá trị này chỉ được kiểm chứng thật bằng image APISIX trong CI (`scripts/check-apisix.sh` nạp cả `config.yaml` và fail khi log có `[error]`) — máy phát triển không có Docker.
 - Điều khó hơn: API phải xử lý lỗi clamd timeout thành 503 + `failed` (poka-yoke); trần multipart của API phải đặt 10 MiB khớp CHECK của DB; chưa kiểm chứng image `clamav/clamav:1.5.4` có mặc định `TCPAddr 0.0.0.0` trong mạng docker — nếu không, phải bổ sung biến môi trường cấu hình clamd ở tuần 4 (`chờ Docker`).
-- Việc tiếp: TV2 viết endpoint upload/`CLAMD_ADDR` client; CI chạy EICAR + presigned GET (W3 checklist); đo RAM thực tế của clamd trên máy demo đưa vào hồ sơ TN-05.
+- Việc tiếp: TV2 ĐÃ viết endpoint `POST /api/tickets/:id/attachments` (client clamd INSTREAM qua `CLAMD_ADDR`, PUT SeaweedFS filer qua `SEAWEEDFS_ENDPOINT`, metadata ghi bằng hàm `private.record_attachment` trong migration 004 — ánh xạ clean→201, infected→422 (không ghi SeaweedFS), timeout/lỗi→503); unit test + integration test 10 xanh với clamd/SeaweedFS GIẢ trên PostgreSQL THẬT, nhưng CHƯA chạy engine ClamAV thật — **còn chờ CI/Docker**: kiểm chứng EICAR 68 byte trên `clamd:3310` thật, phát hành presigned GET (W3 checklist), và đo RAM thực tế của clamd trên máy demo đưa vào hồ sơ TN-05.
 
 ## Nguồn tham khảo chính thức
 
