@@ -14,6 +14,10 @@
 - CI build/test thực cho API/web, job TN-02 và nghiệm thu stack. Kết quả CI cần chạy trên GitHub sau push.
 
 ### Sửa
+- Sau review: bảo vệ trạng thái khởi tạo, trường động, SLA và kết quả xử lý trên cả API/PostgREST; giữ note từng lần resolve và hiển thị dữ liệu trên chi tiết.
+- Sửa Filer listener, ghi intent upload trước PUT và DELETE bù trừ khi lỗi; thêm nghiệm thu ClamAV/SeaweedFS thật trong stack test.
+- Dùng chung runner cho Make/Node, sửa mount OTP và dữ liệu kiểm thử native SSO.
+- Vá body-parser/multer bằng override có lockfile; thêm audit production trong CI. Xem docs/sec-dev-fixes.md.
 - Lấy JWKS trước khi bật PostgREST; quoting thông tin role/database bằng biến psql.
 - Kiểm issuer/exp ở pre-request PostgREST để đồng nhất với API.
 

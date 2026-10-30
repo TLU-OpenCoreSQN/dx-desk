@@ -71,6 +71,7 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: |
           npm ci
+          npm audit --omit=dev --audit-level=high
           npm run build
           npm test
 
