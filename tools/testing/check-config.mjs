@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -26,6 +26,11 @@ assert.ok(filerPort, 'Declare the Filer listener explicitly');
 assert.equal(new URL(compose.services.api.environment.SEAWEEDFS_ENDPOINT).port, filerPort.split('=')[1],
   'API must use the deployed Filer listener');
 assert.equal(compose.services.api.depends_on.seaweedfs.condition, 'service_healthy');
+const otp = parse(await read('infra/keycloak/compose-otp.yml'));
+const otpSource = otp.services.keycloak.volumes[0].split(':')[0];
+await access(resolve(root, 'infra/compose', otpSource));
+assert.equal(resolve(root, 'infra/compose', otpSource), resolve(root, 'infra/keycloak/realm-dxdesk-otp.json'),
+  'OTP overlay paths are relative to the first Compose file');
 for (const clientId of ['dxdesk-web', 'appsmith']) {
   const client = realm.clients.find(client => client.clientId === clientId);
   assert.ok(client.protocolMappers.some(mapper => mapper.config['included.client.audience'] === 'dxdesk-api'));

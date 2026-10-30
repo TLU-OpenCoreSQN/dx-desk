@@ -22,11 +22,7 @@ $(ROOT).env:
 	@echo "Thiếu .env. Chạy: cp .env.example .env" && exit 1
 
 up: $(ROOT).env
-	sh $(ROOT)scripts/init.sh $(ROOT)
-	$(COMPOSE) up -d --wait postgres keycloak
-	$(MAKE) -f $(ROOT)Makefile migrate
-	sh $(ROOT)scripts/sync-jwks.sh $(ROOT)
-	$(COMPOSE) up -d --build --wait
+	node "$(ROOT)scripts/dxdesk.mjs" up
 
 migrate: $(ROOT).env
 	$(COMPOSE) exec -T postgres sh /docker-entrypoint-initdb.d/02-migrations.sh

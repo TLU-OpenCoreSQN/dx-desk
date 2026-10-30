@@ -21,7 +21,7 @@ Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung P
 ## Yêu cầu
 
 - Docker Engine và Docker Compose v2; cấu hình đã kiểm bằng Compose 2.40.3.
-- GNU Make hoặc Node.js >=22.12 để chạy script đa nền tảng trên Windows.
+- Node.js >=22.12 cho runner đa nền tảng; GNU Make là giao diện lệnh tùy chọn dùng chung runner.
 - Máy demo mục tiêu 16 GB RAM; mức sử dụng thực tế sẽ được đo trong TN-05.
 
 ## Chạy từ mã nguồn

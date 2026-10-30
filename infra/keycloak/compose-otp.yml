@@ -15,4 +15,4 @@
 services:
   keycloak:
     volumes:
-      - ./realm-dxdesk-otp.json:/opt/keycloak/data/import/realm-dxdesk.json:ro
+      - ../keycloak/realm-dxdesk-otp.json:/opt/keycloak/data/import/realm-dxdesk.json:ro
