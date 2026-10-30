@@ -49,9 +49,8 @@ export class ListQuery {
 }
 
 /**
- * W3-06: body tải tệp đính kèm. ĐỘ LỆCH với ADR 0007 (ghi "multipart"): ở đây dùng
- * JSON { file_name, content_type, content_base64 } vì package.json bị CI ghim bằng
- * `npm ci` và multer không phải dependency khai báo — thêm multer sẽ phá vỡ lock.
+ * W3-06: body JSON { file_name, content_type, content_base64 } đã chốt trong contract.
+ * Browser và parser API buffer body trong RAM; INSTREAM chỉ là giao thức với clamd.
  * Nội dung nhị phân đi nền base64; giới hạn kích thước thật được kiểm trên byte SAU
  * khi giải mã ở controller. file_name KHÔNG dùng làm đường dẫn/object key (server sinh key).
  */

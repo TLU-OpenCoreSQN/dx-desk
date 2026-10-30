@@ -6,7 +6,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, develop-quyennnv, sec-dev]
+    branches: [main, develop-quyennnv, sec-dev, week3-complete]
 
 permissions:
   contents: read
@@ -44,6 +44,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Nạp apisix.yaml bằng image APISIX
         run: sh scripts/check-apisix.sh
+      - name: JWT, rate limit, body limit trên gateway thật
+        run: node tools/testing/gateway-test.mjs
 
   shellcheck:
     name: shellcheck
@@ -125,9 +127,9 @@ jobs:
           path: .local/reports/
 
   stack:
-    name: nghiệm thu stack tuần 2
+    name: nghiệm thu stack và browser OTP tuần 3
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -139,6 +141,13 @@ jobs:
           node scripts/dxdesk.mjs up
       - name: Keycloak, APISIX, API, RLS và n8n restart
         run: node scripts/stack-test.mjs --restart-n8n
+      - name: Cài trình duyệt nghiệm thu
+        run: |
+          npm ci --prefix tools/testing
+          cd tools/testing
+          npx playwright install --with-deps chromium
+      - name: Browser thật — enrollment OTP, VPN có ảnh, signed GET, EICAR và workflow
+        run: node tools/testing/stack-browser.mjs
       - name: Khởi chạy lần hai, giữ dữ liệu
         run: |
           make up
@@ -150,8 +159,40 @@ jobs:
         if: always()
         with:
           name: week2-stack-evidence
-          path: .local/reports/stack.json
+          path: .local/reports/
           if-no-files-found: ignore
       - name: Dừng stack CI
         if: always()
         run: docker compose --env-file .env -f infra/compose/docker-compose.yml down -v
+
+  tn04-runtime:
+    name: TN-04 runtime (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [wikijs, mattermost, metabase]
+    env:
+      TN04_PROJECT: dxdesk-tn04-${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Khởi chạy PoC cô lập theo edition đã chốt
+        run: docker compose -p "$TN04_PROJECT" -f infra/compose/tn04.yml --profile ${{ matrix.app }} up -d
+      - name: Nghiệm thu runtime và phương án dự phòng
+        run: node tools/testing/tn04-runtime.mjs ${{ matrix.app }}
+      - name: Nhật ký khi lỗi
+        if: failure()
+        run: docker compose -p "$TN04_PROJECT" -f infra/compose/tn04.yml --profile ${{ matrix.app }} logs --tail=80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tn04-${{ matrix.app }}
+          path: .local/reports/tn04-*.json
+          if-no-files-found: ignore
+      - name: Dọn PoC CI cô lập
+        if: always()
+        run: docker compose -p "$TN04_PROJECT" -f infra/compose/tn04.yml --profile ${{ matrix.app }} down -v

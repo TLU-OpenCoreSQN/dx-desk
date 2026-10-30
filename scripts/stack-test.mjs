@@ -12,12 +12,13 @@ const env = { ...parseEnv(await readFile(resolve(root, '.env'), 'utf8')), ...pro
 const gateway = `http://localhost:${env.APISIX_PORT}`;
 const issuer = `${env.KEYCLOAK_PUBLIC_URL}/realms/${env.KEYCLOAK_REALM}`;
 const report = { started_at: new Date().toISOString(), gateway, checks: [], passed: false };
-let previousTicketId;
+let previousTicketId, previousAttachmentId;
 if (process.argv.includes('--verify-preserved')) {
   const previous = JSON.parse(await readFile(resolve(root, '.local/reports/stack.json'), 'utf8'));
   assert.equal(previous.passed, true, 'Previous acceptance run must pass before checking preservation');
   assert.ok(previous.created_ticket_id, 'Previous report must contain a ticket ID');
   previousTicketId = previous.created_ticket_id;
+  previousAttachmentId = previous.created_attachment_id;
 }
 async function check(name, operation) {
   try { await operation(); report.checks.push({ name, passed: true }); console.log(`PASS ${name}`); }
@@ -95,6 +96,13 @@ try {
     assert.equal(response.data.id, previousTicketId);
     assert.equal((await request(`/api/tickets/${previousTicketId}/events`, tokenA)).data.data.length, 1);
   });
+  if (previousAttachmentId) await check('Scanned attachment remains readable by a new signed URL after restart', async () => {
+    const link = await request(`/api/attachments/${previousAttachmentId}/download-url`, tokenA, {});
+    assert.equal(link.status, 201);
+    const response = await fetch(gateway + link.data.url);
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), 'DX-Desk clean attachment acceptance');
+  });
   const body = {
     category_id: '10000000-0000-4000-8000-000000000001',
     title: `[W2 smoke] VPN ${new Date().toISOString()}`,
@@ -126,6 +134,14 @@ try {
     assert.equal(clean.status, 201, JSON.stringify(clean.data));
     assert.equal(clean.data.scan_status, 'clean');
     report.created_attachment_key = clean.data.object_key;
+    report.created_attachment_id = clean.data.id;
+    const link = await request(`/api/attachments/${clean.data.id}/download-url`, tokenA, {});
+    assert.equal(link.status, 201);
+    const downloaded = await fetch(gateway + link.data.url);
+    assert.equal(downloaded.status, 200);
+    assert.equal(await downloaded.text(), contents);
+    assert.equal((await request(`/api/attachments/${clean.data.id}/download-url`, tokenB, {})).status, 404);
+    assert.equal((await fetch(gateway + link.data.url.replace(/signature=[a-f0-9]+/, 'signature='+'0'.repeat(64)))).status, 403);
     const read = spawnSync('docker', ['compose', '--env-file', resolve(root, '.env'),
       '-f', resolve(root, 'infra/compose/docker-compose.yml'), 'exec', '-T', 'api', 'node', '-e',
       `fetch(process.env.SEAWEEDFS_ENDPOINT + '/' + ${JSON.stringify(clean.data.object_key)}).then(async r => {
@@ -139,6 +155,7 @@ try {
     const records = await request(`/rest/attachments?ticket_id=eq.${created.id}&scan_status=eq.infected`, tokenA);
     assert.equal(records.status, 200);
     assert.equal(records.data.length, 1);
+    assert.equal((await request(`/api/attachments/${records.data[0].id}/download-url`, tokenA, {})).status, 403);
     assert.equal((await request(`/rest/attachments?ticket_id=eq.${created.id}`, tokenB)).data.length, 0);
   });
   await check('W3-02 Poka-yoke rejects ticket missing category fields', async () => {

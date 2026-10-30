@@ -9,6 +9,8 @@ deployment:
 
 nginx_config:
   http:
+    # Do not log bearer download capabilities in query parameters or JWT headers.
+    access_log_format: '$remote_addr [$time_local] "$request_method $uri $server_protocol" $status $body_bytes_sent $request_time'
     # APISIX đóng gói sẵn client_max_body_size = 1m (docs security-threat-model của APISIX).
     # Đính kèm tuần 3 đi nền base64 trong JSON nên 10 MiB nhị phân ~ 13,98 MB văn bản:
     # với trần 1m cổng sẽ chặn 413 trước khi tệp tới API và clamd kịp quét.

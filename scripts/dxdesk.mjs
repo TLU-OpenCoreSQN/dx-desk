@@ -6,6 +6,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
+import { renderGateway } from './render-gateway.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
@@ -46,6 +47,11 @@ async function syncKeys() {
   const jwks = await response.json();
   if (!Array.isArray(jwks.keys) || !jwks.keys.some(key => key.kty === 'RSA')) throw new Error('JWKS không có RSA key.');
   await writeFile(resolve(root, 'infra/postgrest/jwks.json'), JSON.stringify(jwks) + '\n');
+  await writeFile(resolve(root, 'infra/apisix/runtime.yaml'), renderGateway(
+    await readFile(resolve(root, 'infra/apisix/apisix.yaml'), 'utf8'), jwks,
+    `${env.KEYCLOAK_PUBLIC_URL}/realms/${env.KEYCLOAK_REALM}`, env.OIDC_AUDIENCE,
+    env.GATEWAY_SIGNING_KID,
+  ));
 }
 if (action === 'up') {
   await initialize();

@@ -101,7 +101,8 @@ try {
       json = { ...body, id: `00000000-0000-4000-8000-00000000000${writes.length + 1}`, requester_id: '00000000-0000-4000-8000-000000000001', assigned_to: null,
         status: path === '/api/tickets' ? 'new' : 'pending', created_at: '2026-10-21T02:00:00Z', updated_at: '2026-10-21T02:00:00Z' };
       (path === '/api/tickets' ? tickets : devices).push(json);
-    } else if (path.endsWith('/events')) json = { data: [{ id: 'event-fixture', ticket_id: tickets[0].id, event_type: 'created', actor_id: tickets[0].requester_id, payload: {}, created_at: tickets[0].created_at }] };
+    } else if (path.endsWith('/attachments')) json = { data: [] };
+    else if (path.endsWith('/events')) json = { data: [{ id: 'event-fixture', ticket_id: tickets[0].id, event_type: 'created', actor_id: tickets[0].requester_id, payload: {}, created_at: tickets[0].created_at }] };
     else if (path.startsWith('/api/tickets/')) json = tickets.find(row => path.endsWith(row.id));
     else json = { data: path === '/api/tickets' ? tickets : devices, limit: 25, offset: 0 };
     await route.fulfill({ status, json: json ?? {} });

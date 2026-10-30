@@ -106,7 +106,7 @@ services:
         condition: service_healthy
     volumes:
       - ../apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
-      - ../apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ../apisix/runtime.yaml:/usr/local/apisix/conf/apisix.yaml:ro
     ports:
       - "127.0.0.1:${APISIX_PORT}:9080"
     healthcheck:
@@ -147,6 +147,7 @@ services:
       CLAMD_ADDR: "clamav:3310"
       # Filer HTTP nội bộ của SeaweedFS cho bước PUT đối tượng sau khi quét sạch.
       SEAWEEDFS_ENDPOINT: "http://seaweedfs:8888"
+      ATTACHMENT_SIGNING_KEY: ${ATTACHMENT_SIGNING_KEY}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s

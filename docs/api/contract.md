@@ -34,9 +34,7 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
   `{file_name:string(1..255), content_type:<allow-list>, content_base64:<base64>}`,
   sau giải mã phải `> 0` và `<= 10 MiB` (khớp CHECK `attachments.size_bytes`).
   HTTP 201 trả bản ghi metadata (`Attachment`, `scan_status:"clean"`).
-  **ĐỘ LỆCH với ADR** (ghi "multipart"): dùng base64 vì `apps/api/package.json` bị CI ghim
-  bằng `npm ci` và `multer` KHÔNG phải dependency khai báo — thêm multer sẽ phá `package-lock`.
-  Ghi thành mục mở ở cuối file.
+  JSON/base64 là hợp đồng đã chốt; browser và API buffer tệp trong RAM.
   `content_type` cho phép: `image/png image/jpeg image/gif image/webp application/pdf text/plain`.
   `file_name` chỉ lưu vào cột, KHÔNG dùng làm object key (server sinh `attachments/<ticket>/<uuid>`).
 
@@ -49,7 +47,8 @@ API là nơi sở hữu trần dung lượng và thứ tự an toàn. clamd ch�
 1. Chặn **trước khi** đụng clamd: allow-list `content_type` (400) + trần 10 MiB trên byte
    đã giải mã (422) + cổng nhìn thấy ticket theo RLS (404 — không quét, không lưu).
 2. Stream **toàn bộ** byte vào clamd bằng INSTREAM (`nINSTREAM\n`, mỗi chunk 4-byte
-   big-endian độ dài, kết thúc bằng chunk độ dài 0) — tệp chưa từng chạm đĩa.
+   big-endian độ dài, kết thúc bằng chunk độ dài 0). API chưa ghi Filer; clamd có thể
+   dùng tệp tạm nội bộ để quét INSTREAM.
 3. `clean` → tạo metadata pending (migration 006) → PUT Filer → hoàn tất clean (201).
 4. `infected` → **không** gọi SeaweedFS, INSERT metadata `scan_status='infected'`, trả 422.
 5. clamd `timeout/unreachable` → metadata failed, trả 503. Lỗi PUT hoặc hoàn tất DB
@@ -63,7 +62,27 @@ metadata pending/failed với object_key và dọn object còn sót sau khi dị
 
 Metadata chỉ ghi được qua hàm `private.record_attachment(...)` (SECURITY DEFINER,
 migration 004) — `authenticated` không có INSERT trên `attachments` nên không giả mạo
-được `scan_status` qua PostgREST. Đọc tệp qua presigned URL là việc tuần 4 (chưa làm).
+được `scan_status` qua PostgREST.
+
+### Đọc tệp bằng URL ký (W3-06 / M2)
+
+- `GET /api/tickets/:id/attachments`: kiểm ticket theo RLS; trả `{data:[metadata]}`
+  gồm các trạng thái quét, không trả object_key. Ticket ngoài quyền → 404.
+- `POST /api/attachments/:id/download-url`: cần JWT, kiểm RLS và `clean` → 201
+  `{url,expires_at}`; ngoài quyền → 404; pending/infected/failed → 403.
+- `GET /api/attachments/:id/content?expires=...&signature=...`: capability HMAC-SHA256
+  ràng buộc ID và thời hạn 120 giây. Thiếu/sai/hết hạn/sửa ID/thời hạn → 403;
+  metadata không còn clean → 404; Filer lỗi → 503. Không cần JWT trên đường này.
+- URL dùng cùng origin APISIX, không phải S3 presigned URL. Chỉ API đọc Filer nội bộ;
+  không công bố listener Filer/volume/S3. Phải đổi `ATTACHMENT_SIGNING_KEY` (ít nhất
+  32 byte) trước triển khai thật; thay key vô hiệu mọi liên kết đã cấp.
+- URL là bearer capability: ai có URL còn hạn có thể tải dù quyền ticket của người
+  được cấp vừa đổi. Giới hạn rủi ro bằng TTL 120 giây; metadata clean được kiểm lại
+  mỗi lần tải. Không hứa thu hồi tức thời theo user. Access log gateway không ghi
+  query/JWT; quyền truy cập error log hạ tầng vẫn phải giới hạn vì request URI có
+  thể xuất hiện khi upstream lỗi.
+- Đáp ứng luôn `attachment`, `application/octet-stream`, `nosniff`, `no-store` và
+  `Referrer-Policy: no-referrer`; không render nội dung theo MIME do client khai.
 
 ## Máy trạng thái 8 trạng thái (9 giá trị chữ thường)
 
@@ -94,7 +113,8 @@ chỉ mở đúng cửa này). `assigned_to` luôn `null` ở tuần 3.
 created_at, updated_at` + các cột MỚI (migration 003):
 `sla_due_at` (timestamptz, = `created_at + sla_policies.resolution_minutes` theo priority,
 tính bằng trigger lúc INSERT), `sla_paused_ms` (bigint **miligiây** tạm dừng cộng dồn khi
-rời `waiting_user`; ngưỡng vi phạm SLA = `sla_due_at + sla_paused_ms`; cờ `sla_breached`
+rời `waiting_user`; ngưỡng hiệu lực cộng thêm `max(0, now-waiting_since)` khi còn chờ;
+cờ `sla_breached`
 do W4-03 dùng), `waiting_since` (timestamptz|null, nội bộ vận hành),
 `resolution_note` (text|null, 5..2000 khi có giá trị), `request_fields` (jsonb object,
 lưu `fields` đã kiểm tra theo danh mục).
@@ -146,13 +166,9 @@ resolution_note khi chuyển sang resolved; reopen xóa ghi chú hiện tại đ
 sau bắt buộc có kết quả mới. Event resolved giữ resolution_note của chính lần đó,
 không mất lịch sử khi reopen. Màn chi tiết hiển thị trường động và kết quả xử lý.
 
-## Mục mở (M2-06, chờ Docker/CI)
+## Hợp đồng lưu tệp và nghiệm thu
 
-- **Thân request base64 thay vì multipart**: độ lệch có chủ đích so với ADR 0007 vì `multer`
-  không phải dependency khai báo (`npm ci` ghim lock). Nếu sau này muốn đúng multipart,
-  phải khai báo `multer` + regenerate `package-lock.json` (TV2/TV1 review) — hiện chưa làm.
-- **Kiểm chứng engine ClamAV thật bằng chuỗi EICAR 68 byte** trên `clamd:3310` thật — đơn vị
-  và tích hợp chỉ dùng clamd GIẢ (node:net) để chứng minh ghép nối + giao thức, KHÔNG chạy
-  libclamav. **Chờ CI/Docker** (nghiệm thu M2 số 3).
-- **presigned GET URL ký hạn ngắn** để mở tệp sạch — SeaweedFS chưa công bố cổng ra host;
-  đường đọc tệp là việc tuần 4.
+JSON/base64 là hợp đồng đã chọn, không phải giới hạn của lockfile. Browser/API buffer
+tệp trong RAM. Unit/integration dùng clamd/Filer giả để thử lỗi; stack CI quét EICAR
+68 byte bằng ClamAV thật và đối chiếu bytes SeaweedFS, sau đó browser kiểm upload/
+download trên cùng stack. Đọc kết quả artifact của đúng SHA, không suy từ số unit test.

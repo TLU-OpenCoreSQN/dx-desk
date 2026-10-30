@@ -11,7 +11,8 @@ import {
   ShieldAlert,
   ClipboardList,
 } from 'lucide-react';
-import { createTicket, getCategories } from '../services/api';
+import { createTicket, getCategories, uploadAttachment } from '../services/api';
+import { ATTACHMENT_TYPES, fileError } from '../lib/attachments';
 import { Category, RequirementField, TicketPriority } from '../types/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Alert } from '../components/common/Alert';
@@ -39,6 +40,16 @@ export const CreateTicketPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [serverError, setServerError] = useState<unknown>(null);
   const [successTicketId, setSuccessTicketId] = useState<string | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState<unknown>(null);
+  const [attachmentUploaded, setAttachmentUploaded] = useState(false);
+
+  const sendFile = async (ticketId: string) => {
+    if (!attachmentFile) return;
+    setAttachmentError(null);
+    try { await uploadAttachment(ticketId, attachmentFile); setAttachmentUploaded(true); }
+    catch (err) { setAttachmentError(err); }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -142,6 +153,7 @@ export const CreateTicketPage: React.FC = () => {
       });
 
       setSuccessTicketId(ticket.id);
+      await sendFile(ticket.id);
     } catch (err) {
       setServerError(err);
     } finally {
@@ -184,6 +196,17 @@ export const CreateTicketPage: React.FC = () => {
             </code>
             . Đội ngũ kỹ thuật IT sẽ xem xét theo mức ưu tiên đã định.
           </p>
+          {attachmentFile && <div aria-live="polite">
+            {isSubmitting ? <p>Phiếu đã được tạo. Đang quét và tải tệp…</p> : attachmentUploaded
+              ? <p>Tệp {attachmentFile.name} đã được quét và lưu an toàn.</p>
+              : <div>
+                {attachmentError != null && <ErrorMessage error={attachmentError} title="Phiếu đã tạo; tệp chưa tải thành công" />}
+                <button type="button" className="text-teal-700 underline" disabled={isSubmitting}
+                  onClick={async () => { setIsSubmitting(true); try { await sendFile(successTicketId); } finally { setIsSubmitting(false); } }}>
+                  Thử tải lại tệp vào phiếu này
+                </button>
+              </div>}
+          </div>}
           <div className="flex items-center justify-center gap-3 pt-4">
             <button
               type="button"
@@ -196,12 +219,16 @@ export const CreateTicketPage: React.FC = () => {
               type="button"
               onClick={() => {
                 setSuccessTicketId(null);
+                setAttachmentFile(null);
+                setAttachmentError(null);
+                setAttachmentUploaded(false);
                 setTitle('');
                 setDescription('');
                 setPriority('normal');
                 setFieldValues({});
                 setSubmitAttempted(false);
               }}
+              disabled={isSubmitting}
               className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors"
             >
               Tạo phiếu khác
@@ -472,10 +499,17 @@ export const CreateTicketPage: React.FC = () => {
               </div>
             )}
 
-            {/* Note on Week 2 attachments */}
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500">
-              <span className="font-semibold text-slate-700">Lưu ý tệp đính kèm:</span> Tính năng
-              đính kèm chưa khả dụng trong phiên bản này. Vui lòng mô tả lỗi bằng văn bản chi tiết.
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+              <label htmlFor="ticket-attachment" className="block font-semibold">Ảnh hoặc tệp đính kèm (không bắt buộc)</label>
+              <p>PNG, JPEG, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.</p>
+              <input id="ticket-attachment" type="file" accept={ATTACHMENT_TYPES.join(',')}
+                disabled={isSubmitting} onChange={event => {
+                  const file = event.target.files?.[0] ?? null;
+                  const issue = file ? fileError(file) : null;
+                  setAttachmentError(issue ? new Error(issue) : null);
+                  setAttachmentFile(issue ? null : file);
+                }} />
+              {attachmentError != null && <ErrorMessage error={attachmentError} title="Tệp chưa hợp lệ" />}
             </div>
 
             {/* Action buttons */}
