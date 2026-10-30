@@ -5,6 +5,7 @@
 infra/seaweedfs/s3.json
 infra/postgrest/jwks.json
 infra/postgrest/jwks.json.new
+infra/apisix/runtime.yaml
 infra/n8n/credentials/credentials.json
 *.tar.gz
 node_modules/

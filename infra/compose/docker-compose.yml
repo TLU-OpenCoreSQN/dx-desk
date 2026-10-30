@@ -106,7 +106,7 @@ services:
         condition: service_healthy
     volumes:
       - ../apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
-      - ../apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ../apisix/runtime.yaml:/usr/local/apisix/conf/apisix.yaml:ro
     ports:
       - "127.0.0.1:${APISIX_PORT}:9080"
     healthcheck:
