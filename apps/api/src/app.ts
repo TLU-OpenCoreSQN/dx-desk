@@ -10,6 +10,7 @@ import { json } from 'express';
 import type { Response } from 'express';
 import { JwtGuard } from './auth';
 import { Database } from './database';
+import { AttachmentLinksController, AttachmentContentController } from './downloads';
 import { AttachmentsController, DeskController, HealthController, workflowExceptionForCode } from './controllers';
 
 @Catch()
@@ -40,7 +41,7 @@ class Errors implements ExceptionFilter {
 }
 
 @Module({
-  controllers: [HealthController, DeskController, AttachmentsController],
+  controllers: [HealthController, DeskController, AttachmentsController, AttachmentLinksController, AttachmentContentController],
   providers: [Database, JwtGuard],
 })
 export class AppModule {}

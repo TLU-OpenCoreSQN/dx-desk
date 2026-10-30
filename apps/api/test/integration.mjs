@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 import { createApp } from '../dist/app.js';
 import { Database } from '../dist/database.js';
+import { downloadSignature } from '../dist/downloads.js';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
 if (!adminUrl || !new URL(adminUrl).pathname.startsWith('/dxdesk_test')) {
@@ -145,6 +146,10 @@ before(async () => {
   });
   clamdServer.listen(0, '127.0.0.1'); await once(clamdServer, 'listening');
   seaweedServer = createServer((request, response) => {
+    if (request.method === 'GET') {
+      const item = seaweedPuts.find(item => item.url === request.url);
+      response.statusCode = item ? 200 : 404; response.end(item?.body); return;
+    }
     const chunks = [];
     request.on('data', c => chunks.push(c));
     request.on('end', () => {
@@ -159,6 +164,7 @@ before(async () => {
     OIDC_JWKS_URL: issuer + '/certs', DB_POOL_MAX: '2',
     CLAMD_ADDR: `127.0.0.1:${clamdServer.address().port}`, CLAMD_TIMEOUT_MS: '2000',
     SEAWEEDFS_ENDPOINT: `http://127.0.0.1:${seaweedServer.address().port}`,
+    ATTACHMENT_SIGNING_KEY: 'integration-only-signing-secret-at-least-32-bytes',
   });
   app = await createApp(); await app.listen(0, '127.0.0.1');
   apiUrl = await app.getUrl(); db = app.get(Database);
@@ -461,6 +467,41 @@ test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', as
 // Chứng minh ghép nối và thứ tự chống orphan; KHÔNG chạy engine ClamAV thật (EICAR chỉ mô phỏng).
 const uploadBody = (contentBase64, contentType = 'text/plain', fileName = 'file.txt') =>
   ({ file_name: fileName, content_type: contentType, content_base64: contentBase64 });
+
+test('signed downloads enforce ownership, clean status and short-lived byte-exact access', async () => {
+  const ticket = await create('a', 'Tải xuống tệp an toàn');
+  const bytes = Buffer.from('Download bytes: tiếng Việt 0123456789');
+  const uploaded = await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a',
+    uploadBody(bytes.toString('base64'), 'text/plain', 'ghi chú.txt'));
+  assert.equal(uploaded.status, 201);
+  const id = uploaded.body.id;
+  const list = await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a');
+  assert.equal(list.body.data.length, 1);
+  assert.equal('object_key' in list.body.data[0], false);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'b')).status, 404);
+  assert.equal((await call(apiUrl, `/api/attachments/${id}/download-url`, 'b', {})).status, 404);
+  assert.equal((await call(apiUrl, `/api/attachments/${id}/download-url`, null, {})).status, 401);
+  const issued = await call(apiUrl, `/api/attachments/${id}/download-url`, 'a', {});
+  assert.equal(issued.status, 201);
+  const url = issued.body.url;
+  const download = await fetch(apiUrl + url);
+  assert.equal(download.status, 200);
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()), bytes);
+  assert.equal(download.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(download.headers.get('content-disposition'), /^attachment;/);
+  for (const invalid of [url.replace(/signature=[a-f0-9]+/, 'signature=' + '0'.repeat(64)),
+    url.replace(id, ticket.id), `/api/attachments/${id}/content`, url + '&expires=1000000000']) {
+    assert.equal((await fetch(apiUrl + invalid)).status, 403);
+  }
+  const expired = String(Math.floor(Date.now() / 1000) - 1);
+  assert.equal((await fetch(`${apiUrl}/api/attachments/${id}/content?expires=${expired}&signature=${downloadSignature(id, expired)}`)).status, 403);
+  await admin.query("UPDATE public.attachments SET scan_status='failed' WHERE id=$1", [id]);
+  assert.equal((await call(apiUrl, `/api/attachments/${id}/download-url`, 'a', {})).status, 403);
+  assert.equal((await fetch(apiUrl + url)).status, 404, 'already issued link cannot read a non-clean object');
+  await assert.rejects(db.asUser(claims('a'), c => c.query('SELECT * FROM private.clean_attachment_for_download($1)', [id])),
+    error => error.code === '42501');
+  assert.equal((await call(restUrl, '/rpc/clean_attachment_for_download', 'a', { p_id: id })).status, 404);
+});
 
 test('W3-06: upload quét clamd, lưu SeaweedFS khi sạch, ghi metadata theo RLS trên PostgreSQL thật', async () => {
   const ticket = await create('a', 'Ticket đính kèm W3-06');

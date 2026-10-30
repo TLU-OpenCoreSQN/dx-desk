@@ -1,5 +1,11 @@
 # 0007. Vị trí quét ClamAV cho tệp đính kèm
 
+> Cập nhật 30/10/2026: giữ nhật ký thử nghiệm bên dưới. Bản hiện hành dùng Filer HTTP
+> 8888 nội bộ, JSON/base64 buffer trong RAM và intent pending trước PUT (006).
+> Đường đọc ký HMAC qua API (007) có TTL 120 giây, không phải S3 presigned GET;
+> xem hợp đồng API và ADR 0009. ClamAV/EICAR thật đã đạt ở CI PR #4; CI tuần 3 bổ sung
+> trình duyệt OTP/upload/download. Không lấy lập luận về lockfile làm giới hạn kỹ thuật.
+
 - Trạng thái: Đã chốt (QĐ-3) — chờ kiểm chứng runtime bằng EICAR trên stack Docker
 - Ngày: 27/10/2026
 - Người ghi: TV1 (Nền tảng và DevOps)

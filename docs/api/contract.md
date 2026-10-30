@@ -63,7 +63,25 @@ metadata pending/failed với object_key và dọn object còn sót sau khi dị
 
 Metadata chỉ ghi được qua hàm `private.record_attachment(...)` (SECURITY DEFINER,
 migration 004) — `authenticated` không có INSERT trên `attachments` nên không giả mạo
-được `scan_status` qua PostgREST. Đọc tệp qua presigned URL là việc tuần 4 (chưa làm).
+được `scan_status` qua PostgREST.
+
+### Đọc tệp bằng URL ký (W3-06 / M2)
+
+- `GET /api/tickets/:id/attachments`: kiểm ticket theo RLS; trả `{data:[metadata]}`
+  gồm các trạng thái quét, không trả object_key. Ticket ngoài quyền → 404.
+- `POST /api/attachments/:id/download-url`: cần JWT, kiểm RLS và `clean` → 201
+  `{url,expires_at}`; ngoài quyền → 404; pending/infected/failed → 403.
+- `GET /api/attachments/:id/content?expires=...&signature=...`: capability HMAC-SHA256
+  ràng buộc ID và thời hạn 120 giây. Thiếu/sai/hết hạn/sửa ID/thời hạn → 403;
+  metadata không còn clean → 404; Filer lỗi → 503. Không cần JWT trên đường này.
+- URL dùng cùng origin APISIX, không phải S3 presigned URL. Chỉ API đọc Filer nội bộ;
+  không công bố listener Filer/volume/S3. Phải đổi `ATTACHMENT_SIGNING_KEY` (ít nhất
+  32 byte) trước triển khai thật; thay key vô hiệu mọi liên kết đã cấp.
+- URL là bearer capability: ai có URL còn hạn có thể tải dù quyền ticket của người
+  được cấp vừa đổi. Giới hạn rủi ro bằng TTL 120 giây; metadata clean được kiểm lại
+  mỗi lần tải. Không hứa thu hồi tức thời theo user. Gateway không ghi query/JWT vào log.
+- Đáp ứng luôn `attachment`, `application/octet-stream`, `nosniff`, `no-store` và
+  `Referrer-Policy: no-referrer`; không render nội dung theo MIME do client khai.
 
 ## Máy trạng thái 8 trạng thái (9 giá trị chữ thường)
 
@@ -146,13 +164,9 @@ resolution_note khi chuyển sang resolved; reopen xóa ghi chú hiện tại đ
 sau bắt buộc có kết quả mới. Event resolved giữ resolution_note của chính lần đó,
 không mất lịch sử khi reopen. Màn chi tiết hiển thị trường động và kết quả xử lý.
 
-## Mục mở (M2-06, chờ Docker/CI)
+## Hợp đồng lưu tệp và nghiệm thu
 
-- **Thân request base64 thay vì multipart**: độ lệch có chủ đích so với ADR 0007 vì `multer`
-  không phải dependency khai báo (`npm ci` ghim lock). Nếu sau này muốn đúng multipart,
-  phải khai báo `multer` + regenerate `package-lock.json` (TV2/TV1 review) — hiện chưa làm.
-- **Kiểm chứng engine ClamAV thật bằng chuỗi EICAR 68 byte** trên `clamd:3310` thật — đơn vị
-  và tích hợp chỉ dùng clamd GIẢ (node:net) để chứng minh ghép nối + giao thức, KHÔNG chạy
-  libclamav. **Chờ CI/Docker** (nghiệm thu M2 số 3).
-- **presigned GET URL ký hạn ngắn** để mở tệp sạch — SeaweedFS chưa công bố cổng ra host;
-  đường đọc tệp là việc tuần 4.
+JSON/base64 là hợp đồng đã chọn, không phải giới hạn của lockfile. Browser/API buffer
+tệp trong RAM. Unit/integration dùng clamd/Filer giả để thử lỗi; stack CI quét EICAR
+68 byte bằng ClamAV thật và đối chiếu bytes SeaweedFS, sau đó browser kiểm upload/
+download trên cùng stack. Đọc kết quả artifact của đúng SHA, không suy từ số unit test.
