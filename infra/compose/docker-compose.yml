@@ -134,9 +134,9 @@ services:
       # nên API chờ clamd sẵn sàng (lần đầu freshclam tải cơ sở dữ liệu virus, chậm).
       clamav:
         condition: service_healthy
-      # Tệp sạch được PUT lên SeaweedFS filer (HTTP 8332) sau bước quét (ADR 0007 bước 3).
+      # Tệp sạch được PUT lên SeaweedFS filer HTTP sau bước quét.
       seaweedfs:
-        condition: service_started
+        condition: service_healthy
     environment:
       PORT: "3000"
       DATABASE_URL: postgres://api_login:${API_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -146,7 +146,7 @@ services:
       # Địa chỉ clamd nội bộ cho giao thức INSTREAM qua TCP (không công bố ra host).
       CLAMD_ADDR: "clamav:3310"
       # Filer HTTP nội bộ của SeaweedFS cho bước PUT đối tượng sau khi quét sạch.
-      SEAWEEDFS_ENDPOINT: "http://seaweedfs:8332"
+      SEAWEEDFS_ENDPOINT: "http://seaweedfs:8888"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
@@ -187,13 +187,13 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION}
     <<: *restart
-    command: ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
+    command: ["server", "-dir=/data", "-filer.port=8888", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
     volumes:
       - seaweedfs-data:/data
       # s3.json được scripts/init.sh sinh từ .env (không lưu khóa vào kho mã).
       - ../seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/cluster/status >/dev/null"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9333/cluster/status >/dev/null && wget -qO- 'http://127.0.0.1:8888/?pretty=y' >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 20

@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { AuthRequest, JwtGuard } from './auth';
 import { Database } from './database';
 import { scanWithClamd } from './clamd';
-import { putObject } from './seaweedfs';
+import { deleteObject, putObject } from './seaweedfs';
 import {
   ALLOWED_CONTENT_TYPES, CreateDeviceRequest, CreateTicket, ListQuery,
   MAX_ATTACHMENT_BYTES, UpdateTicketStatus, UploadAttachment,
@@ -251,14 +251,28 @@ export class AttachmentsController {
     const objectKey = `attachments/${id}/${randomUUID()}`;
 
     if (scan.outcome === 'clean') {
+      // Commit an intent before any object can exist. DB failure here cannot orphan bytes.
+      const pending = await this.db.asUser(request.claims, async client => (await client.query(
+        'SELECT * FROM private.begin_attachment($1, $2, $3, $4, $5)',
+        [id, body.file_name, objectKey, body.content_type, bytes.length],
+      )).rows[0] as { id: string });
+      let stored = false;
       try {
         await putObject(objectKey, body.content_type, bytes);
-      } catch {
-        // clamd sạch nhưng SeaweedFS lỗi: KHÔNG INSERT clean; ghi failed và báo 503.
-        await this.record(request, id, body, objectKey, bytes.length, 'failed');
-        throw new ServiceUnavailableException('Không lưu được tệp đính kèm. Vui lòng thử lại.');
+        stored = true;
+        return await this.finish(request, pending.id, 'clean');
+      } catch (error) {
+        let removed = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try { await deleteObject(objectKey); removed = true; break; }
+          catch { /* Durable pending metadata retains the key if the store is down. */ }
+        }
+        if (!removed) console.error('Attachment cleanup requires reconciliation', { attachment_id: pending.id });
+        try { await this.finish(request, pending.id, 'failed'); }
+        catch { console.error('Attachment remains pending', { attachment_id: pending.id }); }
+        if (!stored) throw new ServiceUnavailableException('Không lưu được tệp đính kèm. Vui lòng thử lại.');
+        throw error;
       }
-      return this.record(request, id, body, objectKey, bytes.length, 'clean');
     }
 
     if (scan.outcome === 'infected') {
@@ -270,6 +284,12 @@ export class AttachmentsController {
     // clamd unreachable/timeout/malformed -> fail-closed.
     await this.record(request, id, body, objectKey, bytes.length, 'failed');
     throw new ServiceUnavailableException('Dịch vụ quét virus chưa sẵn sàng. Vui lòng thử lại.');
+  }
+
+  private finish(request: AuthRequest, id: string, status: 'clean' | 'failed') {
+    return this.db.asUser(request.claims, async client => (await client.query(
+      'SELECT * FROM private.finish_attachment($1, $2)', [id, status],
+    )).rows[0]);
   }
 
   /** Ghi metadata qua SECURITY DEFINER private.record_attachment (chống giả mạo scan_status). */

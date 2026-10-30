@@ -21,6 +21,11 @@ for (const route of routes.routes) {
   }
 }
 assert.ok((await read('infra/apisix/apisix.yaml')).trimEnd().endsWith('#END'));
+const filerPort = compose.services.seaweedfs.command.find(arg => arg.startsWith('-filer.port='));
+assert.ok(filerPort, 'Declare the Filer listener explicitly');
+assert.equal(new URL(compose.services.api.environment.SEAWEEDFS_ENDPOINT).port, filerPort.split('=')[1],
+  'API must use the deployed Filer listener');
+assert.equal(compose.services.api.depends_on.seaweedfs.condition, 'service_healthy');
 for (const clientId of ['dxdesk-web', 'appsmith']) {
   const client = realm.clients.find(client => client.clientId === clientId);
   assert.ok(client.protocolMappers.some(mapper => mapper.config['included.client.audience'] === 'dxdesk-api'));

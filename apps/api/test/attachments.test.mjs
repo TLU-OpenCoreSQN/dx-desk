@@ -10,7 +10,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { ValidationPipe } from '@nestjs/common';
 import { parseClamdAddr, parseClamdReply, scanWithClamd } from '../dist/clamd.js';
-import { putObject } from '../dist/seaweedfs.js';
+import { deleteObject, putObject } from '../dist/seaweedfs.js';
 import { AttachmentsController } from '../dist/controllers.js';
 import { UploadAttachment } from '../dist/dto.js';
 
@@ -57,26 +57,29 @@ async function startFakeClamd(mode) {
 /** SeaweedFS filer giả: ghi nhận mọi PUT (path, content-type, body) và trả 200. */
 async function startFakeSeaweed() {
   const puts = [];
+  const deletes = [];
+  const state = { deleteStatus: 200 };
   const server = createServer((request, response) => {
     const chunks = [];
     request.on('data', c => chunks.push(c));
     request.on('end', () => {
-      puts.push({
+      (request.method === 'DELETE' ? deletes : puts).push({
         method: request.method, url: request.url,
         contentType: request.headers['content-type'], body: Buffer.concat(chunks),
       });
-      response.statusCode = 200;
+      response.statusCode = request.method === 'DELETE' ? state.deleteStatus : 200;
       response.end('OK');
     });
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
-  return { endpoint: `http://127.0.0.1:${server.address().port}`, puts, stop: () => new Promise(r => server.close(r)) };
+  return { endpoint: `http://127.0.0.1:${server.address().port}`, puts, deletes, state, stop: () => new Promise(r => server.close(r)) };
 }
 
 /** Database giả: asUser chạy callback với client giả ghi lại mọi câu query. */
-function fakeDatabase({ ticketVisible = true } = {}) {
+function fakeDatabase({ ticketVisible = true, failBegin = false, failFinish = false } = {}) {
   const calls = [];
+  let attachment;
   const client = {
     query(sql, params = []) {
       calls.push({ sql, params });
@@ -84,15 +87,22 @@ function fakeDatabase({ ticketVisible = true } = {}) {
         return Promise.resolve(ticketVisible
           ? { rows: [{ '?column?': 1 }], rowCount: 1 } : { rows: [], rowCount: 0 });
       }
-      if (sql.includes('private.record_attachment')) {
+      if (sql.includes('private.begin_attachment') && failBegin) return Promise.reject(new Error('metadata unavailable'));
+      if (sql.includes('private.finish_attachment')) {
+        if (params[1] === 'clean' && failFinish) return Promise.reject(new Error('metadata completion failed'));
+        attachment = { ...attachment, scan_status: params[1] };
+        return Promise.resolve({ rows: [attachment], rowCount: 1 });
+      }
+      if (sql.includes('private.record_attachment') || sql.includes('private.begin_attachment')) {
         const [ticketId, fileName, objectKey, contentType, size, scanStatus] = params;
+        attachment = {
+          id: '11111111-1111-4111-8111-111111111111', ticket_id: ticketId,
+          uploaded_by: claims.sub, file_name: fileName, object_key: objectKey,
+          content_type: contentType, size_bytes: size, scan_status: scanStatus ?? 'pending',
+          created_at: '2026-10-27T00:00:00.000Z',
+        };
         return Promise.resolve({
-          rows: [{
-            id: '11111111-1111-4111-8111-111111111111', ticket_id: ticketId,
-            uploaded_by: '20000000-0000-4000-8000-000000000001', file_name: fileName,
-            object_key: objectKey, content_type: contentType, size_bytes: size,
-            scan_status: scanStatus, created_at: '2026-10-27T00:00:00.000Z',
-          }],
+          rows: [attachment],
           rowCount: 1,
         });
       }
@@ -246,6 +256,49 @@ test('controller clean: quét -> PUT SeaweedFS -> 201 kèm hình dạng bản gh
     assert.equal(row.content_type, 'text/plain');
     assert.ok(row.id && row.ticket_id && row.created_at);
   });
+});
+
+test('metadata reservation failure never writes an object', async () => {
+  await withServices('clean', async ({ swfs }) => {
+    const controller = new AttachmentsController(fakeDatabase({ failBegin: true }));
+    await assert.rejects(controller.uploadAttachment(request, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', body('note.txt')),
+      /metadata unavailable/);
+    assert.equal(swfs.puts.length, 0);
+    assert.equal(swfs.deletes.length, 0);
+  });
+});
+
+test('metadata completion failure deletes the stored object and marks its intent failed', async () => {
+  await withServices('clean', async ({ swfs }) => {
+    const db = fakeDatabase({ failFinish: true });
+    const controller = new AttachmentsController(db);
+    await assert.rejects(controller.uploadAttachment(request, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', body('note.txt')),
+      /metadata completion failed/);
+    assert.equal(swfs.puts.length, 1);
+    assert.equal(swfs.deletes.length, 1);
+    assert.equal(swfs.deletes[0].url, swfs.puts[0].url);
+    assert.ok(db.calls.some(c => c.sql.includes('private.finish_attachment') && c.params[1] === 'failed'));
+  });
+});
+
+test('cleanup retries are bounded and the durable failed intent retains the object key', async () => {
+  await withServices('clean', async ({ swfs }) => {
+    swfs.state.deleteStatus = 503;
+    const db = fakeDatabase({ failFinish: true });
+    await assert.rejects(new AttachmentsController(db).uploadAttachment(
+      request, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', body('note.txt')), /metadata completion failed/);
+    assert.equal(swfs.deletes.length, 3);
+    assert.ok(db.calls.some(c => c.sql.includes('private.begin_attachment')));
+    assert.ok(db.calls.some(c => c.sql.includes('private.finish_attachment') && c.params[1] === 'failed'));
+  });
+});
+
+test('object deletion is idempotent for a missing object', async () => {
+  const server = createServer((_req, res) => { res.statusCode = 404; res.end(); });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    await deleteObject('attachments/missing', 1000, `http://127.0.0.1:${server.address().port}`);
+  } finally { await new Promise(r => server.close(r)); }
 });
 
 test('controller infected: KHÔNG gọi SeaweedFS, ghi metadata infected, trả 422', async () => {

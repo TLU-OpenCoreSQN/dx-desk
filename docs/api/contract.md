@@ -44,15 +44,22 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
 
 API là nơi sở hữu trần dung lượng và thứ tự an toàn. clamd chạy qua TCP `CLAMD_ADDR`
 (mặc định `clamav:3310` trong compose), SeaweedFS filer qua `SEAWEEDFS_ENDPOINT`
-(`http://seaweedfs:8332`). Thứ tự KHÔNG tạo object mồ côi:
+(`http://seaweedfs:8888`). Metadata giữ vết intent trước mọi lần PUT:
 
 1. Chặn **trước khi** đụng clamd: allow-list `content_type` (400) + trần 10 MiB trên byte
    đã giải mã (422) + cổng nhìn thấy ticket theo RLS (404 — không quét, không lưu).
 2. Stream **toàn bộ** byte vào clamd bằng INSTREAM (`nINSTREAM\n`, mỗi chunk 4-byte
    big-endian độ dài, kết thúc bằng chunk độ dài 0) — tệp chưa từng chạm đĩa.
-3. `clean` → PUT object lên SeaweedFS filer → INSERT metadata `scan_status='clean'` (201).
+3. `clean` → tạo metadata pending (migration 006) → PUT Filer → hoàn tất clean (201).
 4. `infected` → **không** gọi SeaweedFS, INSERT metadata `scan_status='infected'`, trả 422.
-5. clamd `timeout/unreachable` (hoặc SeaweedFS lỗi sau khi sạch) → INSERT `scan_status='failed'`, trả 503.
+5. clamd `timeout/unreachable` → metadata failed, trả 503. Lỗi PUT hoặc hoàn tất DB
+   sẽ thử DELETE bù trừ tối đa ba lần rồi đánh dấu failed; DB chưa sẵn sàng thì intent
+   vẫn pending. Metadata đã commit giữ object_key để đối soát khi cleanup thất bại.
+
+Hai hàm private.begin_attachment/private.finish_attachment chỉ dùng nội bộ API,
+không expose RPC PostgREST. Pending/failed không phải tệp đã sẵn sàng để đọc.
+Khi có log "Attachment cleanup requires reconciliation", quản trị đối chiếu
+metadata pending/failed với object_key và dọn object còn sót sau khi dịch vụ phục hồi.
 
 Metadata chỉ ghi được qua hàm `private.record_attachment(...)` (SECURITY DEFINER,
 migration 004) — `authenticated` không có INSERT trên `attachments` nên không giả mạo

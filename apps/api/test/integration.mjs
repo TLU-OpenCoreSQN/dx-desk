@@ -32,6 +32,7 @@ let restLogs = '';
 // và đường ghi metadata qua migration 004 + RLS, nhưng KHÔNG chạy engine ClamAV thật.
 let clamdServer, seaweedServer;
 const seaweedPuts = [];
+const seaweedDeletes = [];
 const tokens = {};
 const claims = key => ({
   sub: users[key].sub, role: 'authenticated', realm_access: { roles: users[key].roles },
@@ -147,7 +148,8 @@ before(async () => {
     const chunks = [];
     request.on('data', c => chunks.push(c));
     request.on('end', () => {
-      seaweedPuts.push({ method: request.method, url: request.url, body: Buffer.concat(chunks) });
+      (request.method === 'DELETE' ? seaweedDeletes : seaweedPuts)
+        .push({ method: request.method, url: request.url, body: Buffer.concat(chunks) });
       response.statusCode = 200; response.end('OK');
     });
   });
@@ -512,4 +514,36 @@ test('W3-06: upload quét clamd, lưu SeaweedFS khi sạch, ghi metadata theo RL
     uploadBody(clean, 'application/x-msdownload'))).status, 400);
   assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a',
     uploadBody('not!!!valid#base64'))).status, 400);
+});
+
+test('upload reserves metadata before PUT and compensates a failed DB completion', async () => {
+  const ticket = await create('a', 'DB failure during upload');
+  const body = uploadBody(Buffer.from('benign lifecycle test').toString('base64'));
+  await admin.query(`
+    CREATE FUNCTION public.test_fail_attachment() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN RAISE EXCEPTION 'simulated metadata failure'; END $$;
+    CREATE TRIGGER test_attachment_insert BEFORE INSERT ON public.attachments
+      FOR EACH ROW EXECUTE FUNCTION public.test_fail_attachment();
+  `);
+  const puts = seaweedPuts.length, deletes = seaweedDeletes.length;
+  try {
+    assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a', body)).status, 500);
+    assert.equal(seaweedPuts.length, puts, 'no object before metadata reservation commits');
+  } finally { await admin.query('DROP TRIGGER test_attachment_insert ON public.attachments'); }
+  await admin.query(`
+    CREATE TRIGGER test_attachment_finish BEFORE UPDATE ON public.attachments
+      FOR EACH ROW WHEN (NEW.scan_status = 'clean') EXECUTE FUNCTION public.test_fail_attachment();
+  `);
+  try {
+    assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a', body)).status, 500);
+    assert.equal(seaweedPuts.length, puts + 1);
+    assert.equal(seaweedDeletes.length, deletes + 1);
+    assert.equal(seaweedPuts.at(-1).url, seaweedDeletes.at(-1).url);
+    const rows = (await admin.query('SELECT * FROM public.attachments WHERE ticket_id=$1', [ticket.id])).rows;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].scan_status, 'failed');
+    assert.equal('/' + rows[0].object_key, seaweedPuts.at(-1).url);
+  } finally {
+    await admin.query('DROP TRIGGER test_attachment_finish ON public.attachments; DROP FUNCTION public.test_fail_attachment()');
+  }
 });

@@ -116,6 +116,31 @@ try {
       'sla_due_at = created_at + sla_policies.resolution_minutes');
     assert.equal(Number(created.sla_paused_ms), 0, 'ticket vừa tạo chưa tạm dừng đếm SLA');
   });
+  await check('Real ClamAV scan and SeaweedFS upload', async () => {
+    const contents = 'DX-Desk clean attachment acceptance';
+    const upload = content => request(`/api/tickets/${created.id}/attachments`, tokenA, {
+      file_name: 'acceptance.txt', content_type: 'text/plain',
+      content_base64: Buffer.from(content).toString('base64'),
+    });
+    const clean = await upload(contents);
+    assert.equal(clean.status, 201, JSON.stringify(clean.data));
+    assert.equal(clean.data.scan_status, 'clean');
+    report.created_attachment_key = clean.data.object_key;
+    const read = spawnSync('docker', ['compose', '--env-file', resolve(root, '.env'),
+      '-f', resolve(root, 'infra/compose/docker-compose.yml'), 'exec', '-T', 'api', 'node', '-e',
+      `fetch(process.env.SEAWEEDFS_ENDPOINT + '/' + ${JSON.stringify(clean.data.object_key)}).then(async r => {
+        if (!r.ok) process.exit(1); process.stdout.write(await r.text());
+      }).catch(() => process.exit(1))`], { encoding: 'utf8', windowsHide: true });
+    assert.equal(read.status, 0, read.stderr);
+    assert.equal(read.stdout, contents, 'stored bytes must match the scanned input');
+    const eicar = 'X5O!P%@AP[4' + String.fromCharCode(92) + 'PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
+    const infected = await upload(eicar);
+    assert.equal(infected.status, 422, JSON.stringify(infected.data));
+    const records = await request(`/rest/attachments?ticket_id=eq.${created.id}&scan_status=eq.infected`, tokenA);
+    assert.equal(records.status, 200);
+    assert.equal(records.data.length, 1);
+    assert.equal((await request(`/rest/attachments?ticket_id=eq.${created.id}`, tokenB)).data.length, 0);
+  });
   await check('W3-02 Poka-yoke rejects ticket missing category fields', async () => {
     const { fields, ...withoutFields } = body;
     const response = await request('/api/tickets', tokenA, withoutFields);

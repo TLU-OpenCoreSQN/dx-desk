@@ -4,9 +4,7 @@
 // Chỉ dùng global fetch của Node (không thêm dependency). Filer endpoint lấy từ
 // biến môi trường SEAWEEDFS_ENDPOINT, đọc theo đúng kiểu required() như DATABASE_URL.
 //
-// Thứ tự chống orphan (theo ADR): QUÉT TRƯỚC -> SẠCH MỚI LƯU -> MỚI INSERT.
-// Vì vậy hàm này KHÔNG cần nghiệp vụ xoá/bãi bỏ: một tệp chỉ được PUT sau khi clamd
-// báo sạch, nên không bao giờ có object "nhiễm" nằm chờ trong SeaweedFS.
+// Controller reserves pending metadata before PUT and compensates failed writes with DELETE.
 
 import { required } from './config';
 
@@ -36,5 +34,17 @@ export async function putObject(
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) throw new Error(`SeaweedFS upload failed: ${response.status}`);
+  await response.body?.cancel();
   return objectKey;
+}
+
+/** Idempotent compensation: a missing object is already cleaned up. */
+export async function deleteObject(
+  objectKey: string, timeoutMs = 5000, endpoint = seaweedfsEndpoint(),
+): Promise<void> {
+  const response = await fetch(`${endpoint}/${objectKey.replace(/^\/+/, '')}`, {
+    method: 'DELETE', signal: AbortSignal.timeout(timeoutMs),
+  });
+  await response.body?.cancel();
+  if (!response.ok && response.status !== 404) throw new Error('SeaweedFS cleanup failed');
 }
