@@ -1,5 +1,9 @@
 # Kế hoạch và tiến độ tuần 3 — DX-Desk: Luồng tạo ticket
 
+> Cập nhật 30/10/2026: xem [đợt hoàn thiện tuần 3](hoan-thien-tuan-3.md), ánh xạ
+> toàn bộ W3/M2, lệnh kiểm thử và phần cần người review/máy demo. Checklist 26/10
+> bên dưới được giữ làm lịch sử. Đọc artifact CI đúng SHA trước khi chốt runtime.
+
 **Tuần:** 26/10 – 01/11/2026. **Mốc:** demo nội bộ thứ Bảy 31/10 (cảnh 1 + nửa đầu cảnh 2), báo cáo giảng viên mốc M2.
 **Nguồn:** `DX-Desk_Ke-hoach-trien-khai_OLP-PMNM-2026_ban-1.1.docx`, mục 5.2 (W3-01…W3-09), mục 6 (TN-03, TN-04), mục 4.5 (Định nghĩa "xong").
 **Cập nhật:** 26/10/2026 22:41 (CI #25/#26 xanh 9/9 trên `b5e57ce` và nhánh đã được fast-forward vào `main`). **Nhánh:** `develop-quyennnv`. **Workspace:** `D:\MaNguonMo`.

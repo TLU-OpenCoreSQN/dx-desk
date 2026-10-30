@@ -3,9 +3,10 @@
 Hệ thống tiếp nhận và tự động xử lý yêu cầu IT nội bộ, xây dựng trên nền tảng DX-OS Open-Core theo mô hình H-P-D-I.
 Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung Phần mềm nguồn mở (đội TLU-OpenCoreSQN, Trường Đại học Thủy lợi).
 
-> Trạng thái: **chuẩn bị v0.1.0 — tuần 2**. Có Tầng 1, schema/RLS, khung API NestJS
-> và web React. Kết quả kiểm chứng và các việc chưa nghiệm thu được cập nhật tại
-> [kế hoạch tuần 2](docs/ke-hoach-tuan-2.md). Chưa coi đây là bản đã phát hành.
+> Trạng thái: **hoàn thiện tuần 3, chưa phát hành**. Có nền tảng/RLS, workflow,
+> SLA, OTP acceptance và luồng tệp quét virus/URL ký trên API và web.
+> Xem [báo cáo tuần 3](docs/hoan-thien-tuan-3.md) và CI đúng SHA để biết bằng chứng
+> cùng các phần cần nghiệm thu bởi thành viên/máy demo.
 
 ## Tầng 1 gồm những gì
 

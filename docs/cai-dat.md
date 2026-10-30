@@ -6,6 +6,11 @@ Cài Docker Engine + Compose v2 hoặc Docker Desktop chạy Linux containers.
 Windows cần bật WSL2 theo hướng dẫn Docker Desktop. Cần Internet để tải image.
 Node.js >=22.12 để dùng script đa nền tảng; GNU Make là tùy chọn.
 
+Nếu đã có `.env` từ bản cũ, thêm `ATTACHMENT_SIGNING_KEY` ít nhất 32 byte ngẫu nhiên
+trước khi dùng tải tệp; mẫu mới có giá trị chỉ dành cho dev. Chạy bằng Node/Make up
+để đồng bộ JWKS và sinh `infra/apisix/runtime.yaml`; không tự copy template thành
+cấu hình runtime. Xoay khóa xem ADR 0009. Nghiệm thu tuần 3 xem `hoan-thien-tuan-3.md`.
+
 ```powershell
 Copy-Item .env.example .env
 node scripts/dxdesk.mjs up

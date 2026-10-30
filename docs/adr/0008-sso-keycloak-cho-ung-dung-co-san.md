@@ -1,5 +1,13 @@
 # 0008. SSO Keycloak cho Wiki.js, Mattermost Team Edition, Metabase OSS
 
+> Cập nhật 30/10/2026: có PoC cô lập `infra/compose/tn04.yml` và
+> `tools/testing/tn04-runtime.mjs`: Wiki.js 2.5.315 bootstrap và module Keycloak trong
+> image; Mattermost Team Edition 12.0.1 login/webhook; Metabase OSS 0.64.3 login nội bộ.
+> Xem artifact 3 job TN-04 để biết runtime đạt trên SHA nào. Không gọi đây là full
+> Wiki.js SSO hoặc dashboard có quyền dữ liệu; tích hợp sản phẩm vẫn thuộc tuần 4.
+> Superset dùng Flask-AppBuilder `AUTH_OAUTH` với provider Keycloak (đính chính
+> `AUTH_OIDC` trong nhật ký dưới đây). Các nhận định 27/10 được giữ làm lịch sử.
+
 - Trạng thái: QĐ-2 chốt theo tài liệu chính thức — chưa thử runtime (máy không có Docker)
 - Ngày: 27/10/2026
 - Người ghi: TV1 (Nền tảng và DevOps)

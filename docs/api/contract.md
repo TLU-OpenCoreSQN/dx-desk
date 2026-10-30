@@ -34,9 +34,7 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
   `{file_name:string(1..255), content_type:<allow-list>, content_base64:<base64>}`,
   sau giải mã phải `> 0` và `<= 10 MiB` (khớp CHECK `attachments.size_bytes`).
   HTTP 201 trả bản ghi metadata (`Attachment`, `scan_status:"clean"`).
-  **ĐỘ LỆCH với ADR** (ghi "multipart"): dùng base64 vì `apps/api/package.json` bị CI ghim
-  bằng `npm ci` và `multer` KHÔNG phải dependency khai báo — thêm multer sẽ phá `package-lock`.
-  Ghi thành mục mở ở cuối file.
+  JSON/base64 là hợp đồng đã chốt; browser và API buffer tệp trong RAM.
   `content_type` cho phép: `image/png image/jpeg image/gif image/webp application/pdf text/plain`.
   `file_name` chỉ lưu vào cột, KHÔNG dùng làm object key (server sinh `attachments/<ticket>/<uuid>`).
 
@@ -49,7 +47,8 @@ API là nơi sở hữu trần dung lượng và thứ tự an toàn. clamd ch�
 1. Chặn **trước khi** đụng clamd: allow-list `content_type` (400) + trần 10 MiB trên byte
    đã giải mã (422) + cổng nhìn thấy ticket theo RLS (404 — không quét, không lưu).
 2. Stream **toàn bộ** byte vào clamd bằng INSTREAM (`nINSTREAM\n`, mỗi chunk 4-byte
-   big-endian độ dài, kết thúc bằng chunk độ dài 0) — tệp chưa từng chạm đĩa.
+   big-endian độ dài, kết thúc bằng chunk độ dài 0). API chưa ghi Filer; clamd có thể
+   dùng tệp tạm nội bộ để quét INSTREAM.
 3. `clean` → tạo metadata pending (migration 006) → PUT Filer → hoàn tất clean (201).
 4. `infected` → **không** gọi SeaweedFS, INSERT metadata `scan_status='infected'`, trả 422.
 5. clamd `timeout/unreachable` → metadata failed, trả 503. Lỗi PUT hoặc hoàn tất DB
@@ -79,7 +78,9 @@ migration 004) — `authenticated` không có INSERT trên `attachments` nên kh
   32 byte) trước triển khai thật; thay key vô hiệu mọi liên kết đã cấp.
 - URL là bearer capability: ai có URL còn hạn có thể tải dù quyền ticket của người
   được cấp vừa đổi. Giới hạn rủi ro bằng TTL 120 giây; metadata clean được kiểm lại
-  mỗi lần tải. Không hứa thu hồi tức thời theo user. Gateway không ghi query/JWT vào log.
+  mỗi lần tải. Không hứa thu hồi tức thời theo user. Access log gateway không ghi
+  query/JWT; quyền truy cập error log hạ tầng vẫn phải giới hạn vì request URI có
+  thể xuất hiện khi upstream lỗi.
 - Đáp ứng luôn `attachment`, `application/octet-stream`, `nosniff`, `no-store` và
   `Referrer-Policy: no-referrer`; không render nội dung theo MIME do client khai.
 
@@ -112,7 +113,8 @@ chỉ mở đúng cửa này). `assigned_to` luôn `null` ở tuần 3.
 created_at, updated_at` + các cột MỚI (migration 003):
 `sla_due_at` (timestamptz, = `created_at + sla_policies.resolution_minutes` theo priority,
 tính bằng trigger lúc INSERT), `sla_paused_ms` (bigint **miligiây** tạm dừng cộng dồn khi
-rời `waiting_user`; ngưỡng vi phạm SLA = `sla_due_at + sla_paused_ms`; cờ `sla_breached`
+rời `waiting_user`; ngưỡng hiệu lực cộng thêm `max(0, now-waiting_since)` khi còn chờ;
+cờ `sla_breached`
 do W4-03 dùng), `waiting_since` (timestamptz|null, nội bộ vận hành),
 `resolution_note` (text|null, 5..2000 khi có giá trị), `request_fields` (jsonb object,
 lưu `fields` đã kiểm tra theo danh mục).
