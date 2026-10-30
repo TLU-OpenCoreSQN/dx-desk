@@ -127,9 +127,9 @@ jobs:
           path: .local/reports/
 
   stack:
-    name: nghiệm thu stack tuần 2
+    name: nghiệm thu stack và browser OTP tuần 3
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -141,6 +141,13 @@ jobs:
           node scripts/dxdesk.mjs up
       - name: Keycloak, APISIX, API, RLS và n8n restart
         run: node scripts/stack-test.mjs --restart-n8n
+      - name: Cài trình duyệt nghiệm thu
+        run: |
+          npm ci --prefix tools/testing
+          cd tools/testing
+          npx playwright install --with-deps chromium
+      - name: Browser thật — enrollment OTP, VPN có ảnh, signed GET, EICAR và workflow
+        run: node tools/testing/stack-browser.mjs
       - name: Khởi chạy lần hai, giữ dữ liệu
         run: |
           make up
@@ -152,7 +159,7 @@ jobs:
         if: always()
         with:
           name: week2-stack-evidence
-          path: .local/reports/stack.json
+          path: .local/reports/
           if-no-files-found: ignore
       - name: Dừng stack CI
         if: always()
