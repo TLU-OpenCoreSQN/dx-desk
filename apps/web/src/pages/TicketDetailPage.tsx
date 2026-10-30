@@ -28,6 +28,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { EmptyState } from '../components/common/EmptyState';
 import { Alert } from '../components/common/Alert';
+import { AttachmentPanel } from '../components/common/AttachmentPanel';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getAllowedTransitions,
@@ -323,6 +324,7 @@ export const TicketDetailPage: React.FC = () => {
       </div>
 
       {/* Status Transition Actions */}
+      <AttachmentPanel ticketId={ticket.id} />
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
           <GitBranch className="w-4 h-4 text-teal-600" />
