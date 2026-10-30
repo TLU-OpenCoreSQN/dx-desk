@@ -9,6 +9,7 @@ import { readdirSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const shell = process.env.TEST_SHELL ?? 'sh';
 await mkdir(resolve(root, '.local/reports'), { recursive: true });
@@ -32,7 +33,8 @@ const env = { ...process.env, PGHOST: '127.0.0.1', PGPORT: String(port), PGPASSW
   MIGRATIONS_DIR: resolve(directory, 'sql/migrations').replaceAll('\\', '/'),
   POLICIES_DIR: resolve(directory, 'sql/policies').replaceAll('\\', '/') };
 function query(sql) {
-  const result = spawnSync('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'dxdesk_test', '-Atc', sql], { env, encoding: 'utf8', windowsHide: true });
+  const result = spawnSync('psql', ['-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', env.POSTGRES_DB, '-At', '-f', '-'],
+    { env, encoding: 'utf8', input: sql + '\n', windowsHide: true });
   if (result.status !== 0) throw new Error(result.stderr);
   return result.stdout.trim();
 }
@@ -70,6 +72,23 @@ try {
   assert.equal(query("SELECT count(*) FROM migration_meta.applied WHERE name='migrations/003_failure.sql'"), '0');
   await unlink(failedFile); migrate();
   report.checks.push('Failed migration rolls back both DDL and ledger, rerun recovers');
+  // Exercise an actual upgrade, rather than only running the final schema twice.
+  await pg.createDatabase('dxdesk_test_upgrade');
+  env.POSTGRES_DB = 'dxdesk_test_upgrade';
+  query('CREATE SCHEMA migration_meta; CREATE TABLE migration_meta.applied(name text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())');
+  for (const file of ['migrations/001_schema.sql', 'migrations/002_reference_data.sql',
+    'policies/001_rls.sql', 'policies/002_postgrest_claims.sql']) {
+    const sql = await readFile(resolve(directory, 'sql', file), 'utf8');
+    query(sql);
+    query(`INSERT INTO migration_meta.applied(name,checksum) VALUES('${file}','${createHash('sha256').update(sql).digest('hex')}')`);
+  }
+  query("INSERT INTO public.tickets(requester_id,category_id,title,description) VALUES ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','Historical week two ticket','Created before workflow and integrity migrations')");
+  migrate();
+  assert.equal(query('SELECT count(*) FROM public.tickets WHERE sla_due_at IS NOT NULL'), '1');
+  assert.equal(query('SELECT count(*) FROM public.ticket_events'), '1');
+  assert.equal(query('SELECT count(*) FROM migration_meta.applied'), String(expectedFiles));
+  assert.equal(query("SELECT has_column_privilege('authenticated','public.tickets','sla_paused_ms','UPDATE')"), 'f');
+  report.checks.push('Week-2 upgrade preserves historical rows and applies restricted SLA privileges');
   report.passed = true;
   for (const check of report.checks) console.log(`PASS ${check}`);
 } catch (error) { report.error = error.message; console.error(error); process.exitCode = 1; }

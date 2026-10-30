@@ -100,6 +100,37 @@ describe('TicketDetailPage Component', () => {
     });
   });
 
+  it('shows category fields and current result, retaining historical field names safely', async () => {
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({
+      request_fields: { asset_code: 'DELL-123', retired_field: '<script>alert(1)</script>', legacy_bad: { nested: true } },
+      resolution_note: 'Đã thay cáp DisplayPort và kiểm tra ổn định.',
+    }));
+    vi.spyOn(apiService, 'getCategories').mockResolvedValue({ data: [{
+      id: 'cat-hardware', code: 'HW', name: 'Thiết bị',
+      requirement_fields: [{ key: 'asset_code', label: 'Mã tài sản', required: true }],
+    }] });
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+    renderWithRoute();
+    expect(await screen.findByText('DELL-123')).toBeInTheDocument();
+    expect(screen.getByText('Mã tài sản')).toBeInTheDocument();
+    expect(screen.getByText('retired_field')).toBeInTheDocument();
+    expect(screen.getByText('<script>alert(1)</script>')).toBeInTheDocument();
+    expect(document.querySelector('script')).toBeNull();
+    expect(screen.getByText('Đã thay cáp DisplayPort và kiểm tra ổn định.')).toBeInTheDocument();
+  });
+
+  it('keeps a transition note and its resolution in the timeline independently', async () => {
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'resolved' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [
+      statusEvent('resolution-1', 'in_progress', 'resolved', {
+        note: 'Đã thông báo người dùng.', resolution_note: 'Cài lại driver màn hình.',
+      }),
+    ] });
+    renderWithRoute();
+    expect(await screen.findByText('Đã thông báo người dùng.')).toBeInTheDocument();
+    expect(screen.getByText('Cài lại driver màn hình.')).toBeInTheDocument();
+  });
+
   it('handles empty event list truthfully', async () => {
     vi.spyOn(apiService, 'getTicketById').mockResolvedValue(mockTicket);
     vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });

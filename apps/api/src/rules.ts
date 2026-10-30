@@ -77,7 +77,7 @@ export function checkRequirementFields(
   if (unknownKeys.length) return { ok: false, kind: 'unknown', keys: unknownKeys };
   const values: Record<string, string> = {};
   for (const [key, raw] of Object.entries(provided)) {
-    if (typeof raw !== 'string' || raw.trim().length > 500) return { ok: false, kind: 'invalid' };
+    if (typeof raw !== 'string' || Array.from(raw.trim()).length > 500) return { ok: false, kind: 'invalid' };
     const trimmed = raw.trim();
     if (trimmed) values[key] = trimmed; // giá trị rỗng được coi như "chưa điền"
   }

@@ -126,6 +126,19 @@ map về các message ở bảng trên). Audit `ticket_events` do PostgreSQL sin
 dịch, không nhận thẳng từ browser. Schema `private` và tài khoản database không phơi cho web.
 Nghiệp vụ còn lại của các tuần sau: phân công `assigned_to`, dashboard, SLA breach flag.
 
+## Bảo vệ dữ liệu ticket (sec-dev)
+
+Migration 005 áp cùng quy tắc tạo ticket cho API và PostgREST: Employee tạo loại
+access phải gửi trạng thái pending_approval; các trường theo danh mục phải đầy đủ,
+đúng key, đúng kiểu và tối đa 500 ký tự. Trường optional rỗng bị loại sau trim.
+PostgREST thiếu trường trả 422; trường sai trả 400; trạng thái khởi tạo sai trả 403.
+Các ticket lịch sử được giữ nguyên khi nâng cấp.
+
+SLA/thời gian do trigger quản lý, client không được PATCH trực tiếp. Chỉ được ghi
+resolution_note khi chuyển sang resolved; reopen xóa ghi chú hiện tại để lần xử lý
+sau bắt buộc có kết quả mới. Event resolved giữ resolution_note của chính lần đó,
+không mất lịch sử khi reopen. Màn chi tiết hiển thị trường động và kết quả xử lý.
+
 ## Mục mở (M2-06, chờ Docker/CI)
 
 - **Thân request base64 thay vì multipart**: độ lệch có chủ đích so với ADR 0007 vì `multer`

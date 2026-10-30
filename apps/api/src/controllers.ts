@@ -39,6 +39,12 @@ function transitionException(violation: TransitionViolation) {
 
 /** SQLSTATE do trigger private.guard_ticket_update() raise — thông báo cố định tiếng Việt, không lộ SQL. */
 export function workflowExceptionForCode(code?: string): { status: number; message: string } | null {
+  if (code === 'PT400') {
+    return { status: 400, message: 'Giá trị trường biểu mẫu không hợp lệ với danh mục đã chọn.' };
+  }
+  if (code === 'PT422') {
+    return { status: 422, message: 'Thiếu trường bắt buộc theo danh mục.' };
+  }
   if (code === '45001') {
     return { status: 422, message: 'Chuyển trạng thái không hợp lệ với quy trình xử lý yêu cầu.' };
   }

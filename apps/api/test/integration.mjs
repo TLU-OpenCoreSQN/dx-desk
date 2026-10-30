@@ -72,10 +72,10 @@ async function create(key, title, extra) {
   assert.equal(result.status, 201, JSON.stringify(result.body));
   return result.body;
 }
-// PostgREST ghi thẳng vào cột: 'fields' là key của hợp đồng API (thuộc W3-02), không phải cột tickets.
+// Direct REST must satisfy the same category fields as the API.
 const restTicket = (title, extra = {}) => {
   const { fields, ...columns } = newTicket(title, extra);
-  return columns;
+  return { ...columns, request_fields: fields };
 };
 async function freePort() {
   const server = createServer();
@@ -267,8 +267,8 @@ test('ownership/status spoofing, invalid FK and malformed input fail without par
 test('rollback and concurrent pooled requests never leak identity', async () => {
   const marker = 'Ticket cần rollback';
   await assert.rejects(db.asUser(claims('a'), async client => {
-    await client.query('INSERT INTO public.tickets(category_id,title,description) VALUES ($1,$2,$3)',
-      [category, marker, 'Transaction sẽ bị rollback']);
+    await client.query('INSERT INTO public.tickets(category_id,title,description,request_fields) VALUES ($1,$2,$3,$4)',
+      [category, marker, 'Transaction sẽ bị rollback', JSON.stringify(newTicket(marker).fields)]);
     throw new Error('forced rollback');
   }), /forced rollback/);
   assert.equal((await admin.query('SELECT id FROM public.tickets WHERE title=$1', [marker])).rowCount, 0);
@@ -301,6 +301,89 @@ test('audit and attachments cannot be forged; other employee cannot read related
   assert.equal((await call(restUrl, '/ticket_events', 'a', {
     ticket_id: ticket.id, actor_id: users.b.sub, event_type: 'created',
   })).status, 403);
+});
+test('direct REST enforces access approval on omitted and explicit initial status', async () => {
+  const body = restTicket('REST yêu cầu cấp quyền', {
+    category_id: '10000000-0000-4000-8000-000000000005',
+    fields: { system_name: 'CRM', permission_level: 'ReadOnly', valid_until: '2026-12-31' },
+  });
+  for (const key of ['a', 'b']) {
+    assert.equal((await call(restUrl, '/tickets', key, body)).status, 403);
+    assert.equal((await call(restUrl, '/tickets', key, { ...body, status: 'new' })).status, 403);
+    const approvedPath = await call(restUrl, '/tickets', key, { ...body, status: 'pending_approval' });
+    assert.equal(approvedPath.status, 201, JSON.stringify(approvedPath.body));
+    assert.equal(approvedPath.body[0].status, 'pending_approval');
+  }
+  for (const key of ['agent', 'manager']) {
+    assert.equal((await call(restUrl, '/tickets', key, body)).status, 201);
+    assert.equal((await call(restUrl, '/tickets', key, { ...body, status: 'pending_approval' })).status, 403);
+  }
+});
+test('direct REST validates and normalizes category fields before creating audit', async () => {
+  const before = Number((await admin.query('SELECT count(*) FROM public.ticket_events')).rows[0].count);
+  const body = restTicket('REST kiểm tra trường động');
+  const cases = [
+    [{}, 422],
+    [{ client_version: '4.2', error_message: '\u00a0\t ' }, 422],
+    [{ ...body.request_fields, rogue: 'value' }, 400],
+    [{ ...body.request_fields, error_message: { nested: true } }, 400],
+    [{ ...body.request_fields, error_message: null }, 400],
+    [{ ...body.request_fields, error_message: 'x'.repeat(501) }, 400],
+  ];
+  for (const [fields, status] of cases) {
+    const result = await call(restUrl, '/tickets', 'a', { ...body, request_fields: fields });
+    assert.equal(result.status, status, JSON.stringify(result.body));
+  }
+  const { request_fields, ...missing } = body;
+  assert.equal((await call(restUrl, '/tickets', 'a', missing)).status, 422);
+  assert.equal(Number((await admin.query('SELECT count(*) FROM public.ticket_events')).rows[0].count), before);
+  const normalized = await call(restUrl, '/tickets', 'a', {
+    ...body, request_fields: { client_version: '  4.2  ', error_message: '  Connection failed  ', device_os: '  ' },
+  });
+  assert.equal(normalized.status, 201, JSON.stringify(normalized.body));
+  assert.deepEqual(normalized.body[0].request_fields, { client_version: '4.2', error_message: 'Connection failed' });
+});
+test('SLA columns and resolution notes cannot be forged without a valid transition', async () => {
+  const ticket = await create('a', 'Bảo vệ số liệu SLA');
+  for (const key of ['a', 'agent', 'manager']) {
+    for (const body of [
+      { sla_paused_ms: 315360000000 }, { waiting_since: '2000-01-01T00:00:00Z' },
+      { updated_at: '2000-01-01T00:00:00Z' }, { resolution_note: 'Giả kết quả xử lý' },
+    ]) {
+      const result = await patch(restUrl, `/tickets?id=eq.${ticket.id}`, key, body);
+      assert.equal(result.status, 403, JSON.stringify(result.body));
+    }
+  }
+  const actual = (await call(apiUrl, `/api/tickets/${ticket.id}`)).body;
+  assert.equal(Number(actual.sla_paused_ms), 0);
+  assert.equal(actual.waiting_since, null);
+  assert.equal(actual.resolution_note, null);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/events`)).body.data.length, 1);
+});
+test('reopen clears the previous result and closed tickets preserve resolution history', async () => {
+  const ticket = await create('a', 'Bảo vệ kết quả xử lý');
+  for (const to of ['triaged', 'assigned', 'in_progress']) {
+    assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to })).status, 200);
+  }
+  const firstNote = 'Cài lại client VPN và kiểm tra kết nối';
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent',
+    { to: 'resolved', resolution_note: firstNote })).status, 200);
+  const reopened = await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to: 'in_progress' });
+  assert.equal(reopened.body.resolution_note, null);
+  const stale = await patch(restUrl, `/tickets?id=eq.${ticket.id}`, 'agent', { status: 'resolved' });
+  assert.equal(stale.status, 400);
+  assert.equal(stale.body.code, '45003');
+  const secondNote = 'Thay bộ định tuyến, kiểm tra lần hai';
+  assert.equal((await patch(restUrl, `/tickets?id=eq.${ticket.id}`, 'agent',
+    { status: 'resolved', resolution_note: secondNote })).status, 200);
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'closed' })).status, 200);
+  const before = (await call(apiUrl, `/api/tickets/${ticket.id}/events`)).body.data;
+  assert.deepEqual(before.filter(event => event.payload.to === 'resolved').map(event => event.payload.resolution_note),
+    [firstNote, secondNote]);
+  assert.equal((await patch(restUrl, `/tickets?id=eq.${ticket.id}`, 'a',
+    { resolution_note: 'Sửa kết quả sau khi đóng' })).status, 403);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}`)).body.resolution_note, secondNote);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/events`)).body.data.length, before.length);
 });
 test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', async () => {
   const ticket = await create('a', 'Luồng tuần 3 VPN');
