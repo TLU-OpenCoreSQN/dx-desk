@@ -6,7 +6,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, develop-quyennnv]
+    branches: [main, develop-quyennnv, sec-dev]
 
 permissions:
   contents: read
@@ -28,6 +28,8 @@ jobs:
         run: |
           cp .env.example .env
           docker compose --env-file .env -f infra/compose/docker-compose.yml config -q
+          docker compose --env-file .env -f infra/compose/docker-compose.yml -f infra/keycloak/compose-otp.yml config -q
+          node -e "const fs=require('node:fs');if(!fs.existsSync('infra/keycloak/realm-dxdesk-otp.json'))process.exit(1)"
       - name: Không dùng thẻ latest
         run: |
           if grep -nE '^[A-Z_]+_VERSION=.*latest' .env.example; then
@@ -69,6 +71,7 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: |
           npm ci
+          npm audit --omit=dev --audit-level=high
           npm run build
           npm test
 
@@ -138,7 +141,7 @@ jobs:
         run: node scripts/stack-test.mjs --restart-n8n
       - name: Khởi chạy lần hai, giữ dữ liệu
         run: |
-          node scripts/dxdesk.mjs up
+          make up
           node scripts/stack-test.mjs --verify-preserved
       - name: Nhật ký khi lỗi
         if: failure()

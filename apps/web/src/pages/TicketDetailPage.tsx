@@ -41,16 +41,16 @@ import {
   validateResolutionNote,
 } from '../lib/ticketWorkflow';
 
-function eventSummary(evt: TicketEvent): { heading: string; from: string | null; to: string | null; note: string | null } {
+function eventSummary(evt: TicketEvent): { heading: string; from: string | null; to: string | null; note: string | null; resolutionNote: string | null } {
   const payload = evt.payload || {};
   const from = typeof payload.from === 'string' ? payload.from : null;
   const to = typeof payload.to === 'string' ? payload.to : typeof payload.status === 'string' ? payload.status : null;
   const note =
     typeof payload.note === 'string' && payload.note.trim()
       ? payload.note
-      : typeof payload.resolution_note === 'string' && payload.resolution_note.trim()
-        ? payload.resolution_note
-        : null;
+      : null;
+  const resolutionNote = typeof payload.resolution_note === 'string' && payload.resolution_note.trim()
+    ? payload.resolution_note : null;
 
   let heading = evt.event_type;
   if (evt.event_type === 'created') heading = 'Đã tiếp nhận phiếu';
@@ -60,7 +60,7 @@ function eventSummary(evt: TicketEvent): { heading: string; from: string | null;
         ? `Chuyển từ ${statusLabel(from)} sang ${statusLabel(to)}`
         : 'Cập nhật trạng thái';
   }
-  return { heading, from, to, note };
+  return { heading, from, to, note, resolutionNote };
 }
 
 export const TicketDetailPage: React.FC = () => {
@@ -294,6 +294,31 @@ export const TicketDetailPage: React.FC = () => {
               {ticket.description}
             </div>
           </div>
+          {Object.keys(ticket.request_fields || {}).length > 0 && (
+            <section aria-label="Thông tin theo danh mục">
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Thông tin theo danh mục
+              </h2>
+              <dl className="space-y-3 text-xs">
+                {Object.entries(ticket.request_fields || {}).map(([key, value]) =>
+                  typeof value === 'string' ? (
+                    <div key={key}>
+                      <dt className="font-semibold text-slate-500">
+                        {category?.requirement_fields?.find(field => field.key === key)?.label || key}
+                      </dt>
+                      <dd className="mt-1 whitespace-pre-wrap break-words text-slate-800">{value}</dd>
+                    </div>
+                  ) : null
+                )}
+              </dl>
+            </section>
+          )}
+          {ticket.resolution_note && (
+            <section aria-label="Kết quả xử lý">
+              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Kết quả xử lý</h2>
+              <p className="text-xs text-slate-800 whitespace-pre-wrap break-words">{ticket.resolution_note}</p>
+            </section>
+          )}
         </div>
       </div>
 
@@ -504,12 +529,14 @@ export const TicketDetailPage: React.FC = () => {
                     )}
                     {summary.note && (
                       <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 whitespace-pre-wrap break-words">
-                        <span className="font-semibold text-slate-500">
-                          {typeof evt.payload?.resolution_note === 'string'
-                            ? 'Cách giải quyết: '
-                            : 'Ghi chú: '}
-                        </span>
+                        <span className="font-semibold text-slate-500">Ghi chú: </span>
                         {summary.note}
+                      </div>
+                    )}
+                    {summary.resolutionNote && (
+                      <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 text-[11px] text-slate-700 whitespace-pre-wrap break-words">
+                        <span className="font-semibold">Cách giải quyết: </span>
+                        {summary.resolutionNote}
                       </div>
                     )}
                   </div>

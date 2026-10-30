@@ -42,6 +42,8 @@ export interface Ticket {
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
+  request_fields?: Record<string, unknown>;
+  resolution_note?: string | null;
 }
 
 export interface TicketEvent {
