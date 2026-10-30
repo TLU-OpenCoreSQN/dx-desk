@@ -55,6 +55,16 @@ export interface TicketEvent {
   created_at: string;
 }
 
+export interface Attachment {
+  id: string;
+  ticket_id: string;
+  file_name: string;
+  content_type: string;
+  size_bytes: number | string;
+  scan_status: 'pending' | 'clean' | 'infected' | 'failed';
+  created_at: string;
+}
+
 export interface CreateTicketPayload {
   category_id: string;
   title: string;

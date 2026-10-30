@@ -97,13 +97,14 @@ export function computeSlaDueAt(createdAt: Date, resolutionMinutes: number): Dat
 }
 
 /** Ngưỡng vi phạm SLA = sla_due_at + sla_paused_ms (milis). */
-export function effectiveSlaDeadline(slaDueAt: Date, slaPausedMs: number): Date {
-  return new Date(slaDueAt.getTime() + slaPausedMs);
+export function effectiveSlaDeadline(slaDueAt: Date, slaPausedMs: number, waitingSince?: Date | null, now = new Date()): Date {
+  const openPause = waitingSince ? Math.max(0, now.getTime() - waitingSince.getTime()) : 0;
+  return new Date(slaDueAt.getTime() + slaPausedMs + openPause);
 }
 
 /** Cờ vi phạm (W4-03 sẽ hiển thị; tuần 3 chỉ tính đúng công thức). */
 export function isSlaBreached(
-  slaDueAt: Date, slaPausedMs: number, now: Date = new Date(),
+  slaDueAt: Date, slaPausedMs: number, now: Date = new Date(), waitingSince?: Date | null,
 ): boolean {
-  return now.getTime() > effectiveSlaDeadline(slaDueAt, slaPausedMs).getTime();
+  return now.getTime() > effectiveSlaDeadline(slaDueAt, slaPausedMs, waitingSince, now).getTime();
 }

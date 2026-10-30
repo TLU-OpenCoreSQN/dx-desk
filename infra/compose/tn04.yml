@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+# Isolated, disposable TN-04 runtime PoCs. No connection to production tickets.
+# Run one profile at a time; local passwords are fixtures, never deployment secrets.
+services:
+  wiki-db:
+    profiles: [wikijs]
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_DB: wiki
+      POSTGRES_USER: wiki
+      POSTGRES_PASSWORD: tn04_wiki_only
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U wiki -d wiki]
+      interval: 3s
+      retries: 30
+  wikijs:
+    profiles: [wikijs]
+    image: ghcr.io/requarks/wiki:2.5.315
+    depends_on:
+      wiki-db:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: wiki-db
+      DB_PORT: "5432"
+      DB_USER: wiki
+      DB_PASS: tn04_wiki_only
+      DB_NAME: wiki
+    ports: ["127.0.0.1:13001:3000"]
+  mattermost-db:
+    profiles: [mattermost]
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_DB: mattermost
+      POSTGRES_USER: mattermost
+      POSTGRES_PASSWORD: tn04_mattermost_only
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U mattermost -d mattermost]
+      interval: 3s
+      retries: 30
+  mattermost:
+    profiles: [mattermost]
+    image: mattermost/mattermost-team-edition:12.0.1
+    depends_on:
+      mattermost-db:
+        condition: service_healthy
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:tn04_mattermost_only@mattermost-db:5432/mattermost?sslmode=disable&connect_timeout=10
+      MM_SERVICESETTINGS_SITEURL: http://localhost:13002
+      MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
+      MM_TEAMSETTINGS_ENABLEOPENSERVER: "true"
+      MM_LOGSETTINGS_CONSOLELEVEL: ERROR
+    ports: ["127.0.0.1:13002:8065"]
+  metabase:
+    profiles: [metabase]
+    image: metabase/metabase:v0.64.3
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx1024m
+      MB_ANON_TRACKING_ENABLED: "false"
+      MB_DB_TYPE: h2
+    ports: ["127.0.0.1:13003:3000"]
