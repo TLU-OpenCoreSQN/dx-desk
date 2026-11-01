@@ -20,6 +20,8 @@ const mockDeviceRequests: DeviceRequest[] = [
   },
 ];
 
+const emptyPage = { data: [] as DeviceRequest[], limit: 25, offset: 0 };
+
 describe('DeviceRequestPage Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -51,11 +53,7 @@ describe('DeviceRequestPage Component', () => {
   });
 
   it('validates minimum reason length and integer quantity', async () => {
-    vi.spyOn(apiService, 'getDeviceRequests').mockResolvedValue({
-      data: [],
-      limit: 25,
-      offset: 0,
-    });
+    vi.spyOn(apiService, 'getDeviceRequests').mockResolvedValue(emptyPage);
 
     renderComponent();
 
@@ -88,16 +86,15 @@ describe('DeviceRequestPage Component', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Trang sau' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Trang trước' })).toBeEnabled());
+    // Trang rỗng không được hiển thị "Hiển thị từ 0 đến 0" hay nút "Trang sau" vô nghĩa
+    expect(screen.queryByText(/Hiển thị từ/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang sau' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Trang trước' }));
     await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0));
   });
 
   it('submits valid device request without state or ownership fields', async () => {
-    vi.spyOn(apiService, 'getDeviceRequests').mockResolvedValue({
-      data: [],
-      limit: 25,
-      offset: 0,
-    });
+    vi.spyOn(apiService, 'getDeviceRequests').mockResolvedValue(emptyPage);
 
     const createSpy = vi.spyOn(apiService, 'createDeviceRequest').mockResolvedValue({
       id: 'dreq-new-999',
@@ -114,11 +111,13 @@ describe('DeviceRequestPage Component', () => {
     // Open form
     fireEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu mới/i }));
 
-    const typeSelect = screen.getByLabelText(/Loại thiết bị/i);
+    const typeRadio = screen.getByRole('radio', { name: /Màn hình máy tính/i });
     const quantityInput = screen.getByLabelText(/Số lượng/i);
     const reasonInput = screen.getByLabelText(/Lý do đề xuất/i);
 
-    fireEvent.change(typeSelect, { target: { value: 'monitor' } });
+    expect(screen.getByText(/Loại thiết bị/)).toBeInTheDocument();
+
+    fireEvent.click(typeRadio);
     fireEvent.change(quantityInput, { target: { value: '2' } });
     fireEvent.change(reasonInput, {
       target: { value: 'Cần màn hình ngoài 27 inch để đọc tài liệu thiết kế hệ thống.' },
@@ -137,5 +136,60 @@ describe('DeviceRequestPage Component', () => {
         screen.getByText(/Đã gửi yêu cầu cấp thiết bị thành công/i)
       ).toBeInTheDocument();
     });
+  });
+
+  it('does not render a zero-range counter or pagination on an empty list', async () => {
+    vi.spyOn(apiService, 'getDeviceRequests').mockResolvedValue(emptyPage);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Chưa có yêu cầu cấp thiết bị nào')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Hiển thị từ/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang sau' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang trước' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Gửi yêu cầu ngay/i })).toBeInTheDocument();
+  });
+
+  it('hides pagination when the request list fails to load', async () => {
+    vi.spyOn(apiService, 'getDeviceRequests').mockRejectedValue(new Error('Mất kết nối máy chủ'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Không thể tải danh sách yêu cầu thiết bị')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Hiển thị từ/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang sau' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang trước' })).not.toBeInTheDocument();
+  });
+
+  it('blocks submission and shows an inline error when quantity is out of range', async () => {
+    vi.spyOn(apiService, 'getDeviceRequests').mockResolvedValue(emptyPage);
+    const createSpy = vi.spyOn(apiService, 'createDeviceRequest');
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Chưa có yêu cầu cấp thiết bị nào')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu mới/i }));
+
+    fireEvent.change(screen.getByLabelText(/Lý do đề xuất/i), {
+      target: { value: 'Cần thêm màn hình phụ để làm việc với tài liệu thiết kế.' },
+    });
+    fireEvent.change(screen.getByLabelText(/Số lượng/i), { target: { value: '11' } });
+    fireEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu thiết bị/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Số lượng phải là số nguyên từ 1 đến 10.')
+      ).toBeInTheDocument();
+    });
+    expect(createSpy).not.toHaveBeenCalled();
   });
 });

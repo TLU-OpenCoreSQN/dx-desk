@@ -20,17 +20,17 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl border border-dashed border-slate-300">
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-4">
-        {icon || <Inbox className="w-6 h-6 text-slate-400" />}
+    <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-white rounded-[8px] border border-dashed border-[#e4e3e0] shadow-2xs">
+      <div className="w-14 h-14 rounded-[10px] bg-[#f7f6f3] flex items-center justify-center text-[#5f5e5a] mb-4 border border-[#e4e3e0] shadow-2xs">
+        {icon || <Inbox className="w-6 h-6 text-[#5f5e5a]" aria-hidden="true" />}
       </div>
-      <h3 className="text-base font-semibold text-slate-800 mb-1">{title}</h3>
-      <p className="text-sm text-slate-500 max-w-sm mb-6 leading-relaxed">{description}</p>
+      <h3 className="text-sm sm:text-base font-bold text-[#211f1b] mb-1.5 tracking-tight">{title}</h3>
+      <p className="text-xs sm:text-sm text-[#5f5e5a] max-w-md mb-6 leading-relaxed">{description}</p>
       {actionText && onAction && (
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] text-white text-xs sm:text-sm font-semibold rounded-[6px] shadow-xs active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] transition-all min-h-[40px]"
         >
           {actionText}
         </button>

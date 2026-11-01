@@ -45,25 +45,25 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
   return (
     <div
       role="alert"
-      className={`p-6 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 ${className}`}
+      className={`p-5 sm:p-6 bg-[#fbe4e4] border border-[#f6c3c1] rounded-[8px] text-[#962824] shadow-2xs ${className}`}
     >
-      <div className="flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-rose-900">{title}</h3>
+      <div className="flex items-start gap-3.5">
+        <AlertCircle className="w-5 h-5 text-[#d44c47] shrink-0 mt-0.5" aria-hidden="true" />
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <h3 className="font-bold text-sm sm:text-base text-[#962824] tracking-tight">{title}</h3>
             {statusCode !== undefined && statusCode > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded font-mono bg-rose-200 text-rose-800">
+              <span className="text-[11px] px-2 py-0.5 rounded-[4px] font-mono font-bold bg-[#f9dad9] text-[#962824] border border-[#f6c3c1]">
                 HTTP {statusCode}
               </span>
             )}
           </div>
-          <p className="text-sm text-rose-800 mb-2 leading-relaxed">{displayMessage}</p>
+          <p className="text-xs sm:text-sm text-[#7a1c18] mb-3 leading-relaxed break-words">{displayMessage}</p>
 
           {details.length > 1 && (
-            <ul className="text-xs list-disc list-inside text-rose-700 space-y-1 mb-3">
+            <ul className="text-xs list-disc list-inside text-[#962824] space-y-1 mb-3">
               {details.map((msg, i) => (
-                <li key={i}>{msg}</li>
+                <li key={i} className="break-words">{msg}</li>
               ))}
             </ul>
           )}
@@ -72,10 +72,10 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-800 bg-rose-100 hover:bg-rose-200 rounded-md border border-rose-300 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#962824] bg-white hover:bg-[#fbe4e4] rounded-[6px] border border-[#f6c3c1] transition-all focus:outline-none focus:ring-2 focus:ring-[#d44c47] shadow-2xs min-h-[36px] active:scale-[0.98]"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              Thử lại
+              <span>Thử lại</span>
             </button>
           )}
         </div>

@@ -6,12 +6,291 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+@theme {
+  --color-primary: #0a78be;
+  --color-primary-hover: #08639e;
+  --color-primary-active: color-mix(in srgb, var(--color-primary), black 35%);
+  --color-primary-tint: #deeef8;
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary-tint), white 50%);
+  --color-primary-border: color-mix(in srgb, var(--color-primary), white 70%);
+  --color-primary-text: color-mix(in srgb, var(--color-primary), black 35%);
+
+  /* Notion / HR-V5 Warm Surface Palette */
+  --color-surface: #ffffff;
+  --color-surface-warm: #f7f6f3;
+  --color-surface-sidebar: #fbfaf8;
+  --color-surface-muted: #f1f1ef;
+  --color-surface-card: #ffffff;
+
+  --color-content: #211f1b;
+  --color-content-muted: #5f5e5a;
+  --color-content-subtle: #8a8884;
+
+  --color-edge: #d6d5d2;
+  --color-edge-subtle: #e4e3e0;
+  --color-edge-strong: #9e9d99;
+
+  --color-success: #448361;
+  --color-success-hover: #36694e;
+  --color-success-tint: #edf3ec;
+  --color-success-border: #b8dcce;
+
+  --color-warning: #cb912f;
+  --color-warning-hover: #a87724;
+  --color-warning-tint: #fbf3db;
+  --color-warning-border: #f5ddb2;
+
+  --color-danger: #d44c47;
+  --color-danger-hover: #b53c37;
+  --color-danger-tint: #fbe4e4;
+  --color-danger-border: #f6c3c1;
+
+  --color-info: #0a78be;
+  --color-info-hover: #08639e;
+  --color-info-tint: #deeef8;
+  --color-info-border: #b9daf0;
+
+  --color-purple: #9065b0;
+  --color-purple-tint: #f4eeff;
+  --color-purple-border: #e0cdfc;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --radius: 6px;
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+}
+
+/* Accent presets — data-accent on <html> */
+:root[data-accent='default'] { --color-primary: #cb912f; --color-primary-hover: #a87724; --color-primary-tint: #fbf3db; }
+:root[data-accent='gray']    { --color-primary: #787774; --color-primary-hover: #5f5e5a; --color-primary-tint: #f1f1ef; }
+:root[data-accent='brown']   { --color-primary: #9f6b53; --color-primary-hover: #835540; --color-primary-tint: #f4eeee; }
+:root[data-accent='orange']  { --color-primary: #d9730d; --color-primary-hover: #b85e05; --color-primary-tint: #fbecdd; }
+:root[data-accent='yellow']  { --color-primary: #cb912f; --color-primary-hover: #a87724; --color-primary-tint: #fbf3db; }
+:root[data-accent='green']   { --color-primary: #448361; --color-primary-hover: #36694e; --color-primary-tint: #edf3ec; }
+:root[data-accent='blue']    { --color-primary: #0a78be; --color-primary-hover: #08639e; --color-primary-tint: #deeef8; }
+:root[data-accent='purple']  { --color-primary: #9065b0; --color-primary-hover: #794e99; --color-primary-tint: #f4eeff; }
+:root[data-accent='pink']    { --color-primary: #c14c8a; --color-primary-hover: #a13a70; --color-primary-tint: #fbe4ee; }
+:root[data-accent='red']     { --color-primary: #ee0033; --color-primary-hover: #c7002b; --color-primary-tint: #ffe0e8; }
+
+/* Dark mode */
+.dark {
+  color-scheme: dark;
+  --color-surface: #1e1e1e;
+  --color-surface-warm: #252525;
+  --color-surface-sidebar: #181818;
+  --color-surface-muted: #2d2d2d;
+  --color-surface-card: #222222;
+  --color-content: #f5f5f4;
+  --color-content-muted: #a8a29e;
+  --color-content-subtle: #78716c;
+  --color-edge: #383838;
+  --color-edge-subtle: #2e2e2e;
+  --color-edge-strong: #525252;
+}
+.dark html, .dark body {
+  background-color: #181818;
+  color: #f5f5f4;
+}
+
+/* UI Presets */
+[data-theme='clear'] {
+  --radius: 2px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+}
+[data-theme='classic'] {
+  --radius: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --color-surface-sidebar: #f2f1ee;
+  --color-surface-warm: #eeede9;
+}
+[data-theme='modern'] {
+  --radius: 8px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+[data-theme='clear'] .dx-app-header {
+  background: #fff;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+[data-theme='clear'] .dx-sidebar,
+[data-theme='clear'] .dx-main {
+  background: #fff;
+}
+[data-theme='clear'] .dx-main :is(section, form, article, header) {
+  box-shadow: none;
+}
+[data-theme='clear'] .dx-ticket-list-header {
+  background: #f7f6f3;
+}
+
+[data-theme='modern'] .dx-app-header {
+  background: color-mix(in srgb, var(--color-primary-tint) 25%, white 75%);
+  box-shadow: 0 2px 12px rgb(33 31 27 / 6%);
+  backdrop-filter: blur(12px);
+}
+[data-theme='modern'] .dx-main {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary-tint) 36%, white), #faf9f7 55%);
+}
+[data-theme='modern'] .dx-main :is(section, form, article) {
+  box-shadow: 0 3px 14px rgb(33 31 27 / 5%);
+}
+
+[data-theme='classic'] .dx-app-header {
+  background: color-mix(in srgb, var(--color-primary-tint) 70%, white);
+  border-bottom-color: var(--color-primary-border);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+[data-theme='classic'] .dx-sidebar {
+  background: color-mix(in srgb, var(--color-primary-tint) 45%, #f2f1ee);
+  border-right-color: var(--color-primary-border);
+}
+[data-theme='classic'] .dx-main {
+  background: #f2f1ee;
+}
+[data-theme='classic'] .dx-ticket-list-header {
+  background: color-mix(in srgb, var(--color-primary-tint) 75%, white);
+  border-color: var(--color-primary-border);
+}
+[data-theme='classic'] .dx-ticket-list > li:nth-child(even) {
+  background: color-mix(in srgb, var(--color-primary-tint) 22%, white);
+}
+[data-theme='classic'] .dx-main :is(section, form, article) {
+  border-color: #c8c7c2;
+  box-shadow: none;
+}
+
+/* Table grid lines */
+[data-grid-lines='true'] table,
+[data-grid-lines='true'] [role='table'],
+[data-grid-lines='true'] [role='grid'] {
+  border-collapse: collapse;
+}
+
 @layer base {
+  html {
+    font-family: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #211f1b;
+    background-color: #ffffff;
+    font-size: 100%;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    background-color: #ffffff;
+    color: #211f1b;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0;
+    min-height: 100vh;
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-teal-600 ring-offset-2;
+    outline: 2px solid #0a78be;
+    outline-offset: 2px;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f6f5f3;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d4d4d0;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a2;
+  }
+}
+
+/* Drawer vào từ trái; chỉ dùng transform để không gây layout shift. */
+@keyframes dx-drawer-in {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .dx-drawer-panel {
+    animation: dx-drawer-in 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  /* Micro-interactions & Modern SaaS Utilities */
+  .dx-card {
+    background-color: #ffffff;
+    border: 1px solid var(--color-edge-subtle, #e4e3e0);
+    border-radius: var(--radius-md, 6px);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dx-card-hover {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .dx-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border-color: #d6d5d2;
+  }
+
+  .dx-glass {
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .dx-pulse-glow {
+    box-shadow: 0 0 0 0 rgba(68, 131, 97, 0.4);
+    animation: dx-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes dx-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(68, 131, 97, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(68, 131, 97, 0);
+    }
+  }
+
+  @media (max-width: 767px) {
+    /* Tránh iOS tự phóng to trang khi focus input. */
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}
+
+/* Animations with purposeful timings */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

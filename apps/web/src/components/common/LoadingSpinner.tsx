@@ -18,17 +18,17 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-6 h-6',
-    lg: 'w-10 h-10',
+    lg: 'w-8 h-8',
   }[size];
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className={`flex flex-col items-center justify-center p-8 gap-3 text-slate-500 ${className}`}
+      className={`flex flex-col items-center justify-center p-8 gap-3 text-[#5f5e5a] ${className}`}
     >
-      <Loader2 className={`animate-spin text-teal-600 ${sizeClasses}`} />
-      {label && <span className="text-sm font-medium">{label}</span>}
+      <Loader2 className={`animate-spin text-[var(--color-primary)] ${sizeClasses}`} />
+      {label && <span className="text-xs sm:text-sm font-medium text-[#5f5e5a]">{label}</span>}
       <span className="sr-only">{label}</span>
     </div>
   );

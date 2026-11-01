@@ -3,7 +3,17 @@
 
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, LogIn, Ticket, PlusCircle, Laptop, RefreshCw } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Laptop,
+  LogIn,
+  PlusCircle,
+  RefreshCw,
+  Shield,
+  Ticket,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getHealth } from '../services/api';
 import type { HealthResponse } from '../types/api';
@@ -14,65 +24,415 @@ export function HomePage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [checking, setChecking] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
+
   useEffect(() => {
     let active = true;
     setChecking(true);
-    getHealth().then(value => { if (active) setHealth(value); })
-      .catch(() => { if (active) setHealth(null); })
-      .finally(() => { if (active) setChecking(false); });
-    return () => { active = false; };
+    getHealth()
+      .then((value) => {
+        if (active) setHealth(value);
+      })
+      .catch(() => {
+        if (active) setHealth(null);
+      })
+      .finally(() => {
+        if (active) {
+          setChecking(false);
+          setLastCheckedAt(new Date());
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, [attempt]);
+
   const actions = [
-    { to: '/tickets/new', icon: PlusCircle, title: 'Gửi sự cố mới', text: 'Mô tả vấn đề để bộ phận IT tiếp nhận và hỗ trợ.' },
-    { to: '/tickets', icon: Ticket, title: 'Phiếu yêu cầu IT', text: 'Xem nội dung và lịch sử những yêu cầu bạn được truy cập.' },
-    { to: '/device-requests', icon: Laptop, title: 'Yêu cầu cấp thiết bị', text: 'Gửi nhu cầu thiết bị phục vụ công việc của bạn.' },
+    {
+      to: '/tickets/new',
+      icon: PlusCircle,
+      title: 'Gửi sự cố mới',
+      text: 'Mô tả vấn đề để IT tiếp nhận.',
+    },
+    {
+      to: '/tickets',
+      icon: Ticket,
+      title: 'Phiếu yêu cầu IT',
+      text: 'Theo dõi nội dung và tiến độ.',
+    },
+    {
+      to: '/device-requests',
+      icon: Laptop,
+      title: 'Yêu cầu cấp thiết bị',
+      text: 'Đề xuất thiết bị cho công việc.',
+    },
   ];
-  return <div className="max-w-5xl mx-auto space-y-8">
-    <section className="rounded-2xl bg-navy-900 text-white px-6 py-10 sm:p-12">
-      <p className="text-teal-300 text-sm font-semibold tracking-wide mb-5">KHÔNG GIAN HỖ TRỢ CỦA BẠN</p>
-      <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight max-w-xl">Hệ thống hỗ trợ IT nội bộ <span className="text-teal-300">DX-Desk</span></h1>
-      <p className="text-slate-300 mt-5 max-w-xl leading-relaxed">Một nơi để gửi sự cố, theo dõi yêu cầu và đề xuất thiết bị cho công việc hằng ngày.</p>
-      {isAuthenticated ? <div className="mt-7">
-        <p className="text-lg">Xin chào, <strong>{username}</strong></p>
-        <div className="flex gap-2 mt-3">{roles.map(role => <RoleBadge key={role} role={role} />)}</div>
-      </div> : <div className="mt-7">
-        <button type="button" onClick={() => void login()} disabled={isLoading || isKeycloakOffline}
-          className="inline-flex items-center gap-2 rounded-lg px-5 py-3 font-semibold bg-teal-400 text-navy-950 hover:bg-teal-300 disabled:bg-slate-700 disabled:text-slate-300 disabled:cursor-not-allowed">
-          <LogIn size={18} />{isLoading ? 'Đang kiểm tra đăng nhập…' : 'Đăng nhập hệ thống (SSO)'}
-        </button>
-        {isKeycloakOffline && <p role="status" className="mt-4 text-amber-200 text-sm">Dịch vụ đăng nhập đang tạm thời gián đoạn. Vui lòng thử kết nối lại.</p>}
-        <p className="mt-4 text-sm text-slate-400">Sử dụng tài khoản do tổ chức cấp để tiếp tục.</p>
-      </div>}
-    </section>
-    {isAuthenticated ? <section className="grid gap-4 md:grid-cols-3" aria-label="Các thao tác">
-      {actions.map(({ to, icon: Icon, title, text }) => <Link key={to} to={to} className="group rounded-xl border border-slate-200 bg-white p-6 hover:border-teal-500 transition-colors">
-        <Icon size={26} className="text-teal-700 mb-5" />
-        <h2 className="font-semibold text-slate-900">{title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
-        <ArrowRight size={18} className="text-teal-700 mt-6 group-hover:translate-x-1 transition-transform" />
-      </Link>)}
-    </section> : <section className="grid gap-6 sm:grid-cols-3" aria-label="Cách sử dụng">
-      {['Đăng nhập tài khoản', 'Gửi yêu cầu của bạn', 'Theo dõi tại một nơi'].map((title, index) =>
-        <div key={title} className="border-t border-slate-200 pt-5">
-          <span className="text-teal-700 font-mono text-sm">0{index + 1}</span>
-          <h2 className="mt-3 font-semibold text-slate-800">{title}</h2>
-          <p className="mt-2 text-sm text-slate-600 leading-relaxed">{[
-            'Đăng nhập một lần bằng tài khoản của tổ chức.',
-            'Chọn danh mục và mô tả rõ điều bạn cần hỗ trợ.',
-            'Tra cứu nội dung và lịch sử yêu cầu sau khi gửi.',
-          ][index]}</p>
-        </div>)}
-    </section>}
-    <section className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 text-sm" aria-live="polite">
-      <div className="flex items-center gap-2">
-        <span className={'h-2 w-2 rounded-full ' + (checking ? 'bg-slate-400' : health ? 'bg-emerald-500' : 'bg-amber-500')} />
-        <span className="text-slate-600">{checking ? 'Đang kiểm tra kết nối…' : health ? 'Dịch vụ đang hoạt động bình thường' : 'Dịch vụ hỗ trợ hiện chưa kết nối'}</span>
-        {health && !checking && <span className="text-slate-400">{health.version}</span>}
+
+  const benefits = [
+    'Gửi yêu cầu và theo dõi tiến độ ở cùng một nơi.',
+    'Tra cứu lại lịch sử phiếu và thiết bị đã đề xuất.',
+    'Không cần tài khoản riêng — dùng chung SSO của tổ chức.',
+  ];
+
+  const steps = [
+    {
+      step: '01',
+      title: 'Đăng nhập bằng SSO',
+      desc: 'Xác thực bằng tài khoản do tổ chức cấp.',
+    },
+    {
+      step: '02',
+      title: 'Gửi yêu cầu hỗ trợ',
+      desc: 'Chọn danh mục và mô tả điều bạn cần.',
+    },
+    {
+      step: '03',
+      title: 'Theo dõi tiến độ',
+      desc: 'Xem lại nội dung và lịch sử xử lý.',
+    },
+  ];
+
+  const statusLabel = checking
+    ? 'Đang kiểm tra kết nối…'
+    : health
+    ? 'Dịch vụ đang hoạt động bình thường'
+    : 'Dịch vụ hỗ trợ hiện chưa kết nối';
+
+  const statusHint = checking
+    ? 'Đang liên hệ máy chủ DX-Desk.'
+    : health
+    ? `Máy chủ ${health.service} đã phản hồi.`
+    : 'Chưa nhận được phản hồi từ máy chủ. Bạn vẫn có thể thử kiểm tra lại.';
+
+  const dotClass = checking
+    ? 'bg-[#8c8a85] ring-4 ring-[#8c8a85]/10'
+    : health
+    ? 'bg-[#448361] ring-4 ring-[#448361]/15'
+    : 'bg-[#cb912f] ring-4 ring-[#cb912f]/15';
+
+  const lastCheckedLabel = lastCheckedAt
+    ? lastCheckedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  return (
+    <div className="w-full space-y-6">
+      {/* Hero */}
+      <section
+        aria-labelledby="home-hero-title"
+        className="relative overflow-hidden rounded-[8px] border border-[#e4e3e0] bg-gradient-to-br from-[#ffffff] via-[#fbfaf8] to-[#f7f6f3] shadow-[0_2px_8px_rgba(0,0,0,0.03)] w-full"
+      >
+        {/* Lưới chấm mờ trang trí tinh tế */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 1px 1px, rgba(10, 120, 190, 0.25) 1px, transparent 0)',
+            backgroundSize: '24px 24px',
+            opacity: 0.18,
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-gradient-to-br from-[var(--color-primary-tint)]/40 to-transparent blur-2xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-primary-active)]"
+        />
+
+        <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)] lg:items-start lg:gap-8 lg:p-10">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--color-primary)] shadow-2xs">
+              <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>KHÔNG GIAN HỖ TRỢ CỦA BẠN</span>
+            </div>
+
+            <h1
+              id="home-hero-title"
+              className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-[#211f1b] sm:text-3xl lg:text-4xl"
+            >
+              Hệ thống hỗ trợ IT nội bộ <span className="text-[var(--color-primary)] bg-clip-text">DX-Desk</span>
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#5f5e5a] sm:mt-4 sm:text-base">
+              Gửi sự cố, theo dõi yêu cầu và đề xuất thiết bị trong một không gian duy nhất dành
+              cho nhân viên.
+            </p>
+
+            {isAuthenticated ? (
+              <div className="mt-6 rounded-[8px] border border-[#e4e3e0] bg-white/90 backdrop-blur-xs p-5 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] border border-[var(--color-primary-border)] text-[var(--color-primary)] font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                    {username ? username.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#5f5e5a]">Xin chào,</p>
+                    <p className="truncate text-base font-bold text-[#211f1b] sm:text-lg">
+                      <strong className="font-bold text-[var(--color-primary)]">{username}</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wider text-[#8a8884]">
+                    Vai trò
+                  </span>
+                  {roles.length > 0 ? (
+                    roles.map((role) => <RoleBadge key={role} role={role} />)
+                  ) : (
+                    <span className="text-xs text-[#5f5e5a]">Nhân viên</span>
+                  )}
+                </div>
+                <p className="mt-3 border-t border-[#e4e3e0] pt-3 text-xs text-[#5f5e5a]">
+                  Chọn một thao tác nhanh bên dưới để bắt đầu.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 rounded-[8px] border border-[#e4e3e0] bg-white/90 backdrop-blur-xs p-5 shadow-2xs">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#5f5e5a]">
+                  Khi đăng nhập, bạn có thể
+                </p>
+                <ul className="mt-3 space-y-2.5">
+                  {benefits.map((benefit) => (
+                    <li
+                      key={benefit}
+                      className="flex items-start gap-2.5 text-xs leading-relaxed text-[#211f1b] sm:text-sm"
+                    >
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 shrink-0 text-[#448361]"
+                        aria-hidden="true"
+                      />
+                      <span>{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {isKeycloakOffline && (
+                  <div
+                    id="sso-offline-note"
+                    role="status"
+                    className="mt-4 flex items-start gap-2.5 rounded-[6px] border border-[#f5ddb2] bg-[#fbf3db] p-3 text-xs text-[#7c5108]"
+                  >
+                    <AlertTriangle
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[#cb912f]"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        Dịch vụ đăng nhập đang tạm thời gián đoạn.
+                      </p>
+                      <p className="mt-0.5 leading-relaxed">
+                        Chưa thể mở trang đăng nhập, nút bên dưới tạm thời bị vô hiệu. Vui lòng
+                        thử lại sau hoặc liên hệ bộ phận IT.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => void login()}
+                  disabled={isLoading || isKeycloakOffline}
+                  aria-describedby={isKeycloakOffline ? 'sso-offline-note' : undefined}
+                  className="mt-5 inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-[6px] px-6 py-2.5 text-sm font-semibold text-white shadow-xs transition-all duration-150 active:scale-[0.98] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border disabled:border-[#e4e3e0] disabled:bg-[#f7f6f3] disabled:text-[#8a8884] disabled:shadow-none motion-reduce:transition-none sm:w-auto"
+                >
+                  <LogIn size={18} aria-hidden="true" />
+                  <span>{isLoading ? 'Đang kiểm tra đăng nhập…' : 'Đăng nhập hệ thống (SSO)'}</span>
+                </button>
+
+                <p className="mt-3 text-xs leading-relaxed text-[#5f5e5a]">
+                  {isKeycloakOffline
+                    ? 'Trong lúc chờ, bạn vẫn có thể xem thông tin giới thiệu trên trang này.'
+                    : 'Sử dụng tài khoản do tổ chức cấp để tiếp tục.'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Trạng thái dịch vụ (chỉ dùng dữ liệu thật từ getHealth) */}
+          <div className="min-w-0 rounded-[8px] border border-[#e4e3e0] bg-white p-5 shadow-2xs transition-all hover:border-[#d6d5d2]">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-[11px] font-bold uppercase tracking-wider text-[#8a8884]">
+                Trạng thái dịch vụ
+              </h2>
+              <button
+                type="button"
+                onClick={() => setAttempt((value) => value + 1)}
+                disabled={checking}
+                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-[4px] px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]/50 transition-colors duration-150 hover:text-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+              >
+                <RefreshCw size={13} className={checking ? 'animate-spin' : ''} aria-hidden="true" />
+                <span>Kiểm tra lại</span>
+              </button>
+            </div>
+
+            <div role="status" aria-live="polite" className="mt-4">
+              <div className="flex items-start gap-3">
+                <span className="relative flex h-3 w-3 mt-0.5">
+                  {health && !checking && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#448361] opacity-60"></span>
+                  )}
+                  <span
+                    aria-hidden="true"
+                    className={`relative inline-flex h-3 w-3 shrink-0 rounded-full ${dotClass}`}
+                  />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-snug text-[#211f1b]">
+                    {statusLabel}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#5f5e5a]">{statusHint}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[#e4e3e0] pt-3">
+                {health && !checking ? (
+                  <span className="rounded-[4px] border border-[#b8dcce] bg-[#edf3ec] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#2c6246]">
+                    {health.version}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-[#8a8884]">
+                    {checking ? 'Đang lấy phiên bản…' : 'Chưa lấy được phiên bản'}
+                  </span>
+                )}
+                {lastCheckedLabel && !checking && (
+                  <span className="text-[11px] text-[#8a8884]">
+                    Kiểm tra lúc {lastCheckedLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dải thẻ chỉ số nổi bật tận dụng không gian rộng */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 w-full">
+        <div className="bg-white rounded-[8px] border border-[#e4e3e0] p-4 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[6px] bg-[var(--color-primary-tint)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold text-[#8a8884] uppercase tracking-wider">Hạ tầng IT</p>
+            <p className="text-sm font-bold text-[#211f1b] truncate">Sẵn sàng 24/7</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-[8px] border border-[#e4e3e0] p-4 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[6px] bg-[#edf3ec] text-[#448361] flex items-center justify-center shrink-0">
+            <Ticket className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold text-[#8a8884] uppercase tracking-wider">Phiếu sự cố</p>
+            <p className="text-sm font-bold text-[#211f1b] truncate">Đồng bộ tức thời</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-[8px] border border-[#e4e3e0] p-4 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[6px] bg-[#fbf3db] text-[#cb912f] flex items-center justify-center shrink-0">
+            <Laptop className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold text-[#8a8884] uppercase tracking-wider">Cấp thiết bị</p>
+            <p className="text-sm font-bold text-[#211f1b] truncate">Đề xuất chuẩn hóa</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-[8px] border border-[#e4e3e0] p-4 shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[6px] bg-[#f4eeff] text-[#9065b0] flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold text-[#8a8884] uppercase tracking-wider">Xác thực SSO</p>
+            <p className="text-sm font-bold text-[#211f1b] truncate">An toàn nội bộ</p>
+          </div>
+        </div>
       </div>
-      <button type="button" onClick={() => setAttempt(value => value + 1)} disabled={checking}
-        className="inline-flex gap-2 items-center text-teal-700 font-medium disabled:opacity-50">
-        <RefreshCw size={15} />Kiểm tra lại
-      </button>
-    </section>
-  </div>;
+
+      {/* Thao tác nhanh (đã đăng nhập) hoặc quy trình (chưa đăng nhập) */}
+      {isAuthenticated ? (
+        <section aria-labelledby="quick-actions-title">
+          <div className="mb-4">
+            <h2
+              id="quick-actions-title"
+              className="text-xs font-bold uppercase tracking-wider text-[#5f5e5a]"
+            >
+              Thao tác nhanh
+            </h2>
+            <p className="mt-1 text-xs text-[#8a8884]">
+              Mỗi thẻ dẫn thẳng tới chức năng tương ứng.
+            </p>
+          </div>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {actions.map(({ to, icon: Icon, title, text }) => (
+              <li key={to} className="min-w-0">
+                <Link
+                  to={to}
+                  className="group flex h-full min-h-[160px] flex-col justify-between rounded-[8px] border border-[#e4e3e0] bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] focus-visible:border-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 motion-reduce:transition-none"
+                >
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-primary-tint)] text-[var(--color-primary)] transition-all duration-200 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:scale-105 group-focus-visible:bg-[var(--color-primary)] group-focus-visible:text-white motion-reduce:transition-none shadow-2xs">
+                        <Icon size={22} aria-hidden="true" />
+                      </span>
+                      <h3 className="min-w-0 text-sm font-bold text-[#211f1b] transition-colors duration-150 group-hover:text-[var(--color-primary)] motion-reduce:transition-none sm:text-base">
+                        {title}
+                      </h3>
+                    </div>
+                    <p className="mt-3 text-xs leading-relaxed text-[#5f5e5a]">{text}</p>
+                  </div>
+                  <span className="mt-4 inline-flex items-center text-xs font-semibold text-[var(--color-primary)]">
+                    Mở chức năng
+                    <ArrowRight
+                      size={14}
+                      aria-hidden="true"
+                      className="ml-1.5 transition-transform duration-200 group-hover:translate-x-1.5 motion-reduce:transform-none motion-reduce:transition-none"
+                    />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 rounded-[8px] border border-[#e4e3e0] bg-white p-4 text-xs leading-relaxed text-[#5f5e5a] shadow-2xs flex items-center gap-3">
+            <div className="w-8 h-8 rounded-[6px] bg-[#fbe4e4] flex items-center justify-center text-[#d44c47] shrink-0 font-bold">
+              !
+            </div>
+            <div>
+              Sự cố ảnh hưởng nhiều người? Hãy tạo phiếu với mức ưu tiên{' '}
+              <span className="font-bold text-[#d44c47]">Khẩn cấp</span> để được xử lý trước.
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section aria-labelledby="support-steps-title">
+          <div className="mb-4">
+            <h2
+              id="support-steps-title"
+              className="text-xs font-bold uppercase tracking-wider text-[#5f5e5a]"
+            >
+              Quy trình hỗ trợ
+            </h2>
+            <p className="mt-1 text-xs text-[#8a8884]">
+              Ba bước ngắn gọn để yêu cầu của bạn được tiếp nhận.
+            </p>
+          </div>
+          <ol className="grid gap-4 sm:grid-cols-3">
+            {steps.map(({ step, title, desc }) => (
+              <li
+                key={step}
+                className="group min-w-0 rounded-[8px] border border-[#e4e3e0] bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[#d6d5d2] hover:shadow-xs"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="rounded-[4px] bg-[var(--color-primary-tint)] px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--color-primary)] border border-[var(--color-primary-border)]/60">
+                    {step}
+                  </span>
+                  <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]/40 group-hover:bg-[var(--color-primary)] transition-colors" />
+                </div>
+                <h3 className="text-sm font-bold text-[#211f1b] sm:text-base">{title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-[#5f5e5a]">{desc}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+    </div>
+  );
 }

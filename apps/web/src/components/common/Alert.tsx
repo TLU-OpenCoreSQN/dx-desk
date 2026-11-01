@@ -21,39 +21,39 @@ export const Alert: React.FC<AlertProps> = ({
 }) => {
   const styles = {
     info: {
-      bg: 'bg-teal-50 border-teal-200 text-teal-900',
-      icon: <Info className="w-5 h-5 text-teal-600 flex-shrink-0" />,
+      bg: 'bg-[#deeef8] border-[#b9daf0] text-[#07507f]',
+      icon: <Info className="w-4 h-4 text-[#0a78be] shrink-0 mt-0.5" aria-hidden="true" />,
     },
     success: {
-      bg: 'bg-emerald-50 border-emerald-200 text-emerald-900',
-      icon: <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />,
+      bg: 'bg-[#edf3ec] border-[#b8dcce] text-[#27553c]',
+      icon: <CheckCircle2 className="w-4 h-4 text-[#448361] shrink-0 mt-0.5" aria-hidden="true" />,
     },
     warning: {
-      bg: 'bg-amber-50 border-amber-200 text-amber-900',
-      icon: <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />,
+      bg: 'bg-[#fbf3db] border-[#f5ddb2] text-[#7c5108]',
+      icon: <AlertTriangle className="w-4 h-4 text-[#cb912f] shrink-0 mt-0.5" aria-hidden="true" />,
     },
     error: {
-      bg: 'bg-rose-50 border-rose-200 text-rose-900',
-      icon: <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />,
+      bg: 'bg-[#fbe4e4] border-[#f6c3c1] text-[#962824]',
+      icon: <AlertCircle className="w-4 h-4 text-[#d44c47] shrink-0 mt-0.5" aria-hidden="true" />,
     },
   }[type];
 
   return (
     <div
       role="alert"
-      className={`border rounded-lg p-4 flex items-start gap-3 text-sm ${styles.bg} ${className}`}
+      className={`border rounded-[6px] p-4 flex items-start gap-3 text-xs sm:text-sm shadow-2xs ${styles.bg} ${className}`}
     >
       {styles.icon}
-      <div className="flex-1">
-        {title && <h4 className="font-semibold mb-1">{title}</h4>}
-        <div className="leading-relaxed">{children}</div>
+      <div className="flex-1 min-w-0">
+        {title && <h4 className="font-bold mb-1 tracking-tight">{title}</h4>}
+        <div className="leading-relaxed break-words">{children}</div>
       </div>
       {onClose && (
         <button
           type="button"
           onClick={onClose}
           aria-label="Đóng thông báo"
-          className="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500 rounded p-1"
+          className="text-[#5f5e5a] hover:text-[#211f1b] focus:outline-none focus:ring-2 focus:ring-[#0a78be] rounded-[4px] p-1 min-w-[28px] min-h-[28px] flex items-center justify-center -mr-1 -mt-1 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
