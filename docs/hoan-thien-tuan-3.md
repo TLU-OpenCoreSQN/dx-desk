@@ -1,5 +1,11 @@
 # Hoàn thiện tuần 3 — 30/10/2026
 
+> Cập nhật nhánh 01/11/2026: `week3-complete` đã đổi thành
+> `feature/secure-ticket-workflow`; `sec-dev` đã đổi thành `develop-secnv`.
+> PR #4/#5 đã merge. Các tên cũ bên dưới là nhật ký bàn giao ngày 30/10.
+> Mọi phát triển/sửa lỗi/chạy thử tiếp theo thực hiện trên `develop-secnv`;
+> nhánh feature chỉ nhận chức năng hoàn chỉnh đã kiểm thử theo CONTRIBUTING.md.
+
 Nhánh `week3-complete` kế thừa `sec-dev` (PR #4). PR tuần 3 so với `sec-dev`
 chỉ chứa phần mới, không tự merge PR nền. Đối chiếu W3-01…W3-09/M2:
 
