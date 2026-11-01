@@ -6,6 +6,11 @@ Cài Docker Engine + Compose v2 hoặc Docker Desktop chạy Linux containers.
 Windows cần bật WSL2 theo hướng dẫn Docker Desktop. Cần Internet để tải image.
 Node.js >=22.12 để dùng script đa nền tảng; GNU Make là tùy chọn.
 
+Nếu đã có `.env` từ bản cũ, thêm `ATTACHMENT_SIGNING_KEY` ít nhất 32 byte ngẫu nhiên
+trước khi dùng tải tệp; mẫu mới có giá trị chỉ dành cho dev. Chạy bằng Node/Make up
+để đồng bộ JWKS và sinh `infra/apisix/runtime.yaml`; không tự copy template thành
+cấu hình runtime. Xoay khóa xem ADR 0009. Nghiệm thu tuần 3 xem `hoan-thien-tuan-3.md`.
+
 ```powershell
 Copy-Item .env.example .env
 node scripts/dxdesk.mjs up
@@ -146,7 +151,7 @@ docker compose --env-file .env -f infra/compose/docker-compose.yml exec keycloak
 docker compose --env-file .env -f infra/compose/docker-compose.yml exec keycloak \
   /opt/keycloak/bin/kcadm.sh update users/<ID> -r dxdesk -s 'requiredActions=["CONFIGURE_TOTP"]'
 
-# Tắt trở lại trước khi chạy harness/CI:
+# Bỏ yêu cầu enrollment; không xóa credential OTP đã cấu hình:
 #   ... update users/<ID> -r dxdesk -s 'requiredActions=[]'
 ```
 
@@ -172,7 +177,8 @@ Nghiệm thu M2 số 1 ("đăng nhập SSO + OTP, tạo ticket VPN có ảnh ch�
 `employee.a` bằng cách 1, đăng nhập web qua Keycloak bằng trình duyệt, quét QR bằng ứng dụng
 TOTP bất kỳ (FreeOTP/Authenticator), nhập mã, tạo ticket VPN kèm ảnh chụp màn hình, kiểm tra
 ticket ở trạng thái `new` và có bản ghi `ticket_events`. Chứng minh harness không hỏng: tắt
-OTP (hoặc dùng user khác chưa bật) rồi chạy `node tools/testing/native-sso.mjs`.
+credential OTP trong Admin Console của tài khoản kiểm thử (hoặc dùng user khác chưa bật)
+rồi chạy `node tools/testing/native-sso.mjs`. Chỉ xóa requiredActions không tắt TOTP đã đăng ký.
 Chưa chạy thật các lệnh trên — máy phát triển chưa có Docker, tất cả các lệnh `docker compose
 exec ... kcadm.sh` **chờ Docker/CI kiểm chứng**; cú pháp theo tài liệu kcadm của Keycloak 26.
 
@@ -182,10 +188,10 @@ exec ... kcadm.sh` **chờ Docker/CI kiểm chứng**; cú pháp theo tài liệ
   error/runtime của APISIX (image ghi error.log ra stdout; không có curl trong container).
 - `docker compose ... exec apisix cat /usr/local/apisix/logs/access.log` — access log mặc định
   của APISIX ghi lại từng yêu cầu đi qua cổng (kèm request id); không cần cài plugin ghi log.
-- Tuần 3, route `/api/*` còn ghi thêm giới hạn tần suất `limit-req` (30 req/giây/source, burst
-  10, trả 429 kèm thông báo tiếng Việt) và kiểm chữ ký token Keycloak bằng `openid-connect`
-  chế độ `bearer_only + use_jwks`; `/api/health` đi qua route riêng nên healthcheck CI không
-  cần token. Hành vi 401/429 thực tế **chờ CI/stack Docker**.
+- Route `/api/*` có `limit-req` (30 req/giây/source, burst 10, trả 429).
+  Chữ ký JWT hiện được kiểm tại API và PostgREST; plugin openid-connect tại gateway
+  đã bị gỡ vì discovery trả URL không truy cập được trong container. /api/health
+  đi route công khai riêng. Không coi cấu hình rate limit là nghiệm thu runtime 429.
 
 ## Migration và cập nhật
 

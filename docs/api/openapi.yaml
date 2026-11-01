@@ -199,14 +199,23 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /tickets/{id}/attachments:
+    get:
+      operationId: listAttachments
+      summary: Metadata theo RLS, không trả object_key
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "200":
+          description: Danh sách metadata gồm pending, clean, infected, failed
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
     post:
       operationId: uploadAttachment
       summary: Tải tệp đính kèm kèm quét virus clamd (ADR 0007)
       description: >-
-        DEVIATION từ ADR 0007 (ghi "multipart"): body là JSON với nội dung nhị phân mã
-        base64, vì package.json bị CI ghim bằng `npm ci` và multer không phải dependency
-        khai báo. API quét stream qua clamd INSTREAM/TCP TRƯỚC, chỉ PUT object lên
-        SeaweedFS khi sạch, rồi insert metadata; infected => 422 (không ghi SeaweedFS,
+        Body JSON/base64 được buffer trong RAM, tối đa 10 MiB nhị phân.
+        API quét qua clamd INSTREAM/TCP TRƯỚC, commit intent pending rồi PUT object lên
+        SeaweedFS Filer khi sạch và hoàn tất metadata; infected => 422 (không ghi SeaweedFS,
         metadata scan_status='infected'); clamd lỗi/timeout => 503 (scan_status='failed').
         file_name chỉ lưu vào cột, không dùng làm object key (server sinh key).
       parameters:
@@ -244,6 +253,50 @@ paths:
           description: "Tệp quá cỡ/rỗng, hoặc clamd báo nhiễm (không ghi SeaweedFS, ghi metadata infected)"
         "503":
           description: "clamd không trả lời/timeout hoặc SeaweedFS lỗi (metadata scan_status='failed')"
+  /attachments/{id}/download-url:
+    post:
+      operationId: issueAttachmentDownload
+      summary: Kiểm RLS và trạng thái clean rồi cấp URL ký HMAC hạn 120 giây
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+      responses:
+        "201":
+          description: URL tương đối cùng origin, Cache-Control no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expires_at]
+                properties:
+                  url: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /attachments/{id}/content:
+    get:
+      operationId: downloadAttachment
+      summary: Đọc tệp bằng capability ký, không nhận JWT trong URL
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Id" }
+        - in: query
+          name: expires
+          required: true
+          schema: { type: string, pattern: '^[0-9]{10}$' }
+        - in: query
+          name: signature
+          required: true
+          schema: { type: string, pattern: '^[a-f0-9]{64}$' }
+      responses:
+        "200":
+          description: Bytes tải xuống, Content-Disposition attachment, nosniff, no-store
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /device-requests:
     get:
       operationId: listDeviceRequests
@@ -364,5 +417,5 @@ components:
           description: "Key do server sinh: attachments/<ticket>/<uuid>"
         content_type: { type: string }
         size_bytes: { type: integer, minimum: 1, maximum: 10485760 }
-        scan_status: { type: string, enum: [clean, infected, failed] }
+        scan_status: { type: string, enum: [pending, clean, infected, failed] }
         created_at: { type: string, format: date-time }

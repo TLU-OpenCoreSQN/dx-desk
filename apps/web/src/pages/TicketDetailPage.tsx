@@ -34,6 +34,7 @@ import { PriorityBadge, StatusBadge } from '../components/common/Badge';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { EmptyState } from '../components/common/EmptyState';
 import { Alert } from '../components/common/Alert';
+import { AttachmentPanel } from '../components/common/AttachmentPanel';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getAllowedTransitions,
@@ -62,6 +63,7 @@ function eventSummary(evt: TicketEvent): {
   from: string | null;
   to: string | null;
   note: string | null;
+  resolutionNote: string | null;
 } {
   const payload = evt.payload || {};
   const from = typeof payload.from === 'string' ? payload.from : null;
@@ -74,9 +76,9 @@ function eventSummary(evt: TicketEvent): {
   const note =
     typeof payload.note === 'string' && payload.note.trim()
       ? payload.note
-      : typeof payload.resolution_note === 'string' && payload.resolution_note.trim()
-        ? payload.resolution_note
-        : null;
+      : null;
+  const resolutionNote = typeof payload.resolution_note === 'string' && payload.resolution_note.trim()
+    ? payload.resolution_note : null;
 
   let heading = evt.event_type;
   if (evt.event_type === 'created') heading = 'Đã tiếp nhận phiếu';
@@ -86,7 +88,7 @@ function eventSummary(evt: TicketEvent): {
         ? `Chuyển từ ${statusLabel(from)} sang ${statusLabel(to)}`
         : 'Cập nhật trạng thái';
   }
-  return { heading, from, to, note };
+  return { heading, from, to, note, resolutionNote };
 }
 
 const formatDateTime = (isoString?: string): string => {
@@ -338,8 +340,8 @@ export const TicketDetailPage: React.FC = () => {
     );
   }
 
-  const ticketFields = (ticket as unknown as { fields?: Record<string, string> }).fields;
-  const hasFields = Boolean(ticketFields && Object.keys(ticketFields).length > 0);
+  const ticketFields = ticket.request_fields || {};
+  const hasFields = Object.values(ticketFields).some((value) => typeof value === 'string');
   const currentStatus = ticket.status;
 
   return (
@@ -466,21 +468,35 @@ export const TicketDetailPage: React.FC = () => {
                   <span>Thông tin bổ sung theo danh mục</span>
                 </h2>
                 <dl className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {Object.entries(ticketFields as Record<string, string>).map(([key, val]) => (
-                    <div
-                      key={key}
-                      className="min-w-0 rounded-[6px] border border-[#e4e3e0] bg-[#fbfaf8] p-3"
-                    >
-                      <dt className="mb-0.5 break-all font-mono text-[11px] text-[#5f5e5a]">
-                        {key}
-                      </dt>
-                      <dd className="break-words text-xs font-semibold text-[#211f1b]">{val}</dd>
-                    </div>
-                  ))}
+                  {Object.entries(ticketFields).map(([key, val]) =>
+                    typeof val === 'string' ? (
+                      <div
+                        key={key}
+                        className="min-w-0 rounded-[6px] border border-[#e4e3e0] bg-[#fbfaf8] p-3"
+                      >
+                        <dt className="mb-0.5 break-all text-[11px] text-[#5f5e5a]">
+                          {category?.requirement_fields?.find((field) => field.key === key)?.label || key}
+                        </dt>
+                        <dd className="whitespace-pre-wrap break-words text-xs font-semibold text-[#211f1b]">{val}</dd>
+                      </div>
+                    ) : null
+                  )}
                 </dl>
               </div>
             )}
+            {ticket.resolution_note && (
+              <section aria-label="Kết quả xử lý" className="border-t border-[#e4e3e0] px-5 py-4">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-[#211f1b]">
+                  Kết quả xử lý
+                </h2>
+                <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#211f1b]">
+                  {ticket.resolution_note}
+                </p>
+              </section>
+            )}
           </section>
+
+          <AttachmentPanel ticketId={ticket.id} />
 
           {/* Timeline */}
           <section className="overflow-hidden rounded-[8px] border border-[#e4e3e0] bg-white shadow-2xs">
@@ -526,10 +542,6 @@ export const TicketDetailPage: React.FC = () => {
                           const toneStatus =
                             summary.to && isTicketStatus(summary.to) ? summary.to : null;
                           const Icon = toneStatus ? STATUS_ICONS[toneStatus] : null;
-                          const noteLabel =
-                            typeof evt.payload?.resolution_note === 'string'
-                              ? 'Cách giải quyết'
-                              : 'Ghi chú';
 
                           return (
                             <li key={evt.id || idx} className="relative pl-10">
@@ -580,10 +592,20 @@ export const TicketDetailPage: React.FC = () => {
                                 {summary.note && (
                                   <div className="mt-2 rounded-[4px] border border-[#e5e5e2] bg-[#f6f5f3]/80 px-3 py-2">
                                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8c8a85]">
-                                      {noteLabel}
+                                      Ghi chú
                                     </p>
                                     <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#211f1b]">
                                       {summary.note}
+                                    </p>
+                                  </div>
+                                )}
+                                {summary.resolutionNote && (
+                                  <div className="mt-2 rounded-[4px] border border-[#b8dcce] bg-[#e8f3ed] px-3 py-2">
+                                    <p className="text-[10px] font-semibold uppercase tracking-wider text-[#27553c]">
+                                      Cách giải quyết
+                                    </p>
+                                    <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#211f1b]">
+                                      {summary.resolutionNote}
                                     </p>
                                   </div>
                                 )}

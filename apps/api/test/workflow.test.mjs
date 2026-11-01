@@ -298,6 +298,11 @@ test('W3-03: SLA due date and paused-millisecond deadline math', () => {
   assert.equal(isSlaBreached(due, 120_000, new Date('2026-10-26T15:01:00Z')), false);
   assert.equal(isSlaBreached(due, 120_000, new Date('2026-10-26T15:02:00Z')), false);
   assert.equal(isSlaBreached(due, 120_000, new Date('2026-10-26T15:02:01Z')), true);
+  const waiting = new Date('2026-10-26T14:59:00Z');
+  const later = new Date('2026-10-26T16:00:00Z');
+  assert.equal(isSlaBreached(due, 0, later, waiting), false, 'open waiting interval freezes remaining SLA');
+  assert.equal(isSlaBreached(due, 0, later, new Date('2026-10-26T15:01:00Z')), true,
+    'waiting after the deadline must not erase an existing breach');
 });
 
 test('workflow SQLSTATE 4500x from DB guard maps to curated Vietnamese errors, never raw SQL', () => {

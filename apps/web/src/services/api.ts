@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  Attachment,
   Category,
   CreateDeviceRequestPayload,
   CreateTicketPayload,
@@ -14,6 +15,7 @@ import {
   UserProfile,
 } from '../types/api';
 import { ensureFreshToken, getAccessToken, expireSession } from './keycloak';
+import { fileBase64, fileError } from '../lib/attachments';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -168,6 +170,21 @@ export async function createTicket(payload: CreateTicketPayload): Promise<Ticket
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export function getAttachments(id: string): Promise<{ data: Attachment[] }> {
+  return request(`/tickets/${encodeURIComponent(id)}/attachments`);
+}
+export async function uploadAttachment(id: string, file: File): Promise<Attachment> {
+  const error = fileError(file);
+  if (error) throw new ApiClientError(422, error);
+  return request(`/tickets/${encodeURIComponent(id)}/attachments`, {
+    method: 'POST', signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ file_name: file.name, content_type: file.type, content_base64: await fileBase64(file) }),
+  });
+}
+export function getAttachmentDownload(id: string): Promise<{ url: string; expires_at: string }> {
+  return request(`/attachments/${encodeURIComponent(id)}/download-url`, { method: 'POST' });
 }
 
 /**

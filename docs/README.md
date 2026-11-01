@@ -14,8 +14,6 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 
 ## Tài liệu tuần 2
 
-
-
 - [Kế hoạch và tiến độ có ô tick](ke-hoach-tuan-2.md).
 - [Cài đặt Windows/Linux và kiểm thử](cai-dat.md).
 - [Schema và quyền dữ liệu](du-lieu.md).
@@ -24,6 +22,13 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 - [Báo cáo kiểm thử và bàn giao](bao-cao-kiem-thu-tuan-2.md).
 - [Danh sách Issue chuẩn bị cho GitHub](github-issues-tuan-2.md).
 - [Chuẩn bị phát hành và việc cần người phụ trách](phat-hanh-tuan-2.md).
+
+## Tài liệu tuần 3
+
+- [Kế hoạch tuần 3 và trạng thái tiêu chí M2](ke-hoach-tuan-3.md).
+- [Hoàn thiện tuần 3: ánh xạ W3-01…W3-09, lệnh kiểm thử, phần cần người nghiệm thu](hoan-thien-tuan-3.md).
+- [Các bản sửa sau review source](sec-dev-fixes.md).
+- ADR tuần 3: [0007 vị trí quét ClamAV](adr/0007-vi-tri-quet-clamav.md), [0008 SSO cho ứng dụng có sẵn](adr/0008-sso-keycloak-cho-ung-dung-co-san.md), [0009 JWT tại gateway và URL tải tệp](adr/0009-gateway-jwt-va-url-tai-tep.md).
 
 ## Quy ước
 

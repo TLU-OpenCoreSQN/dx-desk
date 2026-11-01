@@ -42,6 +42,8 @@ export interface Ticket {
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
+  request_fields?: Record<string, unknown>;
+  resolution_note?: string | null;
 }
 
 export interface TicketEvent {
@@ -50,6 +52,16 @@ export interface TicketEvent {
   actor_id: string;
   event_type: string;
   payload: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface Attachment {
+  id: string;
+  ticket_id: string;
+  file_name: string;
+  content_type: string;
+  size_bytes: number | string;
+  scan_status: 'pending' | 'clean' | 'infected' | 'failed';
   created_at: string;
 }
 

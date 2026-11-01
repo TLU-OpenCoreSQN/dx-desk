@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 import { createApp } from '../dist/app.js';
 import { Database } from '../dist/database.js';
+import { downloadSignature } from '../dist/downloads.js';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
 if (!adminUrl || !new URL(adminUrl).pathname.startsWith('/dxdesk_test')) {
@@ -32,6 +33,7 @@ let restLogs = '';
 // và đường ghi metadata qua migration 004 + RLS, nhưng KHÔNG chạy engine ClamAV thật.
 let clamdServer, seaweedServer;
 const seaweedPuts = [];
+const seaweedDeletes = [];
 const tokens = {};
 const claims = key => ({
   sub: users[key].sub, role: 'authenticated', realm_access: { roles: users[key].roles },
@@ -72,10 +74,10 @@ async function create(key, title, extra) {
   assert.equal(result.status, 201, JSON.stringify(result.body));
   return result.body;
 }
-// PostgREST ghi thẳng vào cột: 'fields' là key của hợp đồng API (thuộc W3-02), không phải cột tickets.
+// Direct REST must satisfy the same category fields as the API.
 const restTicket = (title, extra = {}) => {
   const { fields, ...columns } = newTicket(title, extra);
-  return columns;
+  return { ...columns, request_fields: fields };
 };
 async function freePort() {
   const server = createServer();
@@ -144,10 +146,15 @@ before(async () => {
   });
   clamdServer.listen(0, '127.0.0.1'); await once(clamdServer, 'listening');
   seaweedServer = createServer((request, response) => {
+    if (request.method === 'GET') {
+      const item = seaweedPuts.find(item => item.url === request.url);
+      response.statusCode = item ? 200 : 404; response.end(item?.body); return;
+    }
     const chunks = [];
     request.on('data', c => chunks.push(c));
     request.on('end', () => {
-      seaweedPuts.push({ method: request.method, url: request.url, body: Buffer.concat(chunks) });
+      (request.method === 'DELETE' ? seaweedDeletes : seaweedPuts)
+        .push({ method: request.method, url: request.url, body: Buffer.concat(chunks) });
       response.statusCode = 200; response.end('OK');
     });
   });
@@ -157,6 +164,7 @@ before(async () => {
     OIDC_JWKS_URL: issuer + '/certs', DB_POOL_MAX: '2',
     CLAMD_ADDR: `127.0.0.1:${clamdServer.address().port}`, CLAMD_TIMEOUT_MS: '2000',
     SEAWEEDFS_ENDPOINT: `http://127.0.0.1:${seaweedServer.address().port}`,
+    ATTACHMENT_SIGNING_KEY: 'integration-only-signing-secret-at-least-32-bytes',
   });
   app = await createApp(); await app.listen(0, '127.0.0.1');
   apiUrl = await app.getUrl(); db = app.get(Database);
@@ -267,8 +275,8 @@ test('ownership/status spoofing, invalid FK and malformed input fail without par
 test('rollback and concurrent pooled requests never leak identity', async () => {
   const marker = 'Ticket cần rollback';
   await assert.rejects(db.asUser(claims('a'), async client => {
-    await client.query('INSERT INTO public.tickets(category_id,title,description) VALUES ($1,$2,$3)',
-      [category, marker, 'Transaction sẽ bị rollback']);
+    await client.query('INSERT INTO public.tickets(category_id,title,description,request_fields) VALUES ($1,$2,$3,$4)',
+      [category, marker, 'Transaction sẽ bị rollback', JSON.stringify(newTicket(marker).fields)]);
     throw new Error('forced rollback');
   }), /forced rollback/);
   assert.equal((await admin.query('SELECT id FROM public.tickets WHERE title=$1', [marker])).rowCount, 0);
@@ -301,6 +309,89 @@ test('audit and attachments cannot be forged; other employee cannot read related
   assert.equal((await call(restUrl, '/ticket_events', 'a', {
     ticket_id: ticket.id, actor_id: users.b.sub, event_type: 'created',
   })).status, 403);
+});
+test('direct REST enforces access approval on omitted and explicit initial status', async () => {
+  const body = restTicket('REST yêu cầu cấp quyền', {
+    category_id: '10000000-0000-4000-8000-000000000005',
+    fields: { system_name: 'CRM', permission_level: 'ReadOnly', valid_until: '2026-12-31' },
+  });
+  for (const key of ['a', 'b']) {
+    assert.equal((await call(restUrl, '/tickets', key, body)).status, 403);
+    assert.equal((await call(restUrl, '/tickets', key, { ...body, status: 'new' })).status, 403);
+    const approvedPath = await call(restUrl, '/tickets', key, { ...body, status: 'pending_approval' });
+    assert.equal(approvedPath.status, 201, JSON.stringify(approvedPath.body));
+    assert.equal(approvedPath.body[0].status, 'pending_approval');
+  }
+  for (const key of ['agent', 'manager']) {
+    assert.equal((await call(restUrl, '/tickets', key, body)).status, 201);
+    assert.equal((await call(restUrl, '/tickets', key, { ...body, status: 'pending_approval' })).status, 403);
+  }
+});
+test('direct REST validates and normalizes category fields before creating audit', async () => {
+  const before = Number((await admin.query('SELECT count(*) FROM public.ticket_events')).rows[0].count);
+  const body = restTicket('REST kiểm tra trường động');
+  const cases = [
+    [{}, 422],
+    [{ client_version: '4.2', error_message: '\u00a0\t ' }, 422],
+    [{ ...body.request_fields, rogue: 'value' }, 400],
+    [{ ...body.request_fields, error_message: { nested: true } }, 400],
+    [{ ...body.request_fields, error_message: null }, 400],
+    [{ ...body.request_fields, error_message: 'x'.repeat(501) }, 400],
+  ];
+  for (const [fields, status] of cases) {
+    const result = await call(restUrl, '/tickets', 'a', { ...body, request_fields: fields });
+    assert.equal(result.status, status, JSON.stringify(result.body));
+  }
+  const { request_fields, ...missing } = body;
+  assert.equal((await call(restUrl, '/tickets', 'a', missing)).status, 422);
+  assert.equal(Number((await admin.query('SELECT count(*) FROM public.ticket_events')).rows[0].count), before);
+  const normalized = await call(restUrl, '/tickets', 'a', {
+    ...body, request_fields: { client_version: '  4.2  ', error_message: '  Connection failed  ', device_os: '  ' },
+  });
+  assert.equal(normalized.status, 201, JSON.stringify(normalized.body));
+  assert.deepEqual(normalized.body[0].request_fields, { client_version: '4.2', error_message: 'Connection failed' });
+});
+test('SLA columns and resolution notes cannot be forged without a valid transition', async () => {
+  const ticket = await create('a', 'Bảo vệ số liệu SLA');
+  for (const key of ['a', 'agent', 'manager']) {
+    for (const body of [
+      { sla_paused_ms: 315360000000 }, { waiting_since: '2000-01-01T00:00:00Z' },
+      { updated_at: '2000-01-01T00:00:00Z' }, { resolution_note: 'Giả kết quả xử lý' },
+    ]) {
+      const result = await patch(restUrl, `/tickets?id=eq.${ticket.id}`, key, body);
+      assert.equal(result.status, 403, JSON.stringify(result.body));
+    }
+  }
+  const actual = (await call(apiUrl, `/api/tickets/${ticket.id}`)).body;
+  assert.equal(Number(actual.sla_paused_ms), 0);
+  assert.equal(actual.waiting_since, null);
+  assert.equal(actual.resolution_note, null);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/events`)).body.data.length, 1);
+});
+test('reopen clears the previous result and closed tickets preserve resolution history', async () => {
+  const ticket = await create('a', 'Bảo vệ kết quả xử lý');
+  for (const to of ['triaged', 'assigned', 'in_progress']) {
+    assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to })).status, 200);
+  }
+  const firstNote = 'Cài lại client VPN và kiểm tra kết nối';
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent',
+    { to: 'resolved', resolution_note: firstNote })).status, 200);
+  const reopened = await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to: 'in_progress' });
+  assert.equal(reopened.body.resolution_note, null);
+  const stale = await patch(restUrl, `/tickets?id=eq.${ticket.id}`, 'agent', { status: 'resolved' });
+  assert.equal(stale.status, 400);
+  assert.equal(stale.body.code, '45003');
+  const secondNote = 'Thay bộ định tuyến, kiểm tra lần hai';
+  assert.equal((await patch(restUrl, `/tickets?id=eq.${ticket.id}`, 'agent',
+    { status: 'resolved', resolution_note: secondNote })).status, 200);
+  assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'closed' })).status, 200);
+  const before = (await call(apiUrl, `/api/tickets/${ticket.id}/events`)).body.data;
+  assert.deepEqual(before.filter(event => event.payload.to === 'resolved').map(event => event.payload.resolution_note),
+    [firstNote, secondNote]);
+  assert.equal((await patch(restUrl, `/tickets?id=eq.${ticket.id}`, 'a',
+    { resolution_note: 'Sửa kết quả sau khi đóng' })).status, 403);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}`)).body.resolution_note, secondNote);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/events`)).body.data.length, before.length);
 });
 test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', async () => {
   const ticket = await create('a', 'Luồng tuần 3 VPN');
@@ -371,11 +462,115 @@ test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', as
   assert.equal((await patch(apiUrl, `/api/tickets/${denied.id}/status`, 'manager', { to: 'assigned' })).status, 422);
 });
 
+async function seedState(status, owner = 'a') {
+  return (await admin.query(`INSERT INTO public.tickets(requester_id,category_id,title,description,status,resolution_note,waiting_since)
+    VALUES($1,$2,'Isolated workflow matrix','State prepared by migration owner for transition acceptance',$3,
+      CASE WHEN $3='resolved' THEN 'Historical result' END,
+      CASE WHEN $3='waiting_user' THEN now()-interval '1 second' END) RETURNING *`,
+    [users[owner].sub, category, status])).rows[0];
+}
+
+test('all 17 DB edges enforce role and requester permissions through API and direct REST', async () => {
+  const edges = (await admin.query('SELECT * FROM private.ticket_transitions ORDER BY from_status,to_status')).rows;
+  assert.equal(edges.length, 17);
+  for (const edge of edges) for (const actor of ['a','agent','manager']) for (const owned of [true,false]) {
+    const allowed = edge.allowed_roles.some(r => users[actor].roles.includes(r)) || edge.requester_allowed && owned;
+    for (const rest of [false,true]) {
+      const ticket = await seedState(edge.from_status, owned ? actor : 'b');
+      const body = rest ? { status: edge.to_status } : { to: edge.to_status };
+      if (edge.to_status === 'resolved') body.resolution_note = 'New resolution for this transition';
+      const result = await patch(rest ? restUrl : apiUrl,
+        rest ? `/tickets?id=eq.${ticket.id}` : `/api/tickets/${ticket.id}/status`, actor, body);
+      const invisible = actor === 'a' && !owned;
+      assert.equal(result.status, allowed ? 200 : invisible ? (rest ? 200 : 404) : rest ? 400 : 403,
+        `${rest?'REST':'API'} ${edge.from_status}->${edge.to_status} ${actor} owner=${owned}: ${JSON.stringify(result.body)}`);
+      const actual = (await admin.query('SELECT status FROM public.tickets WHERE id=$1', [ticket.id])).rows[0];
+      assert.equal(actual.status, allowed ? edge.to_status : edge.from_status);
+      assert.equal((await admin.query('SELECT count(*)::int AS n FROM public.ticket_events WHERE ticket_id=$1', [ticket.id])).rows[0].n,
+        allowed ? 2 : 1, 'denied writes cannot add audit events');
+    }
+  }
+});
+
+test('conflicting concurrent transitions serialize and an audit failure rolls back the status', async () => {
+  const ticket = await create('a', 'Concurrent transition acceptance');
+  const results = await Promise.all(['triaged','pending_approval'].map(to =>
+    patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to })));
+  assert.deepEqual(results.map(r => r.status).sort(), [200,422]);
+  const events = (await call(apiUrl, `/api/tickets/${ticket.id}/events`, 'a')).body.data;
+  assert.equal(events.length, 2);
+  const rollback = await create('a', 'Atomic status and audit acceptance');
+  await admin.query(`CREATE FUNCTION public.test_fail_status_audit() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN IF NEW.event_type='status_changed' THEN RAISE EXCEPTION 'test audit unavailable'; END IF; RETURN NEW; END $$;
+    CREATE TRIGGER test_status_audit BEFORE INSERT ON public.ticket_events FOR EACH ROW EXECUTE FUNCTION public.test_fail_status_audit()`);
+  try {
+    assert.equal((await patch(apiUrl, `/api/tickets/${rollback.id}/status`, 'agent', { to:'triaged' })).status, 500);
+    assert.equal((await call(apiUrl, `/api/tickets/${rollback.id}`, 'a')).body.status, 'new');
+    assert.equal((await call(apiUrl, `/api/tickets/${rollback.id}/events`, 'a')).body.data.length, 1);
+  } finally { await admin.query('DROP TRIGGER test_status_audit ON public.ticket_events; DROP FUNCTION public.test_fail_status_audit()'); }
+});
+
+test('SLA accumulates repeated waits, cancellation ends an open wait, and reopen keeps the original due date', async () => {
+  const ticket = await seedState('in_progress');
+  let paused = 0;
+  for (let cycle=0; cycle<2; cycle++) {
+    assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', {to:'waiting_user'})).status, 200);
+    await new Promise(r => setTimeout(r, 150));
+    const resumed = await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', {to:'in_progress'});
+    assert.ok(Number(resumed.body.sla_paused_ms) >= paused+100);
+    paused = Number(resumed.body.sla_paused_ms);
+  }
+  const resolved = await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', {to:'resolved',resolution_note:'Resolution acceptance'});
+  assert.equal(resolved.status, 200);
+  const reopened = await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', {to:'in_progress'});
+  assert.equal(reopened.body.sla_due_at, ticket.sla_due_at.toISOString());
+  assert.equal(Number(reopened.body.sla_paused_ms), paused);
+  const waiting = await seedState('waiting_user');
+  const cancelled = await patch(apiUrl, `/api/tickets/${waiting.id}/status`, 'a', {to:'cancelled'});
+  assert.ok(Number(cancelled.body.sla_paused_ms) >= 1000);
+  assert.equal(cancelled.body.waiting_since, null);
+});
+
 // W3-06: tải tệp đính kèm — clamd GIẢ (node:net) + SeaweedFS GIẢ (node:http) nhưng
 // PostgreSQL/RLS THẬT và hàm private.record_attachment của migration 004 THẬT.
 // Chứng minh ghép nối và thứ tự chống orphan; KHÔNG chạy engine ClamAV thật (EICAR chỉ mô phỏng).
 const uploadBody = (contentBase64, contentType = 'text/plain', fileName = 'file.txt') =>
   ({ file_name: fileName, content_type: contentType, content_base64: contentBase64 });
+
+test('signed downloads enforce ownership, clean status and short-lived byte-exact access', async () => {
+  const ticket = await create('a', 'Tải xuống tệp an toàn');
+  const bytes = Buffer.from('Download bytes: tiếng Việt 0123456789');
+  const uploaded = await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a',
+    uploadBody(bytes.toString('base64'), 'text/plain', 'ghi chú.txt'));
+  assert.equal(uploaded.status, 201);
+  const id = uploaded.body.id;
+  const list = await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a');
+  assert.equal(list.body.data.length, 1);
+  assert.equal('object_key' in list.body.data[0], false);
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'b')).status, 404);
+  assert.equal((await call(apiUrl, `/api/attachments/${id}/download-url`, 'b', {})).status, 404);
+  assert.equal((await call(apiUrl, `/api/attachments/${id}/download-url`, null, {})).status, 401);
+  const issued = await call(apiUrl, `/api/attachments/${id}/download-url`, 'a', {});
+  assert.equal(issued.status, 201);
+  const url = issued.body.url;
+  const download = await fetch(apiUrl + url);
+  assert.equal(download.status, 200);
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()), bytes);
+  assert.equal(download.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(download.headers.get('content-disposition'), /^attachment;/);
+  for (const invalid of [url.replace(/signature=[a-f0-9]+/, 'signature=' + '0'.repeat(64)),
+    url.replace(id, ticket.id), `/api/attachments/${id}/content`, url + '&expires=1000000000']) {
+    assert.equal((await fetch(apiUrl + invalid)).status, 403);
+  }
+  const expired = String(Math.floor(Date.now() / 1000) - 1);
+  assert.equal((await fetch(`${apiUrl}/api/attachments/${id}/content?expires=${expired}&signature=${downloadSignature(id, expired)}`)).status, 403);
+  await admin.query("UPDATE public.attachments SET scan_status='failed' WHERE id=$1", [id]);
+  assert.equal((await call(apiUrl, `/api/attachments/${id}/download-url`, 'a', {})).status, 403);
+  assert.equal((await fetch(apiUrl + url)).status, 404, 'already issued link cannot read a non-clean object');
+  await assert.rejects(db.asUser(claims('a'), c => c.query('SELECT * FROM private.clean_attachment_for_download($1)', [id])),
+    error => error.code === '42501');
+  assert.equal((await call(restUrl, '/rpc/clean_attachment_for_download', 'a', { p_id: id })).status, 404);
+});
 
 test('W3-06: upload quét clamd, lưu SeaweedFS khi sạch, ghi metadata theo RLS trên PostgreSQL thật', async () => {
   const ticket = await create('a', 'Ticket đính kèm W3-06');
@@ -429,4 +624,36 @@ test('W3-06: upload quét clamd, lưu SeaweedFS khi sạch, ghi metadata theo RL
     uploadBody(clean, 'application/x-msdownload'))).status, 400);
   assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a',
     uploadBody('not!!!valid#base64'))).status, 400);
+});
+
+test('upload reserves metadata before PUT and compensates a failed DB completion', async () => {
+  const ticket = await create('a', 'DB failure during upload');
+  const body = uploadBody(Buffer.from('benign lifecycle test').toString('base64'));
+  await admin.query(`
+    CREATE FUNCTION public.test_fail_attachment() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN RAISE EXCEPTION 'simulated metadata failure'; END $$;
+    CREATE TRIGGER test_attachment_insert BEFORE INSERT ON public.attachments
+      FOR EACH ROW EXECUTE FUNCTION public.test_fail_attachment();
+  `);
+  const puts = seaweedPuts.length, deletes = seaweedDeletes.length;
+  try {
+    assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a', body)).status, 500);
+    assert.equal(seaweedPuts.length, puts, 'no object before metadata reservation commits');
+  } finally { await admin.query('DROP TRIGGER test_attachment_insert ON public.attachments'); }
+  await admin.query(`
+    CREATE TRIGGER test_attachment_finish BEFORE UPDATE ON public.attachments
+      FOR EACH ROW WHEN (NEW.scan_status = 'clean') EXECUTE FUNCTION public.test_fail_attachment();
+  `);
+  try {
+    assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/attachments`, 'a', body)).status, 500);
+    assert.equal(seaweedPuts.length, puts + 1);
+    assert.equal(seaweedDeletes.length, deletes + 1);
+    assert.equal(seaweedPuts.at(-1).url, seaweedDeletes.at(-1).url);
+    const rows = (await admin.query('SELECT * FROM public.attachments WHERE ticket_id=$1', [ticket.id])).rows;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].scan_status, 'failed');
+    assert.equal('/' + rows[0].object_key, seaweedPuts.at(-1).url);
+  } finally {
+    await admin.query('DROP TRIGGER test_attachment_finish ON public.attachments; DROP FUNCTION public.test_fail_attachment()');
+  }
 });

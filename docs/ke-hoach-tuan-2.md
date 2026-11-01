@@ -6,6 +6,12 @@
 **Nguồn:** slide `DX-Desk_Hop-doi-tuan-2_ban-1.1.pptx`, slide 9–18, README,
 CONTRIBUTING và danh mục ADR có sẵn trong repo.
 
+> Cập nhật 31/10/2026: các ô tick bên dưới được đối chiếu lại với CI run #42
+> (`41160760838`, push `main`, SHA `d2ee443`, 12/12 job xanh). Chỉ tick mục có
+> dòng PASS trong log job của đúng SHA đó; chi tiết ở
+> [Chặng 10](#31102026---chặng-10-đối-chiếu-lại-với-ci-trên-main). Nhật ký 21/10 và
+> 26/10 giữ nguyên làm lịch sử.
+
 ## Cách đọc và cập nhật
 
 - `[x]` chỉ đánh dấu khi có kết quả thực tế của mục đó.
@@ -32,9 +38,9 @@ CONTRIBUTING và danh mục ADR có sẵn trong repo.
 - [x] SSO native: 10/10 kiểm tra đạt với Keycloak 26.8.1 thật, gồm ticket,
   thiết bị, RLS API/PostgREST, refresh và logout; không đi qua APISIX.
 - [x] Cấu hình tích hợp Compose/API/web/Keycloak đã viết và kiểm cú pháp.
-- [ ] Xác thực xuyên suốt bằng stack thật — cần Docker.
+- [x] Xác thực xuyên suốt bằng stack thật. *31/10: run #42 PASS `Keycloak users authenticate`, `Token accepted by API and PostgREST` và đăng nhập PKCE trên trình duyệt qua APISIX.*
 - [x] PostgreSQL/PostgREST thực tế: 8/8 integration tests PASS, gồm kiểm thử TN-02.
-- [ ] Nghiệm thu toàn stack bằng Docker — cần môi trường Docker.
+- [x] Nghiệm thu toàn stack bằng Docker. *31/10: job stack của run #42 trên VM GitHub sạch, không phải máy cục bộ.*
 - [x] ADR, báo cáo kiểm thử, hướng dẫn demo và script đóng gói review cục bộ đã có.
 
 ## Trình tự thực hiện
@@ -96,7 +102,7 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 - [x] Thêm job TN-02 và job nghiệm thu stack; chưa chạy GitHub.
 - [x] REUSE snapshot nguồn đạt; lockfile khớp dependency; npm ci web/API đạt.
 - [x] Chạy build, unit/integration/browser, audit, config, ShellCheck, REUSE và diff tại máy.
-- [ ] CI GitHub xanh trên PR/main — chưa push nên chưa có kết quả (đính chính 26/10: xem chặng 9).
+- [x] CI GitHub xanh trên PR/main. *31/10: run #42 trên `main` (`d2ee443`) xanh 12/12 job.*
 
 ### W2-03 — Docker Compose Tầng 1 và ứng dụng
 
@@ -109,8 +115,8 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 - [x] Tích hợp audience mapper vào realm Keycloak.
 - [x] Viết `make up`, `make migrate`, `make test` và script Windows.
 - [x] Compose config, YAML/route/env và ShellCheck đạt; chưa xác nhận container runtime.
-- [ ] Chạy sạch toàn stack, đủ dịch vụ healthy — bị chặn bởi thiếu Docker.
-- [ ] Kiểm tra startup lần hai không làm mất dữ liệu.
+- [x] Chạy sạch toàn stack, đủ dịch vụ healthy. *31/10: run #42, `node scripts/dxdesk.mjs up` trên VM sạch rồi `PASS Gateway health`, `API ready through APISIX`.*
+- [x] Kiểm tra startup lần hai không làm mất dữ liệu. *31/10: run #42, `make up` lần hai + `stack-test.mjs --verify-preserved` PASS `Ticket from previous startup is preserved` và `Scanned attachment remains readable by a new signed URL after restart`.*
 
 ### W2-04 / QĐ-4 — n8n
 
@@ -118,8 +124,8 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 - [x] Rà lại import/publish, bổ sung lệnh credentials-import và n8n-reload.
 - [x] Viết script kiểm tra webhook trước/sau restart và báo lỗi rõ ràng.
 - [x] Viết ADR 0006 về n8n ngoài kho mã và quy trình import.
-- [ ] Chạy webhook thật và thử restart — cần Docker.
-- [ ] Ghi kết quả giữ n8n hay điều kiện chuyển Node-RED/Kestra, không kết luận giả.
+- [x] Chạy webhook thật và thử restart. *31/10: run #42 PASS `n8n imported workflow responds` và `n8n workflow survives restart`.*
+- [ ] Ghi kết quả giữ n8n hay điều kiện chuyển Node-RED/Kestra, không kết luận giả. *31/10: phần kỹ thuật đã có (import và restart ổn định trên CI, ghi trong ADR 0006); quyết định QĐ-4 vẫn chờ BTC xác nhận giấy phép/phạm vi n8n.*
 
 ### W2-05 — Keycloak
 
@@ -128,8 +134,8 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 - [x] Bổ sung audience `dxdesk-api`, PKCE và post-logout redirect URI.
 - [x] Import realm vào database native sạch và kiểm token Keycloak thật:
   10/10 kiểm tra SSO PASS; môi trường native, không phải container.
-- [ ] Kiểm tra import từ máy sạch Docker và token thật trên stack đích.
-- [ ] Đăng nhập trình duyệt → APISIX → API/PostgREST bằng token thật.
+- [x] Kiểm tra import từ máy sạch Docker và token thật trên stack đích. *31/10: run #42, realm nạp trên VM sạch, PASS `Keycloak users authenticate` và `Token accepted by API and PostgREST`.*
+- [x] Đăng nhập trình duyệt → APISIX → API/PostgREST bằng token thật. *31/10: run #42, `stack-browser.mjs` đăng nhập PKCE + OTP rồi tạo/xử lý ticket qua APISIX; đường PostgREST được `stack-test.mjs` kiểm bằng token Keycloak thật.*
 
 ### W2-11 — Xác nhận hạn nộp
 
@@ -141,8 +147,8 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 
 - [x] Cập nhật CHANGELOG và release notes dự thảo.
 - [x] Chuẩn bị hướng dẫn đóng gói và checklist PoF.
-- [ ] Kiểm thử máy sạch và review các phần của ba thành viên.
-- [ ] Commit/PR được duyệt, CI xanh, gộp main.
+- [ ] Kiểm thử máy sạch và review các phần của ba thành viên. *31/10: máy sạch đã có qua VM CI (run #42); review của thành viên khác vẫn chưa có.*
+- [ ] Commit/PR được duyệt, CI xanh, gộp main. *31/10: PR #3, #4, #5, #7 đã gộp `main` và CI xanh; chưa có review được duyệt nên chưa tick.*
 - [ ] Tạo tag và GitHub Release v0.1.0 cùng gói `.tar.gz`.
 - [ ] Báo cáo thầy sau nghiệm thu.
 
@@ -202,7 +208,7 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 - [x] SSO thực native: đăng nhập PKCE, hiển thị username, refresh,
   không lưu token vào web storage, logout xóa dữ liệu; harness 10/10 PASS.
 - [x] Refresh trước API, xóa dữ liệu khi logout/hết phiên/401; unit và browser fixture đạt.
-- [ ] Gọi API thật qua APISIX; hiển thị username và vai trò.
+- [ ] Gọi API thật qua APISIX; hiển thị username và vai trò. *31/10: phần gọi API thật qua APISIX đã đạt trong run #42; chưa có kiểm thử stack nào assert username/vai trò trên header.*
 - [x] Danh sách/tạo/chi tiết ticket và trang xin cấp thiết bị tối thiểu; kiểm form/payload đã đạt.
 - [x] Ứng dụng không có fixture hoặc dữ liệu giả; fixture chỉ ở harness kiểm thử độc lập.
 - [x] Build, 35/35 tests và 7/7 nhóm kiểm tra trình duyệt desktop/mobile đạt.
@@ -217,7 +223,7 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 - [x] Backend device requests đã kiểm chứng RLS từng người bằng token ký thật.
 - [x] Luồng React/Keycloak native tạo thiết bị `pending`, Employee B không đọc được,
   Agent/Manager đọc được trên API và PostgREST; kiểm mobile không tràn ngang đạt.
-- [ ] Kiểm chứng toàn bộ luồng React/Keycloak trên trình duyệt với stack thật.
+- [ ] Kiểm chứng toàn bộ luồng React/Keycloak trên trình duyệt với stack thật. *31/10: luồng ticket đã đạt trên stack thật (run #42); trang xin thiết bị chưa được `stack-browser.mjs` chạy.*
 - [x] Ghi rõ chưa thử Appsmith runtime tại môi trường này.
 
 ### W2-10 — TN-05 vòng 1: RAM và Ollama
@@ -243,8 +249,8 @@ Mỗi dòng chỉ cập nhật PASS khi lệnh thực tế kết thúc thành c�
 - [x] REUSE: `reuse lint` đạt trên snapshot file Git không bị ignore.
 - [x] ShellCheck 0.11.0 chạy 5 script shell: PASS sau sửa migration.
 - [x] Compose v2.40.3 portable chính thức: `config -q` PASS, chưa chạy daemon/container.
-- [ ] Stack: `make up` từ máy sạch, health, login, webhook.
-- [ ] Stack: `make up` lần hai/restart n8n, không mất dữ liệu.
+- [x] Stack: `make up` từ máy sạch, health, login, webhook. *31/10: run #42; lượt đầu chạy runner Node mà `make up` dùng chung, lượt hai chạy chính `make up`.*
+- [x] Stack: `make up` lần hai/restart n8n, không mất dữ liệu. *31/10: run #42, xem W2-03.*
 - [x] `git diff --check` PASS; rà auth/RLS, cấu hình, script và phần tích hợp frontend.
 
 ## Trở ngại và việc cần môi trường ngoài
@@ -434,3 +440,20 @@ lỗi thời; đính chính ở đây để nhật ký vẫn giữ nguyên tính
   hình remote (hoặc làm việc từ bản clone có remote) rồi mới push/tạo PR/tag.
 - [ ] TN-05 (máy demo 16 GB) và review của đội/Telegram BTC: vẫn chưa thực hiện.
 
+### 31/10/2026 - Chặng 10: đối chiếu lại với CI trên main
+
+Đọc log của CI run #42 (`41160760838`, push `main`, SHA `d2ee443`, 12/12 job xanh)
+bằng `gh run view --log`, không dựa vào ảnh màn hình. Các ô ở phần checklist phía
+trên đã được tick hoặc ghi chú theo kết quả này; nhật ký chặng 1-9 giữ nguyên.
+
+- [x] Docker/APISIX/n8n, startup lần hai và giữ dữ liệu (mục treo ở chặng 7-9):
+  job stack chạy `dxdesk.mjs up`, `stack-test.mjs --restart-n8n`, `stack-browser.mjs`,
+  rồi `make up` + `stack-test.mjs --verify-preserved`, tất cả PASS.
+- [x] Số test hiện tại trên CI: API 44, web 70, integration 19 trên PostgreSQL/PostgREST,
+  migration 5 nhóm (`First run applies all 9 SQL files`, có nâng cấp từ schema tuần 2),
+  browser fixture 7 nhóm, gateway container 6 nhóm.
+- [x] Mục chặng 9 "trạng thái GitHub không kiểm chứng được" đã hết hiệu lực: kho
+  này có `origin`, PR #3, #4, #5, #7 đã merge.
+- [ ] TN-05 trên máy demo 16 GB: chưa đo.
+- [ ] Review của thành viên khác, Telegram BTC, GitHub Projects/Milestone,
+  tag/Release v0.1.0 và báo cáo thầy: cần người phụ trách, không tick bằng CI xanh.

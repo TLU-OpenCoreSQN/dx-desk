@@ -15,7 +15,8 @@ import {
   ShieldAlert,
   Tag,
 } from 'lucide-react';
-import { createTicket, getCategories } from '../services/api';
+import { createTicket, getCategories, uploadAttachment } from '../services/api';
+import { ATTACHMENT_TYPES, fileError } from '../lib/attachments';
 import { Category, RequirementField, TicketPriority } from '../types/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Alert } from '../components/common/Alert';
@@ -94,6 +95,16 @@ export const CreateTicketPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [serverError, setServerError] = useState<unknown>(null);
   const [successTicketId, setSuccessTicketId] = useState<string | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState<unknown>(null);
+  const [attachmentUploaded, setAttachmentUploaded] = useState(false);
+
+  const sendFile = async (ticketId: string) => {
+    if (!attachmentFile) return;
+    setAttachmentError(null);
+    try { await uploadAttachment(ticketId, attachmentFile); setAttachmentUploaded(true); }
+    catch (err) { setAttachmentError(err); }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -221,6 +232,9 @@ export const CreateTicketPage: React.FC = () => {
 
   const resetForm = () => {
     setSuccessTicketId(null);
+    setAttachmentFile(null);
+    setAttachmentError(null);
+    setAttachmentUploaded(false);
     setTitle('');
     setDescription('');
     setPriority('normal');
@@ -253,6 +267,7 @@ export const CreateTicketPage: React.FC = () => {
       });
 
       setSuccessTicketId(ticket.id);
+      await sendFile(ticket.id);
     } catch (err) {
       setServerError(err);
     } finally {
@@ -302,6 +317,17 @@ export const CreateTicketPage: React.FC = () => {
             </code>
             . Đội ngũ kỹ thuật IT sẽ xem xét theo mức ưu tiên đã định.
           </p>
+          {attachmentFile && <div aria-live="polite">
+            {isSubmitting ? <p>Phiếu đã được tạo. Đang quét và tải tệp…</p> : attachmentUploaded
+              ? <p>Tệp {attachmentFile.name} đã được quét và lưu an toàn.</p>
+              : <div>
+                {attachmentError != null && <ErrorMessage error={attachmentError} title="Phiếu đã tạo; tệp chưa tải thành công" />}
+                <button type="button" className="text-teal-700 underline" disabled={isSubmitting}
+                  onClick={async () => { setIsSubmitting(true); try { await sendFile(successTicketId); } finally { setIsSubmitting(false); } }}>
+                  Thử tải lại tệp vào phiếu này
+                </button>
+              </div>}
+          </div>}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
               type="button"
@@ -313,6 +339,7 @@ export const CreateTicketPage: React.FC = () => {
             <button
               type="button"
               onClick={resetForm}
+              disabled={isSubmitting}
               className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] border border-[#e4e3e0] bg-white px-5 text-xs font-semibold text-[#211f1b] transition-all hover:bg-[#f1f1ef] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               Tạo phiếu khác
@@ -648,6 +675,19 @@ export const CreateTicketPage: React.FC = () => {
                     </ul>
                   </div>
                 )}
+              </div>
+
+              <div className="mx-4 mb-4 rounded-lg border border-edge bg-surface-muted p-3 text-xs sm:mx-6">
+                <label htmlFor="ticket-attachment" className="block font-semibold">Ảnh hoặc tệp đính kèm (không bắt buộc)</label>
+                <p>PNG, JPEG, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.</p>
+                <input id="ticket-attachment" type="file" accept={ATTACHMENT_TYPES.join(',')}
+                  disabled={isSubmitting} onChange={event => {
+                    const file = event.target.files?.[0] ?? null;
+                    const issue = file ? fileError(file) : null;
+                    setAttachmentError(issue ? new Error(issue) : null);
+                    setAttachmentFile(issue ? null : file);
+                  }} />
+                {attachmentError != null && <ErrorMessage error={attachmentError} title="Tệp chưa hợp lệ" />}
               </div>
 
               {/* Action bar: sticky bottom on mobile, inline on desktop */}

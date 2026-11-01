@@ -1,6 +1,6 @@
 # 0006. n8n chạy ngoài kho mã, import khi vận hành
 
-- Trạng thái: Đã triển khai quy trình; cần kiểm chứng runtime/restart.
+- Trạng thái: Đã triển khai quy trình; runtime/restart đạt trên CI (31/10/2026).
 - Ngày: 21/10/2026.
 - Người phụ trách: Nguyên (TV1), Quyền theo dõi QĐ-4.
 - Mã: W2-04, QĐ-4.
@@ -21,6 +21,11 @@ giữ ổn định; không lưu secret thật vào Git hoặc log.
 `node scripts/stack-test.mjs --restart-n8n` gọi webhook qua APISIX, restart service,
 chờ webhook hoạt động trở lại. Job stack CI chạy startup lần hai và kiểm lại.
 Máy hiện thiếu Docker, vì vậy chưa khẳng định runtime ổn định.
+
+Cập nhật 31/10/2026: CI run #42 (`41160760838`, SHA `d2ee443` trên `main`) PASS
+`n8n imported workflow responds`, `n8n workflow survives restart` và kiểm lại webhook
+sau `make up` lần hai. Đó là kết quả kỹ thuật; việc giữ n8n còn chờ BTC xác nhận
+giấy phép/phạm vi (W2-11).
 
 Giữ n8n làm phương án hiện hành trong tuần 2. Nếu import/restart không ổn định qua
 các lần thử có log, ghi lỗi và đánh giá Node-RED/Kestra theo kế hoạch tuần 2–4.

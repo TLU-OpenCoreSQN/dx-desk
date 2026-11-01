@@ -1,5 +1,11 @@
 # 0007. Vị trí quét ClamAV cho tệp đính kèm
 
+> Cập nhật 30/10/2026: giữ nhật ký thử nghiệm bên dưới. Bản hiện hành dùng Filer HTTP
+> 8888 nội bộ, JSON/base64 buffer trong RAM và intent pending trước PUT (006).
+> Đường đọc ký HMAC qua API (007) có TTL 120 giây, không phải S3 presigned GET;
+> xem hợp đồng API và ADR 0009. ClamAV/EICAR thật đã đạt ở CI PR #4; CI tuần 3 bổ sung
+> trình duyệt OTP/upload/download. Không lấy lập luận về lockfile làm giới hạn kỹ thuật.
+
 - Trạng thái: Đã chốt (QĐ-3) — chờ kiểm chứng runtime bằng EICAR trên stack Docker
 - Ngày: 27/10/2026
 - Người ghi: TV1 (Nền tảng và DevOps)
@@ -30,8 +36,12 @@ Ràng buộc:
 Luồng chốt (mã ở `apps/api`, do TV2 hiện thực; ghép nối hạ tầng đã nằm trong kho):
 
 1. Trình duyệt gọi `POST /api/tickets/:id/attachments` qua APISIX với body JSON `{file_name, content_type, content_base64}` (tệp nhị phân ≤ 10 MiB theo CHECK của `attachments.size_bytes`; nền base64 phình ~1,33 lần nên JSON tới ~13,98 MB). Đính chính lúc hiện thực W3-06: cổng **không** chuyển tiếp vô hạn — APISIX đóng gói sẵn `client_max_body_size: 1m`, vì vậy `infra/apisix/config.yaml` phải nâng lên `20m`, nếu không tệp hợp lệ bị 413 chặn trước khi clamd kịp quét. API vẫn là nơi sở hữu trần dung lượng nghiệp vụ (10 MiB trên byte đã giải mã) và thứ tự an toàn.
-2. API đọc stream từng phần, bơm vào clamd qua INSTREAM/TCP `clamav:3310` ngay trên bộ nhớ — tệp chưa từng chạm đĩa.
-3. clamd báo sạch (hoặc chỉ báo EICAR) → API `PUT` object lên SeaweedFS S3 với `object_key` do server sinh; insert `attachments` với `scan_status='clean'`.
+2. API nhận JSON/base64 trong RAM, giải mã Buffer rồi gửi từng chunk qua INSTREAM/TCP
+   tới clamd:3310. Đây không phải upload streaming từ browser; engine có thể dùng tệp tạm riêng.
+3. clamd báo sạch → ghi intent pending trong DB trước, PUT lên Filer HTTP cổng 8888
+   với object_key do server sinh, rồi hoàn tất metadata clean (migration 006).
+   EICAR là kết quả nhiễm, không được đi nhánh sạch. Nếu PUT/DB lỗi, thử DELETE bù trừ;
+   metadata pending/failed giữ key để đối soát khi dịch vụ chưa cho cleanup thành công.
 4. clamd báo nhiễm → API trả 422 kèm mã lỗi tiếng Việt, **không ghi SeaweedFS**, ghi bản ghi audit `scan_status='infected'` (object không tồn tại nên không thể "mở bằng URL ký").
 5. clamd không trả lời/lỗi → 503 + `scan_status='failed'`; tệp không được cung cấp khi chưa có kết quả sạch.
 6. Đọc tệp: API chỉ phát hành presigned GET URL (hạn ngắn) cho người được quyền theo RLS; SeaweedFS không công bố cổng ra host.

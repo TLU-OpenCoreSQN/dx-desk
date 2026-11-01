@@ -1,25 +1,7 @@
 # SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 # SPDX-License-Identifier: Apache-2.0
-#
-# Route của cổng API. Tuần 2: chỉ định tuyến; token được chuyển nguyên vẹn xuống PostgREST
-# (PostgREST tự kiểm tra chữ ký). Tuần 3 (W3-07) bổ sung openid-connect, giới hạn tần suất, nhật ký.
-#
-# Rà soát W3-07 cho PATCH /api/tickets/:id/status:
-# - Không route nào khai báo `methods`, nên APISIX chấp nhận mọi HTTP method, kể cả PATCH;
-#   endpoint mới đi đúng route service-desk-api mà không cần khai báo gì thêm.
-# - Chữ ký token KHÔNG được kiểm tại cổng (xem khối route service-desk-api bên dưới):
-#   openid-connect chế độ bearer_only + use_jwks không lấy được jwks_uri vì Keycloak sinh
-#   URL theo KC_HOSTNAME công khai (http://localhost:…) không tới được từ trong container
-#   APISIX, nên cổng trả 401 cho cả token hợp lệ (bằng chứng: CI run #15). Kiểm chữ ký
-#   hiện ở tầng API (OIDC_JWKS_URL nội bộ). jwt-auth không dùng được vì cần consumer do
-#   APISIX tự cấp, trái mô hình standalone (ADR 0001).
-# - Phân quyền theo vai trò (Employee/Agent/Manager) vẫn do tầng API và RLS quyết định
-#   (ADR 0002, ADR 0003); cổng chỉ chặn token giả hoặc hết hạn và giới hạn tần suất.
-# - Nhật ký yêu cầu: access log bật mặc định trong image APISIX (logs/access.log trong
-#   container). Cách xem: `docker compose logs apisix` và `docker compose exec apisix
-#   cat /usr/local/apisix/logs/access.log` (hướng dẫn ở docs/cai-dat.md).
-# Nghiệm thu runtime các plugin mới (401/429 thật) chờ CI/stack Docker; máy phát triển
-# chưa có Docker nên chỉ kiểm được sơ đồ YAML và cấu trúc giống hệt tuần 2.
+# Template rendered by dxdesk.mjs after syncing Keycloak's public signing key.
+# No private keys or client secrets. See ADR 0009 for key rotation.
 routes:
   - id: healthz
     uri: /healthz
@@ -27,68 +9,72 @@ routes:
       mocking:
         content_type: text/plain
         response_example: ok
-
   - id: rest
     uri: /rest/*
     plugins:
+      openid-connect: &verify-jwt
+        client_id: __DXDESK_AUDIENCE__
+        discovery: http://keycloak:8080/realms/dxdesk/.well-known/openid-configuration
+        bearer_only: true
+        public_key: __DXDESK_PUBLIC_KEY__
+        token_signing_alg_values_expected: RS256
+        accept_none_alg: false
+        accept_unsupported_alg: false
+        set_access_token_header: false
+        set_id_token_header: false
+        set_userinfo_header: false
+        claim_validator:
+          issuer:
+            valid_issuers: [__DXDESK_ISSUER__]
+          audience:
+            required: true
+            match_with_client_id: true
+      limit-req: &request-limit
+        rate: 30
+        burst: 10
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        rejected_msg: '{"statusCode":429,"message":"Vượt quá tần suất cho phép, vui lòng thử lại sau."}'
       proxy-rewrite:
         regex_uri: ["^/rest/(.*)", "/$1"]
     upstream:
       type: roundrobin
       nodes:
         "postgrest:3000": 1
-
+  - id: attachment-content
+    uri: /api/attachments/*
+    priority: 40
+    vars:
+      - ["uri", "~~", "^/api/attachments/[0-9a-fA-F-]{36}/content$"]
+    plugins:
+      limit-req: *request-limit
+    upstream:
+      type: roundrobin
+      nodes:
+        "api:3000": 1
   - id: n8n-webhook
     uri: /webhook/*
     upstream:
       type: roundrobin
       nodes:
         "n8n:5678": 1
-
   - id: api-health
     uri: /api/health
-    # /api/health là endpoint không chứa dữ liệu nghiệp vụ, được healthcheck của
-    # compose và harness CI gọi khi chưa có token. Route khớp chính xác này có
-    # priority mặc định 10000 nên thắng /api/* (20) và không bị openid-connect chặn.
     upstream:
       type: roundrobin
       nodes:
         "api:3000": 1
-
   - id: service-desk-api
     uri: /api/*
     priority: 20
     plugins:
-      # W3-07 (CHỜ LÀM LẠI — có bằng chứng CI): không bật openid-connect ở route này.
-      # Plugin luôn lấy jwks_uri TỪ discovery document của Keycloak, mà Keycloak sinh
-      # URL đó theo KC_HOSTNAME = ${KEYCLOAK_PUBLIC_URL} (http://localhost:…). Từ trong
-      # container APISIX, localhost:8080 không phải Keycloak nên mọi request có token
-      # hợp lệ đều bị 401. Nhật ký CI run #15 (job "nghiệm thu stack tuần 2"):
-      #   openidc.lua:1244: accessing jwks url
-      #   (http://localhost:8080/realms/dxdesk/protocol/openid-connect/certs) failed: connection refused
-      #   -> openid-connect exits with http status code 401, client: 172.18.0.1
-      # chữ ký token VẪN được kiểm ở tầng API bằng OIDC_JWKS_URL nội bộ
-      # (http://keycloak:8080/…/certs) — đường đó đã xanh trên CI từ tuần 2; RLS quyết
-      # định quyền theo vai trò (ADR 0002/0003). Phương án cho tuần 4 (cần ADR + CI kiểm
-      # chứng vì mỗi lần chỉ sửa được bằng stack thật):
-      #   (1) bỏ KC_HOSTNAME để Keycloak sinh URL theo Host của từng bên gọi, rồi đặt
-      #       claim_validator.issuer.valid_issuers = issuer công khai trong route; hoặc
-      #   (2) bearer_only + introspection_endpoint nội bộ, đòi dxdesk-api là confidential
-      #       client và chọn introspection_endpoint_auth_method phù hợp.
-      limit-req:
-        rate: 30
-        burst: 10
-        key_type: var
-        key: remote_addr
-        rejected_code: 429
-        # Body phải parse được thành JSON như mọi lỗi khác của DX-Desk; APISIX trả về
-        # nguyên chuỗi này (Content-Type text/plain) nên khách hàng đọc theo `message`.
-        rejected_msg: '{"statusCode":429,"error":"Too Many Requests","message":"Vượt quá tần suất cho phép, vui lòng thử lại sau."}'
+      openid-connect: *verify-jwt
+      limit-req: *request-limit
     upstream:
       type: roundrobin
       nodes:
         "api:3000": 1
-
   - id: web
     uri: /*
     priority: -10

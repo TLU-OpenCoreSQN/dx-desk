@@ -81,10 +81,10 @@ describe('ticketWorkflow — máy trạng thái (hợp đồng tuần 3)', () =>
 describe('ticketWorkflow — nút thao tác theo vai trò và trạng thái', () => {
   const EMPLOYEE_REQUESTER: Record<string, string[]> = {
     new: ['cancelled'],
-    triaged: [],
+    triaged: ['cancelled'],
     assigned: ['cancelled'],
     in_progress: [],
-    waiting_user: ['in_progress'],
+    waiting_user: ['cancelled', 'in_progress'],
     pending_approval: [],
     resolved: ['closed'],
     closed: [],
@@ -96,13 +96,13 @@ describe('ticketWorkflow — nút thao tác theo vai trò và trạng thái', ()
   );
 
   const AGENT: Record<string, string[]> = {
-    new: ['triaged'],
-    triaged: ['assigned'],
-    assigned: ['in_progress'],
-    in_progress: ['resolved', 'waiting_user'],
-    waiting_user: ['in_progress'],
+    new: ['cancelled', 'pending_approval', 'triaged'],
+    triaged: ['assigned', 'cancelled'],
+    assigned: ['cancelled', 'in_progress', 'pending_approval'],
+    in_progress: ['pending_approval', 'resolved', 'waiting_user'],
+    waiting_user: ['cancelled', 'in_progress'],
     pending_approval: ['assigned'],
-    resolved: [],
+    resolved: ['in_progress'],
     closed: [],
     cancelled: [],
   };
@@ -149,7 +149,7 @@ describe('ticketWorkflow — nút thao tác theo vai trò và trạng thái', ()
   });
 
   it('nhiều vai trò cộng gộp quyền', () => {
-    expect(sortedTos('new', ['Employee', 'Agent'], true)).toEqual(['cancelled', 'triaged']);
+    expect(sortedTos('new', ['Employee', 'Agent'], true)).toEqual(['cancelled', 'pending_approval', 'triaged']);
   });
 
   it('cạnh sang resolved bắt buộc resolution_note, các cạnh khác không', () => {
@@ -222,6 +222,15 @@ function dbEdges(): Map<string, DbEdge> {
 
 describe('ticketWorkflow — nút UI không được vượt quá máy trạng thái trong DB', () => {
   const edges = dbEdges();
+  it('mọi tác vụ DB cho phép đều có nút UI, kể cả staff tự tạo phiếu', () => {
+    for (const status of TICKET_STATUSES) for (const role of ['Employee','Agent','Manager'] as const) {
+      for (const owned of [true,false]) {
+        const expected = [...edges.entries()].filter(([key, rule]) => key.startsWith(status+'->')
+          && (rule.roles.includes(role) || owned && rule.requesterAllowed)).map(([key]) => key.split('->')[1]).sort();
+        expect(sortedTos(status,[role],owned), `${status}/${role}/owner=${owned}`).toEqual(expected);
+      }
+    }
+  });
 
   it('đồ thị STATUS_TRANSITIONS khớp 1:1 tập cạnh của bảng ticket_transitions', () => {
     expect(edges.size).toBe(17);

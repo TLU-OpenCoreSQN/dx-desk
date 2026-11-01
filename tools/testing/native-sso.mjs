@@ -154,6 +154,8 @@ try {
     await page.getByLabel(/Danh mục/).selectOption('10000000-0000-4000-8000-000000000001');
     await page.getByLabel(/Tiêu đề/).fill('Kiểm thử SSO thật: VPN mất kết nối');
     await page.getByLabel(/Mô tả/).fill('Yêu cầu được gửi từ Chromium qua Keycloak và NestJS vào PostgreSQL kiểm thử.');
+    await page.getByLabel(/Phiên bản client VPN/).fill('OpenVPN 4.2');
+    await page.getByLabel(/Dòng lỗi hiển thị/).fill('Kết nối bị ngắt sau 30 giây');
     const response = page.waitForResponse(r => new URL(r.url()).pathname === '/api/tickets' && r.request().method() === 'POST');
     await page.getByRole('button', { name: 'Gửi phiếu hỗ trợ' }).click();
     const created = await response; assert.equal(created.status(), 201); ticket = await created.json();
@@ -183,7 +185,9 @@ try {
     for (const username of ['agent.1', 'manager.1']) assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}`, tokens[username])).status, 200);
   });
   await check('Critical is rejected for Employee/Agent and accepted for Manager', async () => {
-    const body = { category_id: ticket.category_id, title: 'Kiểm thử Critical với token Keycloak', description: 'Thử quyền trên database kiểm thử riêng.', priority: 'critical' };
+    const body = { category_id: ticket.category_id, title: 'Kiểm thử Critical với token Keycloak',
+      description: 'Thử quyền trên database kiểm thử riêng.', priority: 'critical',
+      fields: { client_version: 'OpenVPN 4.2', error_message: 'Kết nối bị ngắt sau 30 giây' } };
     for (const username of ['employee.a', 'agent.1']) assert.equal((await call(apiUrl, '/api/tickets', tokens[username], body)).status, 403);
     assert.equal((await call(apiUrl, '/api/tickets', tokens['manager.1'], body)).status, 201);
   });
