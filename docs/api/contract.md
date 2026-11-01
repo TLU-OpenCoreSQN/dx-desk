@@ -84,7 +84,17 @@ migration 004) — `authenticated` không có INSERT trên `attachments` nên kh
 - Đáp ứng luôn `attachment`, `application/octet-stream`, `nosniff`, `no-store` và
   `Referrer-Policy: no-referrer`; không render nội dung theo MIME do client khai.
 
-## Máy trạng thái 8 trạng thái (9 giá trị chữ thường)
+## Máy trạng thái: 9 giá trị, 17 cạnh (DOCX gốc diễn đạt "8 trạng thái")
+
+> **Cập nhật 02/11/2026 (đối chiếu code `72f72d7`).** Đầu mục này trước đây ghi
+> "8 trạng thái (9 giá trị chữ thường)". Cách gọi "8 trạng thái" là diễn đạt của DOCX
+> đề án (coi `cancelled` như một cờ khép lại hơn là một trạng thái điều hướng); **code và
+> CSDL hiện hành có 9 giá trị `status`** và **17 cạnh chuyển tiếp**. Đếm trực tiếp:
+> `TICKET_STATUSES` có 9 phần tử (`apps/api/src/state-machine.ts:7-10`), `TRANSITIONS`
+> sinh 3+2+3+3+2+2+2 = 17 cạnh (`state-machine.ts:20-30`), `ROLE_EDGES` có 17 mục
+> (`state-machine.ts:52-72`), và INSERT `private.ticket_transitions` có đúng 17 hàng
+> (`db/migrations/003_ticket_workflow.sql:97-114`). Đồ thị không đổi; chỉ bỏ nhãn "8" dễ gây
+> nhầm. Chạy đơn test đồng bộ API↔DB xác nhận 1:1 (harness chống trôi ghi ở kế hoạch tuần 3).
 
 `new → triaged → assigned → in_progress → waiting_user → resolved → closed`,
 nhánh đặc biệt: `new|assigned|in_progress → pending_approval` (duyệt cấp quyền nhạy cảm),
@@ -114,8 +124,19 @@ created_at, updated_at` + các cột MỚI (migration 003):
 `sla_due_at` (timestamptz, = `created_at + sla_policies.resolution_minutes` theo priority,
 tính bằng trigger lúc INSERT), `sla_paused_ms` (bigint **miligiây** tạm dừng cộng dồn khi
 rời `waiting_user`; ngưỡng hiệu lực cộng thêm `max(0, now-waiting_since)` khi còn chờ;
-cờ `sla_breached`
-do W4-03 dùng), `waiting_since` (timestamptz|null, nội bộ vận hành),
+cờ `sla_breached` do W4-03 dùng), `waiting_since` (timestamptz|null, nội bộ vận hành),
+
+> **Cập nhật 02/11/2026 (đối chiếu code `72f72d7`).** Công thức trần deadline lấy từ trigger
+> `private.compute_ticket_sla_due` (`db/migrations/003_ticket_workflow.sql:193-208`:
+> `sla_due_at = created_at + make_interval(mins => resolution_minutes)`). Ngưỡng **hiệu lực** =
+> `sla_due_at + sla_paused_ms + max(0, now − waiting_since)`; **vi phạm** khi
+> `now > ngưỡng hiệu lực` — đúng như `effectiveSlaDeadline` và `isSlaBreached`
+> (`apps/api/src/rules.ts:100-110`). `sla_paused_ms` cộng bằng miligiây khi RỜI `waiting_user`
+> (`003_ticket_workflow.sql:151-159`, `005_ticket_integrity.sql:110-118`); migration 005
+> REVOKE quyền UPDATE các cột SLA khỏi `authenticated` nên client không tự sửa được
+> (`005_ticket_integrity.sql:68`). Giá trị `resolution_minutes` theo priority: low 2880,
+> normal 1440, high 480, critical 120 (`db/migrations/002_reference_data.sql:8-9`).
+> Cờ `sla_breached` vẫn dành cho W4-03; tuần 3 chỉ tính và lưu, chưa bật hiển thị.
 `resolution_note` (text|null, 5..2000 khi có giá trị), `request_fields` (jsonb object,
 lưu `fields` đã kiểm tra theo danh mục).
 

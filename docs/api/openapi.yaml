@@ -4,7 +4,14 @@ openapi: 3.0.3
 info:
   title: DX-Desk Service Desk API
   version: 0.2.0
-  description: Khung API tuần 3 — thêm máy trạng thái ticket, Poka-yoke và SLA. Tất cả thao tác nghiệp vụ áp dụng PostgreSQL RLS.
+  description: >-
+    Khung API tuần 3 — thêm máy trạng thái ticket, Poka-yoke và SLA. Tất cả thao tác
+    nghiệp vụ áp dụng PostgreSQL RLS. Cập nhật 02/11/2026 (đối chiếu code 72f72d7):
+    máy trạng thái có 9 giá trị status (new, triaged, assigned, in_progress, waiting_user,
+    pending_approval, resolved, closed, cancelled) và 17 cạnh chuyển tiếp, đồng bộ 1:1 với
+    bảng private.ticket_transitions (db/migrations/003_ticket_workflow.sql) và TRANSITIONS/ROLE_EDGES
+    trong apps/api/src/state-machine.ts; "8 trạng thái" chỉ là cách diễn đạt của DOCX gốc. Tải
+    tệp dùng capability HMAC do API ký (không phải S3 presigned/multipart), theo ADR 0007/0009.
 servers:
   - url: http://localhost:9080/api
 security:
