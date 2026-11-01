@@ -3,6 +3,10 @@
 > Cập nhật 30/10/2026: xem [đợt hoàn thiện tuần 3](hoan-thien-tuan-3.md), ánh xạ
 > toàn bộ W3/M2, lệnh kiểm thử và phần cần người review/máy demo. Checklist 26/10
 > bên dưới được giữ làm lịch sử. Đọc artifact CI đúng SHA trước khi chốt runtime.
+>
+> Cập nhật 31/10/2026: các ô W3 đã được đối chiếu với CI run #42 (`41160760838`,
+> push `main`, SHA `d2ee443`, 12/12 job xanh); xem bảng tiêu chí M2 ngày 31/10 và
+> Chặng 6 trong nhật ký.
 
 **Tuần:** 26/10 – 01/11/2026. **Mốc:** demo nội bộ thứ Bảy 31/10 (cảnh 1 + nửa đầu cảnh 2), báo cáo giảng viên mốc M2.
 **Nguồn:** `DX-Desk_Ke-hoach-trien-khai_OLP-PMNM-2026_ban-1.1.docx`, mục 5.2 (W3-01…W3-09), mục 6 (TN-03, TN-04), mục 4.5 (Định nghĩa "xong").
@@ -72,32 +76,32 @@ Mỗi lần chuyển ghi `ticket_events(event_type='status_changed', payload={fr
 - [x] Trường động theo `requirement_fields` từ API categories.
 - [x] Khóa nút Gửi và liệt kê trường thiếu; ẩn Critical với Employee.
 - [x] Unit test form (Vitest) + build production đạt.
-- [ ] Kiểm trình duyệt với API thật (cần CI/stack — fixture chỉ là bằng chứng tạm).
+- [x] Kiểm trình duyệt với API thật. *31/10: run #42 PASS `browser creates a VPN ticket with a scanned image and downloads exact bytes by signed URL` trên stack CI.*
 
 ### W3-05 — Màn "Yêu cầu của tôi" + chi tiết (TV3, hỗ trợ TV2)
 
 - [x] Dòng thời gian trạng thái từ `/api/tickets/:id/events` (thêm trạng thái mới vào nhãn/icon).
 - [x] Nút chuyển trạng thái theo vai trò và máy trạng thái (Employee: xác nhận closed/hủy; Agent: quy trình xử lý). *Đã sửa 2 cạnh thiếu `requesterOnly` (`resolved→closed`, `waiting_user→in_progress`) để UI không hiện nút mà DB/API từ chối 403; có test so với bảng cạnh trong migration 003.*
 - [x] Unit test + build đạt.
-- [ ] E2E qua APISIX với SSO thật (nghiệm thu CI). *Phần đã xanh: client Node dùng token Keycloak THẬT đi qua APISIX chạy hết chuỗi `new→triaged→assigned→in_progress→(422)→resolved→closed` và đếm `ticket_events` (run #19). Phần CHƯA làm: màn hình React thật điều khiển bằng trình duyệt trên stack CI — hiện UI mới chỉ có fixture tại máy.*
+- [x] E2E qua APISIX với SSO thật (nghiệm thu CI). *31/10: run #42 PASS `Agent and requester complete workflow in the real browser with a resolution timeline`, màn hình React thật do Playwright điều khiển. Ghi chú 26/10 bên dưới là lịch sử.* *Phần đã xanh: client Node dùng token Keycloak THẬT đi qua APISIX chạy hết chuỗi `new→triaged→assigned→in_progress→(422)→resolved→closed` và đếm `ticket_events` (run #19). Phần CHƯA làm: màn hình React thật điều khiển bằng trình duyệt trên stack CI — hiện UI mới chỉ có fixture tại máy.*
 
 ### W3-06 — Tải tệp an toàn: SeaweedFS + ClamAV (TV1, hỗ trợ TV2) — TN-03→QĐ-3
 
 - [x] Tài liệu TN-03 so sánh vị trí quét (plugin APISIX / dịch vụ đứng trước SeaweedFS / trong API) bằng nguồn chính thức; ADR 0007 chốt phương án (QĐ-3).
 - [x] Luồng upload API theo QĐ-3 (`40cb46b`): `POST /api/tickets/:id/attachments` quét clamd INSTREAM/TCP trước, chỉ PUT object lên SeaweedFS khi sạch, metadata ghi bằng hàm `private.record_attachment` (migration 004, SECURITY DEFINER — `authenticated` không có INSERT nên không giả mạo `scan_status`). *Bằng chứng tại máy: 17 unit test (clamd/SeaweedFS giả ghi từng byte nhận được) trong 39/39 `npm.cmd test`; integration test 10 trong 10/10 `run-integration.mjs` trên PostgreSQL 17.10 + PostgREST 16.4 thật; migration-test 4/4 với 6 tệp SQL. ĐỘ LỆCH có chủ đích so với ADR: body JSON base64 thay vì multipart vì `multer` không phải dependency khai báo (CI cài bằng `npm ci` theo lock) — ghi rõ trong DTO, `contract.md`, `openapi.yaml`, ADR 0007.*
-- [ ] Kiểm EICAR trên stack thật (CI hoặc máy có Docker). *Engine ClamAV thật CHƯA chạy lần nào — mới chỉ có clamd giả; chưa đưa upload vào `stack-test.mjs` vì còn phụ thuộc `TCPAddr` của image (Rủi ro mở 3).*
+- [x] Kiểm EICAR trên stack thật. *31/10: run #42 PASS `Real ClamAV scan and SeaweedFS upload` và `browser blocks EICAR without losing the existing ticket` với clamd thật. Ghi chú 26/10 bên dưới là lịch sử.* *Engine ClamAV thật CHƯA chạy lần nào — mới chỉ có clamd giả; chưa đưa upload vào `stack-test.mjs` vì còn phụ thuộc `TCPAddr` của image (Rủi ro mở 3).*
 
 ### W3-07 — Route APISIX + OTP Keycloak (TV1, hỗ trợ TV2)
 
 - [x] Rà route APISIX cho `PATCH /api/tickets/:id/status` (phân quyền vai trò, rate limit, nhật ký, trần body). *Route `/api/*` không khai báo `methods` nên PATCH đi qua; `limit-req` 30 req/s + key `remote_addr`, `rejected_msg` 429 đổi sang JSON khớp hợp đồng lỗi của API; `nginx_config.http.client_max_body_size` nâng 1m → 20m trong `config.yaml` vì tệp 10 MiB nền base64 ~13,98 MB sẽ bị cổng chặn 413 trước khi tới clamd (`0de50a8`).*
-- [ ] Kiểm chữ ký JWT ngay tại cổng bằng `openid-connect` — **đã thử và bắt buộc revert (CI run #15)**. *Bằng chứng: `openidc.lua:1244: accessing jwks url (http://localhost:8080/realms/dxdesk/protocol/openid-connect/certs) failed: connection refused → openid-connect exits with http status code 401`. Plugin không có khóa `jwks_uri` riêng nên luôn dùng giá trị Keycloak sinh theo `KC_HOSTNAME` công khai, mà `localhost` trong container APISIX không phải Keycloak → mọi token hợp lệ bị 401 (self-DoS). Chữ ký vẫn được kiểm trong API qua `OIDC_JWKS_URL` nội bộ (xanh từ CI tuần 2). Bật lại cần ADR riêng với một trong hai phương án đã ghi trong `apisix.yaml`: (1) bỏ `KC_HOSTNAME` để URL sinh theo Host của từng bên gọi + `claim_validator.issuer.valid_issuers`; (2) `bearer_only` + `introspection_endpoint` nội bộ, đòi `dxdesk-api` là confidential client.* *Trạng thái sau revert: run #19 XANH toàn bộ — `Token accepted by API and PostgREST` PASS, nghĩa là chữ ký vẫn được kiểm ở API bằng `OIDC_JWKS_URL` nội bộ và `Anonymous API denied` vẫn chặn đúng yêu cầu không token (401).*
+- [x] Kiểm chữ ký JWT ngay tại cổng bằng `openid-connect`. *31/10: đạt bằng phương án public key PEM sinh từ JWKS (ADR 0009), không gọi JWKS `localhost`; run #42 job `kiểm tra apisix.yaml` PASS `valid JWT reaches upstream; invalid claims/signature rejected at gateway` cho `/api` và `/rest`. Phần dưới là lịch sử lần thử 26/10:* **đã thử và bắt buộc revert (CI run #15)**. *Bằng chứng: `openidc.lua:1244: accessing jwks url (http://localhost:8080/realms/dxdesk/protocol/openid-connect/certs) failed: connection refused → openid-connect exits with http status code 401`. Plugin không có khóa `jwks_uri` riêng nên luôn dùng giá trị Keycloak sinh theo `KC_HOSTNAME` công khai, mà `localhost` trong container APISIX không phải Keycloak → mọi token hợp lệ bị 401 (self-DoS). Chữ ký vẫn được kiểm trong API qua `OIDC_JWKS_URL` nội bộ (xanh từ CI tuần 2). Bật lại cần ADR riêng với một trong hai phương án đã ghi trong `apisix.yaml`: (1) bỏ `KC_HOSTNAME` để URL sinh theo Host của từng bên gọi + `claim_validator.issuer.valid_issuers`; (2) `bearer_only` + `introspection_endpoint` nội bộ, đòi `dxdesk-api` là confidential client.* *Trạng thái sau revert: run #19 XANH toàn bộ — `Token accepted by API and PostgREST` PASS, nghĩa là chữ ký vẫn được kiểm ở API bằng `OIDC_JWKS_URL` nội bộ và `Anonymous API denied` vẫn chặn đúng yêu cầu không token (401).*
 - [x] OTP (TOTP) trong realm cho user mẫu — làm dạng tùy chọn để không phá harness SSO hiện tại; hướng dẫn bật trong `docs/cai-dat.md`. *`realm-dxdesk-otp.json` chỉ thêm `requiredActions: CONFIGURE_TOTP` cho 4 user demo + đổi displayName; `realm-dxdesk.json` gốc không đổi nên harness native-sso vẫn dùng password grant.*
-- [ ] Đăng nhập SSO + OTP trên stack thật (CI).
+- [x] Đăng nhập SSO + OTP trên stack thật (CI). *31/10: run #42 PASS `PKCE browser enrollment requires TOTP and accepts a valid generated code` và `fresh browser rejects wrong and stale OTP, then signs in with a current code`.*
 
 ### W3-08 — TN-04: SSO cho Wiki.js / Mattermost / Metabase (TV1, hỗ trợ TV3) — QĐ-2
 
 - [x] Xác minh tài liệu chính thức từng ứng dụng (OIDC free hay trả phí); ADR 0008 + QĐ-2. *Các khẳng định về tài liệu ngoài repo (giới hạn body APISIX, Plugin Hub, phiên bản Wiki.js, bản trả phí Metabase) mới chỉ là dẫn nguồn, chưa kiểm chứng runtime.*
-- [ ] Chạy runtime cả 3 ứng dụng — cần Docker; ghi rõ chưa thử runtime nếu chỉ đọc tài liệu.
+- [x] Chạy runtime cả 3 ứng dụng. *31/10: run #42, ba job TN-04 runtime (Wiki.js 2.5.315, Mattermost Team Edition, Metabase OSS) xanh. Đây là PoC; tích hợp SSO đầy đủ thuộc tuần 4 theo ADR 0008.*
 
 ### W3-09 — Kiểm thử RLS trong CI (TV2, hỗ trợ TV1)
 
@@ -130,11 +134,24 @@ Mỗi lần chuyển ghi `ticket_events(event_type='status_changed', payload={fr
 | 4 | Test RLS + máy trạng thái chạy trong CI | Đạt | Run #25/#26 trên `b5e57ce`: job `TN-02 RLS + máy trạng thái tuần 3` (10 test trên PostgreSQL 17 + PostgREST 16.4 service) và hai job `build và test ứng dụng (api)` / `(web)` (39 + 64 unit test) đều xanh; job stack chạy máy trạng thái qua APISIX thật và step "Khởi chạy lần hai, giữ dữ liệu" đã xanh với chính bản sửa flake | — |
 | 5 | QĐ-2, QĐ-3 đã chốt | Đạt (chờ kiểm chứng runtime) | ADR 0007 (QĐ-3), ADR 0008 (QĐ-2), mục lục `docs/adr/README.md` | Chạy Wiki.js/Mattermost/Metabase và EICAR trên stack Docker |
 
+### Trạng thái tiêu chí M2 (31/10/2026, CI run #42 trên `d2ee443`)
+
+| # | Tiêu chí | Trạng thái | Bằng chứng trong run #42 |
+|---|---|---|---|
+| 1 | SSO + OTP + tạo ticket + `ticket_events` | Đạt | `PKCE browser enrollment requires TOTP…`, `browser creates a VPN ticket with a scanned image…`, `API creates a ticket and PostgreSQL audit` |
+| 2 | `priority=critical` với token nhân viên → 403 | Đạt | `Critical restricted to Manager` |
+| 3 | EICAR bị chặn, tệp hợp lệ chỉ mở bằng URL ký | Đạt | `Real ClamAV scan and SeaweedFS upload`, `browser blocks EICAR…`, tải đúng bytes bằng URL ký và URL bị sửa trả 403 |
+| 4 | Test RLS + máy trạng thái chạy trong CI | Đạt | Job TN-02: integration 19/19 trên PostgreSQL/PostgREST, migration 5 nhóm |
+| 5 | QĐ-2, QĐ-3 đã chốt | Đạt | ADR 0007, 0008, 0009; ba job TN-04 runtime xanh |
+
+Tiêu chí M2 về kỹ thuật đã đạt trên CI. Phần còn lại cần người: review PR, demo độc
+lập, TN-05 trên máy 16 GB, xác nhận BTC và tag v0.1.0.
+
 ## Rủi ro mở (phải kiểm chứng bằng CI, không kết luận tại máy)
 
-1. ~~`jwks_uri` của `openid-connect` không tới được từ container APISIX~~ → **đã xác nhận là hỏng thật** (CI run #15) và đã revert; theo dõi ở W3-07. Hệ quả chưa kiểm chứng được: các plugin mới của cổng (`limit-req` 429, `client_max_body_size` 20m) chỉ được `scripts/check-apisix.sh` + job `kiểm tra apisix.yaml` xác nhận về schema, còn hành vi runtime 429/413 thì chưa có test nào trên stack thật.
-2. `infra/keycloak/compose-otp.yml` chưa được `compose-config` job kiểm tra (job chỉ `config -q` tệp compose chính).
-3. Image `clamav/clamav:1.5.4` có mặc định `TCPAddr 0.0.0.0` trong mạng compose hay chưa — ADR 0007 đã ghi là nợ tuần 4. CI run #13/#15 cho thấy `dxdesk.mjs up --wait` vẫn xanh nên clamd đã healthy, nhưng chưa có request quét thật nào đi qua nó.
+1. ~~`jwks_uri` của `openid-connect` không tới được từ container APISIX~~ → **đã xác nhận là hỏng thật** (CI run #15) và đã revert; theo dõi ở W3-07. *31/10: đã đóng bằng ADR 0009; job `kiểm tra apisix.yaml` của run #42 kiểm runtime 429 và 413 trên container APISIX 3.19.0 thật.* Ghi chú gốc: hệ quả chưa kiểm chứng được: các plugin mới của cổng (`limit-req` 429, `client_max_body_size` 20m) chỉ được `scripts/check-apisix.sh` + job `kiểm tra apisix.yaml` xác nhận về schema, còn hành vi runtime 429/413 thì chưa có test nào trên stack thật.
+2. ~~`infra/keycloak/compose-otp.yml` chưa được `compose-config` job kiểm tra~~ → *31/10: đã đóng, job `docker compose config` chạy `config -q` với overlay OTP và `check-config.mjs` kiểm đường dẫn realm.*
+3. *31/10: đã đóng, run #42 PASS `Real ClamAV scan and SeaweedFS upload` qua clamd thật trong mạng compose.* Ghi chú gốc: image `clamav/clamav:1.5.4` có mặc định `TCPAddr 0.0.0.0` trong mạng compose hay chưa — ADR 0007 đã ghi là nợ tuần 4. CI run #13/#15 cho thấy `dxdesk.mjs up --wait` vẫn xanh nên clamd đã healthy, nhưng chưa có request quét thật nào đi qua nó.
 4. ~~CI #10 (nợ tuần 2) fail ở step "Khởi chạy lần hai" mà không đọc được log~~ → **đã đóng bằng chứng nghiệm thu thật (run #25/#26 xanh trên `b5e57ce`)**: cổng APISIX giữ địa chỉ IP cũ của container `api` sau khi `dxdesk.mjs up` recreate (chữ lỗi giống hệt ở #17, #20, #21, #23, #24); `scripts/dxdesk.mjs` từ bản này restart cổng sau mỗi lần triển khai nên không còn 502. Hệ quả VẬN HÀNH vẫn nguyên và cần đưa vào quy trình: triển khai lại `api` phía sau một cổng APISIX đang chạy sẽ cắt traffic cho tới khi cổng được khởi động lại — cấu hình DNS không cứu được (`dns_resolver_valid` đã bị #23/#24 bác), upstream cũng có issue tương tự (apisix-ingress-controller #2708). Ai deploy tay bằng `docker compose up -d --build` mà không restart `apisix` sẽ thấy 502 thật, không chỉ trong CI.
 5. Hai run `push` và `pull_request` của cùng một SHA chạy song song trên hai VM GitHub, mỗi bên dựng stack Docker riêng nhưng dùng chung tên project `dx-desk` và cùng cấu hình; không có `concurrency` trong `ci.yml`. Nếu sau này chuyển sang self-hosted runner thì cặp này sẽ thật sự đâm cổng nhau — nên khai báo `concurrency` trước khi đổi runner.
 
@@ -210,3 +227,8 @@ Mỗi lần chuyển ghi `ticket_events(event_type='status_changed', payload={fr
 - Phát hiện phụ khi kiểm "merge tất cả": nhánh `main` CỤC BỘ (và `codex/agy-2026-10-20-7c7ebf66`) đang ở `9bb1fb9`, lệch với `origin/main` `6da06d2` đúng 5 commit — nhưng `git diff main origin/main` RỖNG và `git patch-id` của commit đỉnh giống hệt nhau, tức đây là bản nhân bản của lịch sử đã bị dựng lại chứ không có công việc nào chỉ nằm ở local. Không có nội dung mất khi chỉ fast-forward `origin/main`, nên để nguyên hai nhánh local đó, không xoá và không `reset`.
 - Việc còn treo (không tự tick): PR #3 chưa có review từ thành viên khác (đã merge theo lệnh trực tiếp của người dùng, ghi rõ ở mục Nợ tuần 2); tag `v0.1.0` và EICAR trên clamd thật, presigned GET, `openid-connect` ở cổng, Wiki.js/Mattermost/Metabase runtime, E2E trình duyệt với SSO thật vẫn là nợ như đã ghi.
 
+### 31/10/2026 — Chặng 6: đối chiếu lại với CI trên main
+
+- Đọc log CI run #42 (`41160760838`, push `main`, SHA `d2ee443`) bằng `gh run view --log`: 12/12 job xanh, gồm 9 job nền và 3 job TN-04. Job stack có 21 dòng PASS ở lượt đầu (stack-test + browser) và 17 dòng PASS sau `make up` lần hai.
+- Tick các mục W3-04, W3-05, W3-06, W3-07 và W3-08 vốn chờ CI/stack; đóng rủi ro mở 1-3; thêm bảng tiêu chí M2 ngày 31/10. Ghi chú 26/10 trong từng mục giữ nguyên làm lịch sử.
+- Vẫn để trống: review PR từ thành viên khác, tag/Release v0.1.0. Dòng "Docker Desktop/WSL vẫn chưa cài" là trạng thái của workspace `D:\MaNguonMo` ngày 26/10, giữ nguyên.
