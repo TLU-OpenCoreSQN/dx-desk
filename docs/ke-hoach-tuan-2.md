@@ -1,5 +1,7 @@
 # Kế hoạch và tiến độ tuần 2 — DX-Desk
 
+> Điều phối hiện hành 02/11/2026: dùng [kế hoạch hợp nhất](ke-hoach-tuan-4.md#phase-a) để đóng nợ W2–W3 trước khi mở W4. Checklist và nhật ký cũ bên dưới giữ nguyên làm lịch sử; không suy ra 100% chỉ từ số ô tick.
+
 **Tuần:** 19–25/10/2026. **Mốc:** demo nội bộ 24/10, chuẩn bị v0.1.0 ngày 25/10.
 **Cập nhật:** 21/10/2026 (giờ Việt Nam).
 **Nhánh làm việc:** `develop-quyennnv`. **Workspace:** `D:\MaNguonMo`.

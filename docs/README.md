@@ -30,6 +30,13 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 - [Các bản sửa sau review source](sec-dev-fixes.md).
 - ADR tuần 3: [0007 vị trí quét ClamAV](adr/0007-vi-tri-quet-clamav.md), [0008 SSO cho ứng dụng có sẵn](adr/0008-sso-keycloak-cho-ung-dung-co-san.md), [0009 JWT tại gateway và URL tải tệp](adr/0009-gateway-jwt-va-url-tai-tep.md).
 
+## Kế hoạch thực thi hiện hành
+
+- [Kế hoạch hợp nhất: đóng nợ tuần 2–3 trước, sau đó triển khai tuần 4](ke-hoach-tuan-4.md).
+- Giai đoạn A: 12 ticket C23, có checklist/bằng chứng và hướng làm để đóng 100% W2–W3.
+- Giai đoạn B: 17 ticket ánh xạ W4-01…09; chỉ mở khi C23-11 DONE. Có contract đề xuất, ownership nhiều agent, test và gate M3.
+- Checklist/journal cũ của tuần 2–3 giữ nguyên làm lịch sử; không tự tick công việc mới chỉ vì đã viết kế hoạch.
+
 ## Quy ước
 
 - Tên tệp viết tiếng Việt không dấu, nối bằng gạch ngang. Chỉ tạo thư mục con khi có nhiều tệp cùng loại.

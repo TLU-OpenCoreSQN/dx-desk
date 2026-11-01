@@ -1,5 +1,7 @@
 # Kế hoạch và tiến độ tuần 3 — DX-Desk: Luồng tạo ticket
 
+> Điều phối hiện hành 02/11/2026: dùng [kế hoạch hợp nhất](ke-hoach-tuan-4.md#phase-a) để đóng đủ nợ W2–W3, sau đó mới mở W4. Bằng chứng M2 lịch sử không tự thay review, máy demo, xác nhận BTC và phát hành; không tick lại nhật ký cũ hàng loạt.
+
 > Cập nhật 30/10/2026: xem [đợt hoàn thiện tuần 3](hoan-thien-tuan-3.md), ánh xạ
 > toàn bộ W3/M2, lệnh kiểm thử và phần cần người review/máy demo. Checklist 26/10
 > bên dưới được giữ làm lịch sử. Đọc artifact CI đúng SHA trước khi chốt runtime.
