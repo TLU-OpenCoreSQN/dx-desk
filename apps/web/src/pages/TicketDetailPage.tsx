@@ -651,7 +651,6 @@ export const TicketDetailPage: React.FC = () => {
                   Thao tác
                 </h2>
               </div>
-              <StatusBadge status={currentStatus} />
             </div>
 
             <div className="space-y-3 lg:p-4">

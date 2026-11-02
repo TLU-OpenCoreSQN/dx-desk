@@ -705,7 +705,7 @@ export const CreateTicketPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting || categoriesLoading}
-                  aria-disabled={!canSubmit || undefined}
+                  aria-disabled={!canSubmit}
                   aria-busy={isSubmitting || undefined}
                   aria-describedby={
                     missingFieldLabels.length > 0 ? 'missing-fields-summary' : undefined
