@@ -100,6 +100,37 @@ describe('TicketDetailPage Component', () => {
     });
   });
 
+  it('shows server-provided team, assignee, paused SLA and system audit identity', async () => {
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({
+      status: 'waiting_user', assigned_to: 'agent-1', assignee_name: 'Kỹ thuật viên Một',
+      assigned_team_id: 'team-1', team_name: 'Hạ tầng mạng', requester_name: 'Người yêu cầu Một',
+      sla_due_at: '2026-11-04T03:00:00Z', waiting_since: '2026-11-03T03:00:00Z',
+      sla_paused_ms: 180000, sla_breached: true, ticket_version: 12,
+    }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [{ ...mockEvents[0], actor_id: null, actor_type: 'system', actor_name: 'Tự động phân tuyến' }] });
+    renderWithRoute();
+    await screen.findByText('Kỹ thuật viên Một');
+    expect(screen.getByText('Hạ tầng mạng')).toBeInTheDocument();
+    expect(screen.getByText('Người yêu cầu Một')).toBeInTheDocument();
+    expect(screen.getByText(/SLA đang tạm dừng từ/)).toBeInTheDocument();
+    expect(screen.getByText('Thời gian đã tạm dừng: 3 phút.')).toBeInTheDocument();
+    expect(screen.getByText(/Đã vi phạm SLA/)).toBeInTheDocument();
+    expect(screen.getByText('Hệ thống (Tự động phân tuyến)')).toBeInTheDocument();
+  });
+
+  it('requires a rejection reason and sends the observed version from detail', async () => {
+    withAuth(['Manager'], 'manager-1');
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'pending_approval', ticket_version: 12 }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: mockEvents });
+    const update = vi.spyOn(apiService, 'updateTicketStatus').mockResolvedValue(ticketWith({ status: 'new', ticket_version: 13 }));
+    renderWithRoute(); fireEvent.click(await screen.findByRole('button', { name: 'Từ chối yêu cầu' }));
+    const confirm = screen.getByRole('button', { name: 'Xác nhận chuyển trạng thái' });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/Ghi chú chuyển trạng thái/), { target: { value: 'Thiếu thông tin quyền cần cấp' } });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(update).toHaveBeenCalledWith(mockTicket.id, { to: 'new', note: 'Thiếu thông tin quyền cần cấp', expected_version: 12 }));
+  });
+
   it('shows category fields and current result, retaining historical field names safely', async () => {
     vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({
       request_fields: { asset_code: 'DELL-123', retired_field: '<script>alert(1)</script>', legacy_bad: { nested: true } },

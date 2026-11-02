@@ -21,6 +21,10 @@ for (const route of routes.routes) {
   }
 }
 assert.ok((await read('infra/apisix/apisix.yaml')).trimEnd().endsWith('#END'));
+assert.equal(routes.routes.find(route => route.id === 'n8n-webhook').uri, '/webhook/dxdesk-hello',
+  'Only the hello fixture may be exposed anonymously to n8n');
+assert.ok(routes.routes.find(route => route.id === 'api-health').plugins['limit-req'],
+  'The public database probe must be rate limited');
 const filerPort = compose.services.seaweedfs.command.find(arg => arg.startsWith('-filer.port='));
 assert.ok(filerPort, 'Declare the Filer listener explicitly');
 assert.equal(new URL(compose.services.api.environment.SEAWEEDFS_ENDPOINT).port, filerPort.split('=')[1],

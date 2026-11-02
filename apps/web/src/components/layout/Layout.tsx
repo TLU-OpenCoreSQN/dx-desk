@@ -13,7 +13,7 @@ export const Layout: React.FC = () => {
   const { isKeycloakOffline } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[#fbfaf8] text-[#211f1b] flex flex-col font-sans selection:bg-[var(--color-primary-tint)] selection:text-[var(--color-primary-text)]">
+    <div className="min-h-screen bg-[var(--color-surface-sidebar)] text-[var(--color-content)] flex flex-col font-sans selection:bg-[var(--color-primary-tint)] selection:text-[var(--color-primary-text)]">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-[6px] focus:bg-[var(--color-primary)] focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
@@ -34,7 +34,7 @@ export const Layout: React.FC = () => {
           <span>Dịch vụ đăng nhập hiện không thể kết nối.</span>
           <button
             type="button"
-            className="inline-flex items-center gap-1 font-semibold underline hover:text-[#211f1b] transition-colors ml-1 focus:outline-none focus:ring-2 focus:ring-[#cb912f] rounded-[4px] px-1"
+            className="inline-flex items-center gap-1 font-semibold underline hover:text-[var(--color-content)] transition-colors ml-1 focus:outline-none focus:ring-2 focus:ring-[#cb912f] rounded-[4px] px-1"
             onClick={() => window.location.reload()}
           >
             <RefreshCw className="w-3 h-3" />

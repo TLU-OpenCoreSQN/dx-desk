@@ -51,14 +51,14 @@ export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
       );
     case 'low':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[#f1f1ef] text-[#5f5e5a] border border-[#e4e3e0] shadow-2xs">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border border-[var(--color-edge-subtle)] shadow-2xs">
           <ArrowDown className="w-3 h-3 shrink-0" aria-hidden="true" />
           Thấp
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[#f1f1ef] text-[#5f5e5a] border border-[#e4e3e0] shadow-2xs">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border border-[var(--color-edge-subtle)] shadow-2xs">
           {priority}
         </span>
       );
@@ -71,13 +71,13 @@ interface StatusBadgeProps {
 
 const TICKET_STATUS_STYLES: Record<TicketStatus, string> = {
   new: 'bg-[#deeef8] text-[#0a5c94] border-[#b9daf0]',
-  triaged: 'bg-[#f1f1ef] text-[#5f5e5a] border-[#e4e3e0]',
-  assigned: 'bg-[#f1f1ef] text-[#5f5e5a] border-[#e4e3e0]',
+  triaged: 'bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border-[var(--color-edge-subtle)]',
+  assigned: 'bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border-[var(--color-edge-subtle)]',
   in_progress: 'bg-[#deeef8] text-[#0a5c94] border-[#b9daf0]',
   waiting_user: 'bg-[#fbf3db] text-[#cb912f] border-[#f5ddb2]',
   pending_approval: 'bg-[#f4eeff] text-[#9065b0] border-[#e0cdfc]',
   resolved: 'bg-[#edf3ec] text-[#448361] border-[#b8dcce]',
-  closed: 'bg-[#f1f1ef] text-[#5f5e5a] border-[#e4e3e0]',
+  closed: 'bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border-[var(--color-edge-subtle)]',
   cancelled: 'bg-[#fbe4e4] text-[#d44c47] border-[#f6c3c1]',
 };
 
@@ -86,7 +86,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
 
   if (isTicketStatus(key)) {
     const Icon = STATUS_ICONS[key];
-    const styleClass = TICKET_STATUS_STYLES[key] || 'bg-[#f1f1ef] text-[#5f5e5a] border-[#e4e3e0]';
+    const styleClass = TICKET_STATUS_STYLES[key] || 'bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border-[var(--color-edge-subtle)]';
 
     return (
       <span
@@ -137,7 +137,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] text-xs font-medium bg-[#f1f1ef] text-[#5f5e5a] border border-[#e4e3e0] shadow-2xs">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border border-[var(--color-edge-subtle)] shadow-2xs">
           {status}
         </span>
       );
@@ -166,14 +166,14 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
       );
     case 'Employee':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[#f1f1ef] text-[#5f5e5a] border border-[#e4e3e0] shadow-2xs">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border border-[var(--color-edge-subtle)] shadow-2xs">
           <User className="w-3 h-3 shrink-0" aria-hidden="true" />
           Nhân viên (Employee)
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[#f1f1ef] text-[#5f5e5a] border border-[#e4e3e0] shadow-2xs">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-content-muted)] border border-[var(--color-edge-subtle)] shadow-2xs">
           {role}
         </span>
       );
