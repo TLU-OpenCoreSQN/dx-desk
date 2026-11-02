@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import 'reflect-metadata';
 import {
-  ArgumentsHost, Catch, ExceptionFilter, HttpException, Module, ValidationPipe,
+  ArgumentsHost, BadRequestException, Catch, ExceptionFilter, HttpException, Module,
+  PayloadTooLargeException, ValidationPipe,
 } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { json } from 'express';
-import type { Response } from 'express';
+import type { ErrorRequestHandler, Response } from 'express';
 import { JwtGuard } from './auth';
 import { Database } from './database';
 import { AttachmentLinksController, AttachmentContentController } from './downloads';
@@ -46,6 +47,19 @@ class Errors implements ExceptionFilter {
 })
 export class AppModule {}
 
+// Normalize parser errors before Nest wraps SyntaxError and loses its body-parser type.
+// Never return the parser's message/body or accept arbitrary error.status from other layers.
+const jsonErrors: ErrorRequestHandler = (error: unknown, _request, _response, next) => {
+  const type = (error as { type?: string } | null)?.type;
+  if (type === 'entity.too.large') {
+    next(new PayloadTooLargeException('Nội dung yêu cầu vượt quá giới hạn 16 MiB.'));
+  } else if (type === 'entity.parse.failed') {
+    next(new BadRequestException('Nội dung JSON không hợp lệ.'));
+  } else {
+    next(error);
+  }
+};
+
 export async function createApp() {
   const app = await NestFactory.create<NestExpressApplication>(
     AppModule, { logger: ['error', 'warn'], bodyParser: false },
@@ -53,6 +67,7 @@ export async function createApp() {
   // Tệp đính kèm đi nền base64 trong JSON: 10 MiB nhị phân ~ 13.98 MB base64, nên trần
   // body parser phải lớn hơn mặc định 100kb; giới hạn 10 MiB thật vẫn được áp ở controller.
   app.use(json({ limit: '16mb' }));
+  app.use(jsonErrors);
   app.useGlobalPipes(new ValidationPipe({
     transform: true, whitelist: true, forbidNonWhitelisted: true,
   }));
