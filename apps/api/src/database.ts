@@ -4,6 +4,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
 import { required } from './config';
 import type { UserClaims } from './auth';
+import { AutomationClaims, validateAutomationClaims } from './service-auth';
 
 @Injectable()
 export class Database implements OnModuleInit, OnModuleDestroy {
@@ -30,11 +31,19 @@ export class Database implements OnModuleInit, OnModuleDestroy {
     }
   }
   async asUser<T>(claims: UserClaims, operation: (client: PoolClient) => Promise<T>): Promise<T> {
+    return this.asRole('authenticated', claims, operation);
+  }
+  async asAutomation<T>(claims: AutomationClaims, operation: (client: PoolClient) => Promise<T>): Promise<T> {
+    validateAutomationClaims(claims);
+    return this.asRole('ticket_automation', claims, operation);
+  }
+  private async asRole<T>(role: 'authenticated' | 'ticket_automation', claims: UserClaims | AutomationClaims,
+    operation: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     let discard = false;
     try {
       await client.query('BEGIN');
-      await client.query('SET LOCAL ROLE authenticated');
+      await client.query(role === 'authenticated' ? 'SET LOCAL ROLE authenticated' : 'SET LOCAL ROLE ticket_automation');
       // set_config(..., true) is the parameterized equivalent of SET LOCAL.
       await client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify(claims)]);
       await client.query("SET LOCAL statement_timeout = '5s'");

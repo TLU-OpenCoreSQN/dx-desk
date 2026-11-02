@@ -32,6 +32,7 @@ export class CreateTicket {
 }
 export class UpdateTicketStatus {
   @IsIn(TICKET_STATUS_VALUES) to!: string;
+  @IsOptional() @IsInt() @Min(1) expected_version?: number;
   @Trim() @IsOptional() @IsString() @Length(1, 2000) note?: string;
   // W3-01: bắt buộc khi chuyển sang 'resolved' (5..2000); các cạnh khác bị máy trạng thái chặn trước.
   @Trim() @IsOptional() @IsString() @Length(5, 2000) resolution_note?: string;

@@ -1,0 +1,122 @@
+{
+  "id": "dxdeskSlaScheduler004",
+  "name": "DX-Desk SLA scheduler",
+  "active": true,
+  "nodes": [
+    {
+      "id": "Every-15-seconds",
+      "name": "Every 15 seconds",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 15
+            }
+          ]
+        }
+      },
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "Service-token",
+      "name": "Service token",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DXDESK_TOKEN_URL }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "name": "client_id",
+              "value": "={{ $env.DXDESK_CLIENT_ID }}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{ $env.DXDESK_CLIENT_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        0
+      ]
+    },
+    {
+      "id": "Evaluate-SLA",
+      "name": "Evaluate SLA",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DXDESK_API_URL + \"/api/system/sla/evaluate\" }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "typeVersion": 4.2,
+      "position": [
+        630,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Every 15 seconds": {
+      "main": [
+        [
+          {
+            "node": "Service token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Service token": {
+      "main": [
+        [
+          {
+            "node": "Evaluate SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false,
+    "executionTimeout": 30
+  }
+}

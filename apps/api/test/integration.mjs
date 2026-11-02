@@ -25,7 +25,12 @@ const users = {
   b: { sub: '20000000-0000-4000-8000-000000000002', roles: ['Employee'] },
   agent: { sub: '20000000-0000-4000-8000-000000000003', roles: ['Agent'] },
   manager: { sub: '20000000-0000-4000-8000-000000000004', roles: ['Manager'] },
+  agent2: { sub: '20000000-0000-4000-8000-000000000006', roles: ['Agent'] },
 };
+const automationClaims = { sub:'20000000-0000-4000-8000-000000000005',role:'ticket_automation',azp:'dxdesk-automation',
+  realm_access:{roles:['ticket-automation']} };
+const networkTeam='30000000-0000-4000-8000-000000000001';
+const identityTeam='30000000-0000-4000-8000-000000000002';
 const category = '10000000-0000-4000-8000-000000000001';
 let app, db, jwksServer, restProcess, apiUrl, restUrl, privateKey, publicKey, issuer;
 let restLogs = '';
@@ -56,10 +61,10 @@ async function call(base, path, key = 'a', body, customToken) {
   });
   return { status: response.status, body: await response.json() };
 }
-async function patch(base, path, key, body) {
+async function patch(base, path, key, body, headers = {}) {
   const response = await fetch(base + path, {
     method: 'PATCH',
-    headers: { Authorization: `Bearer ${tokens[key]}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    headers: { Authorization: `Bearer ${tokens[key]}`, 'Content-Type': 'application/json', Prefer: 'return=representation', ...headers },
     body: JSON.stringify(body), signal: AbortSignal.timeout(10000),
   });
   return { status: response.status, body: await response.json() };
@@ -187,6 +192,7 @@ before(async () => {
   restProcess.stdout.on('data', chunk => { restLogs += chunk.toString(); });
   restProcess.stderr.on('data', chunk => { restLogs += chunk.toString(); });
   for (const key of Object.keys(users)) tokens[key] = await token(key);
+  tokens.service = await token('a', automationClaims);
   for (let attempt = 0; attempt < 60; attempt++) {
     try {
       const result = await call(restUrl, '/categories', 'a');
@@ -208,10 +214,10 @@ after(async () => {
   await admin.end();
 });
 
-test('TN-02: real database has seven protected domain tables and reference data', async () => {
+test('TN-02: real database has eight protected domain tables and reference data', async () => {
   const result = await admin.query(`SELECT relname, relrowsecurity, relforcerowsecurity
     FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'`);
-  assert.equal(result.rowCount, 7);
+  assert.equal(result.rowCount, 8);
   assert.ok(result.rows.every(row => row.relrowsecurity && row.relforcerowsecurity));
   // Hợp đồng tuần 3 (migration 003): thêm danh mục access + system-error -> 6 loại active.
   assert.equal((await call(apiUrl, '/api/categories')).body.data.length, 6);
@@ -421,7 +427,7 @@ test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', as
   assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'agent', { to: 'closed' })).status, 403);
   assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'closed' })).body.status, 'closed');
   const events = (await call(apiUrl, `/api/tickets/${ticket.id}/events`, 'a')).body.data;
-  assert.equal(events.length, 8, 'created + 7 lần chuyển trạng thái');
+  assert.equal(events.length, 9, 'created + 7 status transitions + team assignment');
   assert.deepEqual(events[1].payload, { from: 'new', to: 'triaged', note: '' });
   assert.equal(events.find(e => e.payload.to === 'waiting_user').payload.note, 'Cần ảnh chụp lỗi');
   // PostgREST ghi trực tiếp vẫn bị guard trigger chặn. SQLSTATE tự định nghĩa (45xxx) không có
@@ -430,7 +436,7 @@ test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', as
   assert.equal(blocked.status, 400, JSON.stringify(blocked.body));
   assert.equal(blocked.body.code, '45001');
   assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}`, 'a')).body.status, 'closed');
-  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/events`, 'a')).body.data.length, 8,
+  assert.equal((await call(apiUrl, `/api/tickets/${ticket.id}/events`, 'a')).body.data.length, 9,
     'guard từ chối không được ghi thêm ticket_events');
   // Trạng thái cuối là 409; đường reopen resolved→in_progress phải có note mới mỗi lần xử lý.
   assert.equal((await patch(apiUrl, `/api/tickets/${ticket.id}/status`, 'a', { to: 'cancelled' })).status, 409);
@@ -479,15 +485,17 @@ test('all 17 DB edges enforce role and requester permissions through API and dir
       const ticket = await seedState(edge.from_status, owned ? actor : 'b');
       const body = rest ? { status: edge.to_status } : { to: edge.to_status };
       if (edge.to_status === 'resolved') body.resolution_note = 'New resolution for this transition';
+      if (!rest && edge.from_status === 'pending_approval' && edge.to_status === 'new') body.note='Rejection reason for role matrix';
       const result = await patch(rest ? restUrl : apiUrl,
-        rest ? `/tickets?id=eq.${ticket.id}` : `/api/tickets/${ticket.id}/status`, actor, body);
+        rest ? `/tickets?id=eq.${ticket.id}` : `/api/tickets/${ticket.id}/status`, actor, body,
+        rest ? {'X-Status-Note':'Rejection reason for role matrix'} : {});
       const invisible = actor === 'a' && !owned;
       assert.equal(result.status, allowed ? 200 : invisible ? (rest ? 200 : 404) : rest ? 400 : 403,
         `${rest?'REST':'API'} ${edge.from_status}->${edge.to_status} ${actor} owner=${owned}: ${JSON.stringify(result.body)}`);
       const actual = (await admin.query('SELECT status FROM public.tickets WHERE id=$1', [ticket.id])).rows[0];
       assert.equal(actual.status, allowed ? edge.to_status : edge.from_status);
       assert.equal((await admin.query('SELECT count(*)::int AS n FROM public.ticket_events WHERE ticket_id=$1', [ticket.id])).rows[0].n,
-        allowed ? 2 : 1, 'denied writes cannot add audit events');
+        allowed ? (edge.to_status==='assigned' ? 3 : 2) : 1, 'denied writes cannot add audit events');
     }
   }
 });
@@ -656,4 +664,240 @@ test('upload reserves metadata before PUT and compensates a failed DB completion
   } finally {
     await admin.query('DROP TRIGGER test_attachment_finish ON public.attachments; DROP FUNCTION public.test_fail_attachment()');
   }
+});
+
+test('W4 service scope is independent and cannot enter user routes or direct REST', async () => {
+  assert.equal((await call(apiUrl,'/api/system/sla/evaluate','a',{})).status,403);
+  assert.equal((await call(apiUrl,'/api/system/outbox','service')).status,200);
+  assert.equal((await call(apiUrl,'/api/system/teams','service')).body.data.length,3);
+  assert.equal((await call(apiUrl,'/api/me','service')).status,401);
+  assert.equal((await call(restUrl,'/tickets','service')).status,403);
+  for(const overrides of [{azp:'other-client'},{role:'authenticated'},
+    {realm_access:{roles:['ticket-automation','Agent']}},{realm_access:{roles:[]}}]) {
+    const bad=await token('a',{...automationClaims,...overrides});
+    assert.equal((await call(apiUrl,'/api/system/sla/evaluate','service',{},bad)).status,403);
+  }
+  for(const options of [{issuer:'https://wrong.invalid'},{audience:'other-api'},{exp:'1 second ago'}]) {
+    const bad=await token('a',automationClaims,options);
+    assert.equal((await call(apiUrl,'/api/system/sla/evaluate','service',{},bad)).status,401);
+  }
+  await assert.rejects(db.asUser(claims('agent'),c=>c.query('SELECT private.claim_outbox()')),e=>e.code==='42501');
+});
+
+async function createdEvent(ticketId) {
+  return (await admin.query("SELECT event_id,envelope FROM private.outbox WHERE envelope->>'ticket_id'=$1 AND envelope->>'event_type'='ticket.created'",[ticketId])).rows[0];
+}
+const automation = operation => db.asAutomation(automationClaims,operation);
+const processEvent = id => call(apiUrl,`/api/system/events/${id}/process`,'service',{schema_version:1});
+
+test('W4 routing and durable inbox are atomic, repeatable, ordered and keep a real system actor',async()=>{
+  const ticket=await create('a','Automatic team routing acceptance');
+  const event=await createdEvent(ticket.id);
+  assert.equal(event.envelope.schema_version,1);
+  assert.equal(event.envelope.ticket_version,1);
+  assert.equal(event.envelope.actor.type,'user');
+  assert.deepEqual(Object.keys(event.envelope.payload).sort(),['category_code','priority','status','team_id']);
+  assert.equal((await call(apiUrl,`/api/system/events/${event.event_id}/process`,'service',{schema_version:2})).status,400);
+  assert.equal((await call(apiUrl,`/api/system/events/${event.event_id}/process`,'service',{schema_version:1,payload:{status:'closed'}})).status,400);
+  const first=await processEvent(event.event_id);
+  assert.equal(first.status,200,JSON.stringify(first.body));
+  assert.equal(first.body.result,'routed');
+  assert.equal(first.body.status,'assigned');
+  assert.equal(first.body.team_id,networkTeam);
+  assert.deepEqual((await processEvent(event.event_id)).body,first.body);
+  const current=(await call(apiUrl,`/api/tickets/${ticket.id}`)).body;
+  assert.equal(current.ticket_version,3);
+  assert.equal(current.team_name,'Network Team');
+  const audits=(await call(apiUrl,`/api/tickets/${ticket.id}/events`)).body.data;
+  assert.equal(audits.length,4);
+  assert.ok(audits.slice(1).every(row=>row.actor_type==='system'&&row.actor_id===automationClaims.sub&&row.actor_id!==ticket.requester_id));
+  assert.equal((await admin.query('SELECT count(*)::int n FROM private.inbox WHERE event_id=$1',[event.event_id])).rows[0].n,1);
+  const stale=await create('a','Delayed event cannot resurrect a cancelled ticket');
+  await patch(apiUrl,`/api/tickets/${stale.id}/status`,'a',{to:'cancelled'});
+  assert.equal((await processEvent((await createdEvent(stale.id)).event_id)).body.result,'skipped');
+  const access=await create('a','Access event must await a human decision',{category_id:'10000000-0000-4000-8000-000000000005',
+    fields:{system_name:'CRM',permission_level:'Reader',valid_until:'2026-12-31'}});
+  assert.equal((await processEvent((await createdEvent(access.id)).event_id)).body.result,'skipped');
+  const unresolved=await create('a','Missing routing team remains unresolved');
+  await admin.query('UPDATE public.routing_rules SET active=false WHERE category_id=$1',[category]);
+  try {
+    const id=(await createdEvent(unresolved.id)).event_id;
+    const result=await processEvent(id);
+    assert.equal(result.body.result,'unresolved');
+    assert.equal(result.body.status,'new');
+    assert.deepEqual((await processEvent(id)).body,result.body);
+    assert.equal((await admin.query("SELECT count(*)::int n FROM public.ticket_events WHERE ticket_id=$1 AND event_type='routing_unresolved'",[unresolved.id])).rows[0].n,1);
+  } finally {await admin.query('UPDATE public.routing_rules SET active=true WHERE category_id=$1',[category]);}
+  const recoverable=(await createdEvent(unresolved.id)).event_id;
+  assert.equal((await admin.query('SELECT count(*)::int n FROM private.inbox WHERE event_id=$1',[recoverable])).rows[0].n,0);
+  await admin.query("UPDATE private.outbox SET status='failed' WHERE event_id=$1",[recoverable]);
+  assert.equal((await call(apiUrl,`/api/system/outbox/${recoverable}/replay`,'service',{})).body.replayed,true);
+  assert.equal((await processEvent(recoverable)).body.result,'routed','Repairing the routing rule and replaying must recover');
+  assert.equal((await processEvent(recoverable)).body.result,'routed');
+  assert.equal((await call(apiUrl,`/api/tickets/${unresolved.id}`)).body.ticket_version,3);
+  let rolledBack;
+  await assert.rejects(db.asUser(claims('a'),async c=>{
+    rolledBack=(await c.query(`INSERT INTO public.tickets(category_id,title,description,request_fields)
+      VALUES($1,'Rollback outbox acceptance','The domain event must roll back with its mutation',$2) RETURNING id`,
+      [category,JSON.stringify({client_version:'OpenVPN',error_message:'Timed out'})])).rows[0].id;
+    throw new Error('rollback after event trigger');
+  }),/rollback after event trigger/);
+  assert.equal((await admin.query('SELECT count(*)::int n FROM public.tickets WHERE id=$1',[rolledBack])).rows[0].n,0);
+  assert.equal((await admin.query("SELECT count(*)::int n FROM private.outbox WHERE envelope->>'ticket_id'=$1",[rolledBack])).rows[0].n,0);
+});
+
+test('W4 roster authorization, concurrent claim, queue filters and version preconditions',async()=>{
+  const roster=await call(apiUrl,'/api/system/roster','service',{members:['agent','agent2'].map(key=>({
+    team_id:networkTeam,user_id:users[key].sub,display_name:`Fixture ${key}`,active:true}))});
+  assert.equal(roster.status,200,JSON.stringify(roster.body));
+  assert.equal(roster.body.updated,2);
+  assert.equal((await call(apiUrl,'/api/teams','a')).status,403);
+  const teams=(await call(apiUrl,'/api/teams','agent')).body.data;
+  assert.equal(teams.find(team=>team.id===networkTeam).members.length,2);
+  const ticket=await create('a','Concurrent agents claim only one ticket');
+  await processEvent((await createdEvent(ticket.id)).event_id);
+  assert.equal((await call(apiUrl,`/api/tickets/${ticket.id}/claim`,'manager',{})).status,403,'Staff outside the team cannot claim');
+  assert.equal((await call(apiUrl,'/api/system/roster','service',{members:[{
+    team_id:networkTeam,user_id:users.manager.sub,display_name:'Manager member',active:true}]})).status,200);
+  assert.equal((await call(apiUrl,`/api/tickets/${ticket.id}/claim`,'manager',{})).status,403,
+    'Manager-only team membership must not grant the Agent claim capability');
+  await assert.rejects(db.asUser(claims('manager'),c=>c.query('SELECT private.claim_ticket($1)',[ticket.id])),
+    e=>e.code==='42501','DB must enforce the same role boundary independently of the API');
+  const before=(await call(apiUrl,'/api/tickets?queue=team_unassigned&limit=1','agent')).body;
+  assert.ok(before.total>=1);
+  assert.equal(before.data.length,1);
+  const results=await Promise.all(['agent','agent2'].map(key=>call(apiUrl,`/api/tickets/${ticket.id}/claim`,key,{})));
+  assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+  const winner=results[0].status===200?'agent':'agent2';
+  const first=results.find(r=>r.status===200).body;
+  const repeat=await call(apiUrl,`/api/tickets/${ticket.id}/claim`,winner,{});
+  assert.equal(repeat.status,200);
+  assert.equal(repeat.body.ticket_version,first.ticket_version);
+  assert.equal(repeat.body.assignee_name,`Fixture ${winner}`);
+  const ownWork=(await call(apiUrl,'/api/tickets?queue=my_open',winner)).body.data;
+  assert.ok(ownWork.some(row=>row.id===ticket.id),'Claimed Employee tickets must appear in the Agent work queue');
+  const loser=winner==='agent'?'agent2':'agent';
+  assert.equal((await call(apiUrl,'/api/tickets?queue=my_open',loser)).body.data.some(row=>row.id===ticket.id),false);
+  assert.ok((await call(apiUrl,'/api/tickets?queue=my_open','a')).body.data.some(row=>row.id===ticket.id),
+    'Employee my_open retains requester ownership semantics');
+  const assigned=(await call(apiUrl,`/api/tickets?queue=team_assigned&assignee_id=${users[winner].sub}`,winner)).body;
+  assert.ok(assigned.data.some(row=>row.id===ticket.id));
+  assert.equal((await call(apiUrl,'/api/tickets?queue=pending_approval','a')).status,403);
+  assert.equal((await call(apiUrl,'/api/tickets?queue=team_unassigned&assignee=me','agent')).status,400);
+  assert.equal((await call(apiUrl,'/api/tickets?queue=unknown','agent')).status,400);
+  assert.equal((await patch(apiUrl,`/api/tickets/${ticket.id}/status`,winner,{to:'in_progress',expected_version:first.ticket_version-1})).status,409);
+  assert.equal((await patch(apiUrl,`/api/tickets/${ticket.id}/status`,winner,{to:'in_progress',expected_version:first.ticket_version})).status,200);
+  for(const injection of [{assigned_to:users.a.sub},{assigned_team_id:identityTeam},{sla_breached:true},{ticket_version:100}]) {
+    assert.equal((await patch(restUrl,`/tickets?id=eq.${ticket.id}`,'agent',injection)).status,403);
+  }
+});
+
+test('W4 approval attaches the active team and rejection reason is enforced on API and REST',async()=>{
+  const access=()=>create('a','Approval decision acceptance',{category_id:'10000000-0000-4000-8000-000000000005',
+    fields:{system_name:'CRM',permission_level:'Reader',valid_until:'2026-12-31'}});
+  const approved=await access();
+  const result=await patch(apiUrl,`/api/tickets/${approved.id}/status`,'agent',{to:'assigned',expected_version:approved.ticket_version});
+  assert.equal(result.status,200);
+  assert.equal(result.body.assigned_team_id,identityTeam);
+  const rejected=await access();
+  assert.equal((await patch(apiUrl,`/api/tickets/${rejected.id}/status`,'manager',{to:'new'})).status,422);
+  assert.equal((await patch(restUrl,`/tickets?id=eq.${rejected.id}`,'manager',{status:'new'})).body.code,'45004');
+  assert.equal((await patch(restUrl,`/tickets?id=eq.${rejected.id}`,'a',{status:'new'},{'X-Status-Note':'Employee cannot approve'})).status,400);
+  const reason='Insufficient access justification';
+  assert.equal((await patch(restUrl,`/tickets?id=eq.${rejected.id}`,'manager',{status:'new'},{'X-Status-Note':reason})).status,200);
+  const audits=(await call(apiUrl,`/api/tickets/${rejected.id}/events`)).body.data;
+  assert.equal(audits.at(-1).payload.note,reason);
+});
+
+test('W4 outbox leases, stale workers, durable ACK requirement and failed-event replay',async()=>{
+  // Isolate only the queue timing of this fixture; keep every earlier event and business row.
+  await admin.query("UPDATE private.outbox SET available_at=now()+interval '1 day' WHERE status='pending'");
+  const ticket=await create('a','Lease recovery acceptance');
+  const batches=await Promise.all([1,2].map(()=>automation(async c=>(await c.query('SELECT * FROM private.claim_outbox(1,30)')).rows)));
+  assert.equal(batches.flat().length,1);
+  const lease=batches.flat()[0];
+  assert.equal(lease.event_id,(await createdEvent(ticket.id)).event_id);
+  assert.equal((await automation(async c=>(await c.query('SELECT private.complete_outbox($1,$2) AS ok',[lease.event_id,lease.lease_token])).rows[0].ok)),false,'Cannot deliver before durable inbox ACK');
+  await admin.query("UPDATE private.outbox SET locked_until=now()-interval '1 second' WHERE event_id=$1",[lease.event_id]);
+  const recovered=(await automation(async c=>(await c.query('SELECT * FROM private.claim_outbox(1,30)')).rows))[0];
+  assert.equal(recovered.event_id,lease.event_id);
+  assert.notEqual(recovered.lease_token,lease.lease_token);
+  assert.equal(recovered.attempts,2);
+  await processEvent(recovered.event_id);
+  assert.equal(await automation(async c=>(await c.query('SELECT private.complete_outbox($1,$2) AS ok',[lease.event_id,lease.lease_token])).rows[0].ok),false);
+  assert.equal(await automation(async c=>(await c.query('SELECT private.fail_outbox($1,$2,$3,1,true) AS ok',[recovered.event_id,recovered.lease_token,'fixture_terminal'])).rows[0].ok),true);
+  const metrics=await call(apiUrl,'/api/system/outbox','service');
+  assert.ok(metrics.body.failed>=1);
+  assert.equal((await call(apiUrl,`/api/system/outbox/${recovered.event_id}/replay`,'a',{})).status,403);
+  assert.equal((await call(apiUrl,`/api/system/outbox/${recovered.event_id}/replay`,'service',{})).body.replayed,true);
+  assert.equal((await call(apiUrl,`/api/system/outbox/${recovered.event_id}/replay`,'service',{})).body.replayed,false);
+  const replay=(await automation(async c=>(await c.query('SELECT * FROM private.claim_outbox(1,30)')).rows))[0];
+  assert.equal(replay.event_id,recovered.event_id);
+  assert.equal(await automation(async c=>(await c.query('SELECT private.complete_outbox($1,$2) AS ok',[replay.event_id,replay.lease_token])).rows[0].ok),true);
+  assert.equal((await call(apiUrl,`/api/tickets/${ticket.id}`)).body.ticket_version,3,'Replaying a committed route cannot route twice');
+  await admin.query("UPDATE private.outbox SET available_at=now()+interval '1 day' WHERE status='pending'");
+  const crashing=await create('a','Eight expired worker leases reach quarantine');
+  const crashingId=(await createdEvent(crashing.id)).event_id;
+  for(let attempt=1;attempt<=8;attempt++) {
+    const claimed=(await automation(async c=>(await c.query('SELECT * FROM private.claim_outbox(1,30)')).rows))[0];
+    assert.equal(claimed.event_id,crashingId);
+    assert.equal(claimed.attempts,attempt);
+    await admin.query("UPDATE private.outbox SET locked_until=now()-interval '1 second' WHERE event_id=$1",[crashingId]);
+  }
+  assert.equal((await automation(async c=>(await c.query('SELECT * FROM private.claim_outbox(1,30)')).rows)).length,0);
+  const quarantined=(await admin.query('SELECT status,attempts,last_error FROM private.outbox WHERE event_id=$1',[crashingId])).rows[0];
+  assert.deepEqual(quarantined,{status:'failed',attempts:8,last_error:'lease_attempts_exhausted'});
+  assert.equal((await call(apiUrl,`/api/tickets/${crashing.id}`)).body.status,'new','A lease failure cannot mutate the ticket');
+  assert.equal((await call(apiUrl,`/api/system/outbox/${crashingId}/replay`,'service',{})).body.replayed,true);
+  const restarted=(await automation(async c=>(await c.query('SELECT * FROM private.claim_outbox(1,30)')).rows))[0];
+  assert.equal(restarted.event_id,crashingId);
+  assert.equal(restarted.attempts,1,'An explicit operator replay opens a new bounded delivery cycle');
+});
+
+test('W4 SLA clock boundaries, pause exclusion, persisted breach and superseded notices',async()=>{
+  const insert=async(created,status='in_progress',waiting=null)=>(await admin.query(`INSERT INTO public.tickets
+    (requester_id,category_id,title,description,status,created_at,waiting_since)
+    VALUES($1,$2,'SLA fixture snapshot','Clock-controlled fixture without historical lifecycle claims',$3,$4,$5) RETURNING *`,
+    [users.a.sub,category,status,created,waiting])).rows[0];
+  const evaluate=now=>automation(async c=>(await c.query('SELECT private.evaluate_sla($1::timestamptz) AS queued',[now])).rows[0].queued);
+  const ticket=await insert('2020-01-01T00:00:00Z');
+  assert.equal(await evaluate('2020-01-01T19:11:59.999Z'),0);
+  assert.equal(await evaluate('2020-01-01T19:12:00Z'),1);
+  assert.equal(await evaluate('2020-01-01T19:12:00Z'),0);
+  const warning=(await admin.query("SELECT event_id FROM private.sla_notices WHERE ticket_id=$1 AND kind='sla_warning'",[ticket.id])).rows[0];
+  assert.equal((await processEvent(warning.event_id)).body.result,'notification','Simulate durable ACK before chat delivery fails');
+  await evaluate('2020-01-02T00:00:00Z');
+  assert.equal((await call(apiUrl,`/api/tickets/${ticket.id}`)).body.sla_breached,false,'Exactly 100% is not strictly overdue');
+  assert.equal(await evaluate('2020-01-02T00:00:00.001Z'),1);
+  const breached=(await call(apiUrl,`/api/tickets/${ticket.id}`)).body;
+  assert.equal(breached.sla_breached,true);
+  assert.equal(breached.sla_breached_at,'2020-01-02T00:00:00.000Z');
+  assert.equal(await evaluate('2020-01-02T00:00:00.002Z'),0);
+  assert.equal((await processEvent(warning.event_id)).body.result,'skipped','Do not send an obsolete 80% reminder after breach');
+  assert.equal((await processEvent(warning.event_id)).body.result,'skipped','The cached ACK must remain durably superseded');
+  const paused=await insert('2020-01-03T00:00:00Z','waiting_user','2020-01-03T01:00:00Z');
+  await evaluate('2020-01-05T00:00:00Z');
+  assert.equal((await call(apiUrl,`/api/tickets/${paused.id}`)).body.sla_breached,false);
+  assert.equal((await admin.query('SELECT count(*)::int n FROM private.sla_notices WHERE ticket_id=$1',[paused.id])).rows[0].n,0);
+  const beforePause=await insert('2020-01-06T00:00:00Z','waiting_user','2020-01-07T01:00:00Z');
+  await evaluate('2020-01-08T00:00:00Z');
+  assert.equal((await call(apiUrl,`/api/tickets/${beforePause.id}`)).body.sla_breached,true,'Pausing after breach cannot erase it');
+  const overdueNew=await insert('2020-01-10T00:00:00Z','new');
+  await evaluate('2020-01-12T00:00:00Z');
+  assert.equal((await call(apiUrl,`/api/tickets/${overdueNew.id}`)).body.ticket_version,1,'SLA bookkeeping cannot invalidate a created event');
+  assert.equal((await processEvent((await createdEvent(overdueNew.id)).event_id)).body.result,'routed');
+  const closedNotice=await insert('2020-01-15T00:00:00Z');
+  await evaluate('2020-01-15T19:12:00Z');
+  const closingWarning=(await admin.query("SELECT event_id FROM private.sla_notices WHERE ticket_id=$1 AND kind='sla_warning'",[closedNotice.id])).rows[0];
+  assert.equal((await processEvent(closingWarning.event_id)).body.result,'notification');
+  await patch(apiUrl,`/api/tickets/${closedNotice.id}/status`,'agent',{to:'resolved',resolution_note:'Resolve before delayed chat retry'});
+  await patch(apiUrl,`/api/tickets/${closedNotice.id}/status`,'a',{to:'closed'});
+  assert.equal((await processEvent(closingWarning.event_id)).body.result,'skipped');
+  assert.equal((await patch(apiUrl,`/api/tickets/${ticket.id}/status`,'agent',{to:'resolved',resolution_note:'SLA fixture resolution'})).status,200);
+  assert.equal((await patch(apiUrl,`/api/tickets/${ticket.id}/status`,'agent',{to:'in_progress'})).body.sla_breached,true);
+  assert.equal((await patch(apiUrl,`/api/tickets/${ticket.id}/status`,'agent',{to:'resolved',resolution_note:'SLA fixture second resolution'})).status,200);
+  assert.equal((await patch(apiUrl,`/api/tickets/${ticket.id}/status`,'a',{to:'closed'})).status,200);
+  const count=(await admin.query('SELECT count(*)::int n FROM private.sla_notices WHERE ticket_id=$1',[ticket.id])).rows[0].n;
+  await evaluate('2030-01-01T00:00:00Z');
+  assert.equal((await admin.query('SELECT count(*)::int n FROM private.sla_notices WHERE ticket_id=$1',[ticket.id])).rows[0].n,count);
 });
