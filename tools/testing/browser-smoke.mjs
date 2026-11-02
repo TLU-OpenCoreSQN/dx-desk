@@ -111,7 +111,9 @@ try {
     await page.goto(origin + '/tickets/new');
     await page.getByLabel(/Danh mục/).selectOption(category.id);
     const submit = page.getByRole('button', { name: /Gửi phiếu/ });
-    await page.getByText('Thông tin bổ sung theo danh mục').waitFor();
+    // Trường động theo danh mục phải nằm trong fieldset có legend (nhóm có tên cho trình đọc màn hình).
+    const categoryFields = page.getByRole('group', { name: 'Thông tin bổ sung theo danh mục' });
+    await categoryFields.waitFor();
     assert.equal(await page.getByRole('button', { name: /Khẩn cấp/ }).isDisabled(), true);
     assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'nút Gửi phải khóa khi còn thiếu trường');
     await page.getByText(/Chưa thể gửi phiếu/).waitFor();
@@ -123,8 +125,8 @@ try {
     await page.getByLabel(/Tiêu đề/).fill('Lỗi VPN tại phòng làm việc');
     await page.getByLabel(/Mô tả/).fill('VPN bị ngắt khi đăng nhập vào mạng nội bộ.');
     assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'thiếu trường bắt buộc của danh mục');
-    await page.getByLabel(/Phiên bản client VPN/).fill('OpenVPN 4.2');
-    await page.getByLabel(/Dòng lỗi hiển thị/).fill('Kết nối bị ngắt sau 30 giây');
+    await categoryFields.getByLabel(/Phiên bản client VPN/).fill('OpenVPN 4.2');
+    await categoryFields.getByLabel(/Dòng lỗi hiển thị/).fill('Kết nối bị ngắt sau 30 giây');
     assert.equal(await submit.getAttribute('aria-disabled'), null, 'biểu mẫu hợp lệ thì không còn aria-disabled');
     assert.equal(await submit.isEnabled(), true);
     await page.screenshot({ path: resolve(reportDir, 'web-mobile-ticket-form.png'), fullPage: true });
@@ -153,14 +155,17 @@ try {
   await check('Device form submits only allowed fields', async () => {
     await page.getByRole('link', { name: 'Yêu cầu cấp thiết bị', exact: true }).click();
     await page.getByRole('button', { name: 'Gửi yêu cầu mới' }).click();
-    await page.getByText('Màn hình máy tính (Monitor)').click();
-    assert.equal(await page.getByRole('radio', { name: /Màn hình máy tính/ }).isChecked(), true,
+    // Radio sr-only nằm dưới thẻ chọn: bấm vào thẻ (label) như người dùng, rồi xác nhận radio đã chọn.
+    const deviceTypes = page.getByRole('group', { name: /Loại thiết bị/ });
+    await deviceTypes.getByText('Màn hình máy tính (Monitor)', { exact: true }).click();
+    assert.equal(await deviceTypes.getByRole('radio', { name: /Màn hình máy tính/ }).isChecked(), true,
       'thẻ radio phải chọn được loại thiết bị monitor');
     await page.getByLabel(/Số lượng/).fill('2');
     await page.getByLabel(/Lý do đề xuất/).fill('Cần màn hình để đọc bản thiết kế và tài liệu.');
     await page.getByRole('button', { name: 'Gửi yêu cầu thiết bị' }).click();
     await page.getByText(/Đã gửi yêu cầu cấp thiết bị thành công/).waitFor();
     assert.deepEqual(Object.keys(writes[1].body).sort(), ['device_type', 'quantity', 'reason']);
+    assert.equal(writes[1].body.device_type, 'monitor');
     assert.equal(writes[1].body.quantity, 2);
   });
   await check('HTTP 401 clears visible protected data and identity', async () => {
