@@ -111,7 +111,7 @@ try {
     await page.goto(origin + '/tickets/new');
     await page.getByLabel(/Danh mục/).selectOption(category.id);
     const submit = page.getByRole('button', { name: /Gửi phiếu/ });
-    await page.getByText('Thông tin bắt buộc theo danh mục').waitFor();
+    await page.getByText('Thông tin bổ sung theo danh mục').waitFor();
     assert.equal(await page.getByRole('button', { name: /Khẩn cấp/ }).isDisabled(), true);
     assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'nút Gửi phải khóa khi còn thiếu trường');
     await page.getByText(/Chưa thể gửi phiếu/).waitFor();
@@ -125,7 +125,8 @@ try {
     assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'thiếu trường bắt buộc của danh mục');
     await page.getByLabel(/Phiên bản client VPN/).fill('OpenVPN 4.2');
     await page.getByLabel(/Dòng lỗi hiển thị/).fill('Kết nối bị ngắt sau 30 giây');
-    assert.equal(await submit.getAttribute('aria-disabled'), 'false');
+    assert.equal(await submit.getAttribute('aria-disabled'), null, 'biểu mẫu hợp lệ thì không còn aria-disabled');
+    assert.equal(await submit.isEnabled(), true);
     await page.screenshot({ path: resolve(reportDir, 'web-mobile-ticket-form.png'), fullPage: true });
     await submit.click();
     await page.getByText(/Tạo phiếu.*thành công|gửi phiếu.*thành công/i).first().waitFor();
@@ -140,7 +141,10 @@ try {
   await check('Ticket detail and event history render from HTTP response', async () => {
     await page.getByRole('button', { name: /Xem chi tiết/ }).click();
     await page.getByRole('heading', { name: tickets[0].title }).waitFor();
-    assert.equal(await page.getByText('Mới tạo', { exact: true }).count(), 1);
+    // Trang chi tiết chủ đích lặp nhãn trạng thái: thẻ đầu phiếu và header của
+    // panel "Thao tác" sticky, nên kiểm tra đúng một badge trong thẻ đầu phiếu.
+    const ticketCard = page.locator('h1').locator('xpath=ancestor::header[1]');
+    assert.equal(await ticketCard.getByText('Mới tạo', { exact: true }).count(), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: resolve(reportDir, 'web-mobile-ticket-detail.png'), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });
@@ -149,7 +153,9 @@ try {
   await check('Device form submits only allowed fields', async () => {
     await page.getByRole('link', { name: 'Yêu cầu cấp thiết bị', exact: true }).click();
     await page.getByRole('button', { name: 'Gửi yêu cầu mới' }).click();
-    await page.getByLabel(/Loại thiết bị/).selectOption('monitor');
+    await page.getByText('Màn hình máy tính (Monitor)').click();
+    assert.equal(await page.getByRole('radio', { name: /Màn hình máy tính/ }).isChecked(), true,
+      'thẻ radio phải chọn được loại thiết bị monitor');
     await page.getByLabel(/Số lượng/).fill('2');
     await page.getByLabel(/Lý do đề xuất/).fill('Cần màn hình để đọc bản thiết kế và tài liệu.');
     await page.getByRole('button', { name: 'Gửi yêu cầu thiết bị' }).click();

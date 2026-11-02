@@ -22,10 +22,16 @@ async function call(path,body,headers={}){
 }
 const health={wikijs:'/',mattermost:'/api/v4/system/ping',metabase:'/api/health'}[app];
 let ready=false;
+// AbortSignal.timeout uses an unref timer. During a cold connection race fetch
+// can leave no referenced handle and Node exits 13 with unsettled top-level await.
+// Keep the bounded readiness loop alive until it succeeds or reports its failure.
+const readinessKeepAlive=setInterval(()=>{},1000);
+try{
 for(let n=0;n<180;n++){
-  try {const r=await fetch(origin+health,{signal:AbortSignal.timeout(2000)});if(r.ok){ready=true;break;}}catch{/* booting */}
+  try {const r=await fetch(origin+health,{signal:AbortSignal.timeout(2000)});const ok=r.ok;await r.body?.cancel();if(ok){ready=true;break;}}catch{/* booting */}
   await new Promise(r=>setTimeout(r,2000));
 }
+}finally{clearInterval(readinessKeepAlive);}
 assert.ok(ready,`${app} did not become ready`);
 if(app==='wikijs'){
   await check('Wiki.js 2.5.315 initializes its database and serves the login page',async()=>{

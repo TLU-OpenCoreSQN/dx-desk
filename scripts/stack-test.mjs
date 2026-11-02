@@ -186,7 +186,12 @@ try {
       'resolved -> closed dành riêng cho người tạo phiếu');
     assert.equal((await patch({ to: 'closed', note: 'Đã dùng lại được kết nối VPN.' }, tokenA)).data.status, 'closed');
     const events = await request(`/api/tickets/${id}/events`, tokenA);
-    assert.equal(events.data.data.length, 6, '1 bản ghi tạo + 5 lần chuyển trạng thái hợp lệ, lời gọi bị chặn không ghi thêm');
+    const history = events.data.data;
+    assert.equal(history.filter(event => ['created','status_changed'].includes(event.event_type)).length, 6,
+      '1 bản ghi tạo + 5 lần chuyển trạng thái hợp lệ, lời gọi bị chặn không ghi thêm');
+    assert.equal(history.filter(event => event.event_type === 'assignment_changed').length, 1,
+      'W4 ghi riêng đúng một audit khi bước assigned giao nhóm');
+    assert.equal(history.length, 7, 'Không có sự kiện thừa từ các lời gọi bị chặn');
   });
   await check('TN-02 same identity sees API-written row through PostgREST', async () => {
     const response = await request(`/rest/tickets?id=eq.${created.id}`, tokenA);
