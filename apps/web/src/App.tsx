@@ -12,6 +12,8 @@ import { CreateTicketPage } from './pages/CreateTicketPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { DeviceRequestPage } from './pages/DeviceRequestPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { WorkQueuePage } from './pages/WorkQueuePage';
+import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { LogIn, ShieldAlert } from 'lucide-react';
 
@@ -71,6 +73,14 @@ export const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<HomePage />} />
+              <Route
+                path="work-queue"
+                element={<ProtectedRoute><WorkQueuePage /></ProtectedRoute>}
+              />
+              <Route
+                path="approvals"
+                element={<ProtectedRoute><ManagerApprovalsPage /></ProtectedRoute>}
+              />
               <Route
                 path="tickets"
                 element={

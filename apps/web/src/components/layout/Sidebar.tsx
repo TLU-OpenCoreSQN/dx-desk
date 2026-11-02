@@ -12,6 +12,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -21,7 +23,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, roles } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -82,6 +84,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           { to: '/tickets', label: 'Danh sách phiếu', icon: Ticket },
           { to: '/tickets/new', label: 'Tạo phiếu hỗ trợ', icon: PlusCircle },
           { to: '/device-requests', label: 'Yêu cầu cấp thiết bị', icon: Laptop },
+          ...(roles.includes('Agent') || roles.includes('Manager') ? [
+            { to: '/work-queue', label: 'Bảng việc kỹ thuật viên', icon: ClipboardList },
+          ] : []),
+          ...(roles.includes('Manager') ? [
+            { to: '/approvals', label: 'Phê duyệt phiếu hỗ trợ', icon: ShieldCheck },
+          ] : []),
         ]
       : []),
   ];

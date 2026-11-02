@@ -40,6 +40,16 @@ export interface Ticket {
   priority: TicketPriority;
   status: string;
   assigned_to: string | null;
+  assigned_team_id?: string | null;
+  team_name?: string | null;
+  requester_name?: string | null;
+  assignee_name?: string | null;
+  sla_due_at?: string | null;
+  sla_paused_ms?: number | string;
+  waiting_since?: string | null;
+  sla_breached?: boolean;
+  sla_breached_at?: string | null;
+  ticket_version?: number;
   created_at: string;
   updated_at: string;
   request_fields?: Record<string, unknown>;
@@ -49,7 +59,9 @@ export interface Ticket {
 export interface TicketEvent {
   id: string;
   ticket_id: string;
-  actor_id: string;
+  actor_id: string | null;
+  actor_type?: 'user' | 'system';
+  actor_name?: string | null;
   event_type: string;
   payload: Record<string, unknown> | null;
   created_at: string;
@@ -77,6 +89,23 @@ export interface UpdateTicketStatusPayload {
   to: string;
   note?: string;
   resolution_note?: string;
+  expected_version?: number;
+}
+
+export type TicketQueue = 'my_open' | 'team_unassigned' | 'team_assigned' | 'pending_approval';
+
+export interface TicketFilters {
+  queue?: TicketQueue;
+  status?: string;
+  team_id?: string;
+  assignee_id?: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  active: boolean;
+  members: { user_id: string; display_name: string; active: boolean }[];
 }
 
 export type DeviceType = 'laptop' | 'monitor' | 'keyboard' | 'mouse' | 'other';
@@ -101,6 +130,7 @@ export interface PaginatedResponse<T> {
   data: T[];
   limit: number;
   offset: number;
+  total?: number;
 }
 
 export interface ApiErrorResponse {

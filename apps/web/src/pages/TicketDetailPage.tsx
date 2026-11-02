@@ -35,6 +35,7 @@ import { ErrorMessage } from '../components/common/ErrorMessage';
 import { EmptyState } from '../components/common/EmptyState';
 import { Alert } from '../components/common/Alert';
 import { AttachmentPanel } from '../components/common/AttachmentPanel';
+import { TicketSlaInfo } from '../components/common/TicketSlaInfo';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getAllowedTransitions,
@@ -80,7 +81,11 @@ function eventSummary(evt: TicketEvent): {
   const resolutionNote = typeof payload.resolution_note === 'string' && payload.resolution_note.trim()
     ? payload.resolution_note : null;
 
-  let heading = evt.event_type;
+  const headings: Record<string,string> = {
+    assignment_changed: 'Đã cập nhật phân công', routing_unresolved: 'Chưa xác định được nhóm xử lý',
+    sla_warning: 'SLA đã sử dụng 80%', sla_breached: 'Đã vi phạm SLA',
+  };
+  let heading = headings[evt.event_type] || evt.event_type;
   if (evt.event_type === 'created') heading = 'Đã tiếp nhận phiếu';
   else if (evt.event_type === 'status_changed') {
     heading =
@@ -234,7 +239,10 @@ export const TicketDetailPage: React.FC = () => {
   const resolutionNoteError = activeEdge?.resolutionNoteRequired
     ? validateResolutionNote(resolutionNote)
     : null;
-  const canConfirmTransition = !isTransitioning && !resolutionNoteError;
+  const rejectionNoteRequired = activeEdge?.from === 'pending_approval' && activeEdge.to === 'new';
+  const rejectionNoteError = rejectionNoteRequired && note.trim().length < 5
+    ? 'Lý do từ chối cần ít nhất 5 ký tự.' : null;
+  const canConfirmTransition = !isTransitioning && !resolutionNoteError && !rejectionNoteError;
   const isDestructiveActive = activeEdge ? isDestructiveEdge(activeEdge) : false;
   const isBottomBar = allowedTransitions.length > 0 || activeEdge !== null;
 
@@ -262,6 +270,7 @@ export const TicketDetailPage: React.FC = () => {
     try {
       setIsTransitioning(true);
       const body: UpdateTicketStatusPayload = { to: activeEdge.to };
+      if (ticket?.ticket_version !== undefined) body.expected_version = ticket.ticket_version;
       if (note.trim()) body.note = note.trim();
       if (activeEdge.resolutionNoteRequired) body.resolution_note = resolutionNote.trim();
       await updateTicketStatus(id, body);
@@ -270,6 +279,11 @@ export const TicketDetailPage: React.FC = () => {
       await loadTicketData(true);
     } catch (err) {
       setTransitionError(err);
+      if (err instanceof ApiClientError && err.statusCode === 409) {
+        setActiveEdge(null);
+        setSuccessMessage('Phiếu đã được cập nhật bởi người khác. Dữ liệu mới đã được tải lại; hãy kiểm tra trước khi thao tác tiếp.');
+        await loadTicketData(true);
+      }
     } finally {
       setIsTransitioning(false);
     }
@@ -284,35 +298,35 @@ export const TicketDetailPage: React.FC = () => {
         aria-busy="true"
       >
         <span className="sr-only">Đang tải thông tin chi tiết phiếu yêu cầu...</span>
-        <div className="flex items-center justify-between gap-2 border-b border-[#e5e5e2] pb-2">
-          <div className="h-9 w-44 animate-pulse rounded-[4px] bg-[#f6f5f3]" />
-          <div className="h-9 w-24 animate-pulse rounded-[4px] bg-[#f6f5f3]" />
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] pb-2">
+          <div className="h-9 w-44 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+          <div className="h-9 w-24 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
         </div>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-5">
-            <div className="rounded-[4px] border border-[#e5e5e2] p-5">
+            <div className="rounded-[4px] border border-[var(--color-edge-subtle)] p-5">
               <div className="flex flex-wrap gap-2">
                 <div className="h-5 w-20 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
                 <div className="h-5 w-16 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
               </div>
               <div className="mt-4 h-7 w-3/4 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
-              <div className="mt-3 h-4 w-1/2 animate-pulse rounded-[4px] bg-[#f6f5f3]" />
-              <div className="mt-6 h-24 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
+              <div className="mt-3 h-4 w-1/2 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+              <div className="mt-6 h-24 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
             </div>
-            <div className="rounded-[4px] border border-[#e5e5e2] p-5">
+            <div className="rounded-[4px] border border-[var(--color-edge-subtle)] p-5">
               <div className="h-4 w-36 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
               <div className="mt-4 space-y-2">
-                <div className="h-3 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
-                <div className="h-3 w-11/12 animate-pulse rounded-[4px] bg-[#f6f5f3]" />
-                <div className="h-3 w-2/3 animate-pulse rounded-[4px] bg-[#f6f5f3]" />
+                <div className="h-3 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+                <div className="h-3 w-11/12 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+                <div className="h-3 w-2/3 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
               </div>
             </div>
           </div>
-          <div className="rounded-[4px] border border-[#e5e5e2] p-4 max-lg:hidden">
+          <div className="rounded-[4px] border border-[var(--color-edge-subtle)] p-4 max-lg:hidden">
             <div className="h-4 w-24 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
             <div className="mt-4 space-y-2">
-              <div className="h-10 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
-              <div className="h-10 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
+              <div className="h-10 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+              <div className="h-10 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
             </div>
           </div>
         </div>
@@ -399,7 +413,7 @@ export const TicketDetailPage: React.FC = () => {
                   <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
                   <dt className="shrink-0 text-[var(--color-content-muted)]">Người tạo:</dt>
                   <dd className="min-w-0 break-all font-mono font-semibold text-[var(--color-content)]">
-                    {ticket.requester_id}
+                    {ticket.requester_name || ticket.requester_id}
                   </dd>
                 </div>
 
@@ -419,7 +433,7 @@ export const TicketDetailPage: React.FC = () => {
                   <dt className="shrink-0 text-[var(--color-content-muted)]">Phụ trách:</dt>
                   <dd className="min-w-0 break-all font-semibold text-[var(--color-content)]">
                     {ticket.assigned_to ? (
-                      <span className="font-mono text-[var(--color-primary)]">{ticket.assigned_to}</span>
+                      <span className="text-[var(--color-primary)]">{ticket.assignee_name || ticket.assigned_to}</span>
                     ) : (
                       <span className="font-normal italic text-[var(--color-content-subtle)]">Chưa phân công</span>
                     )}
@@ -444,6 +458,10 @@ export const TicketDetailPage: React.FC = () => {
                   <dd className="font-medium text-[var(--color-content)]">{formatDateTime(ticket.updated_at)}</dd>
                 </div>
               </dl>
+              <div className="mt-4 space-y-2 border-t border-edge-subtle pt-3">
+                <p className="break-words text-xs text-content-muted">Nhóm xử lý: <span className="font-semibold text-content">{ticket.team_name || (ticket.assigned_team_id ? `Chưa có tên nhóm (${ticket.assigned_team_id})` : 'Chưa gán nhóm')}</span></p>
+                <TicketSlaInfo ticket={ticket} />
+              </div>
             </div>
           </header>
 
@@ -526,7 +544,7 @@ export const TicketDetailPage: React.FC = () => {
                       <h3 className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#8c8a85]">
                         <Calendar className="h-3 w-3" aria-hidden="true" />
                         <span>{group.label}</span>
-                        <span className="rounded-[4px] bg-[#f6f5f3] px-1.5 py-0.5 font-mono text-[10px] normal-case tracking-normal text-[var(--color-content-muted)]">
+                        <span className="rounded-[4px] bg-[var(--color-surface-warm)] px-1.5 py-0.5 font-mono text-[10px] normal-case tracking-normal text-[var(--color-content-muted)]">
                           {group.items.length} sự kiện
                         </span>
                       </h3>
@@ -534,7 +552,7 @@ export const TicketDetailPage: React.FC = () => {
                       <div className="relative">
                         <span
                           aria-hidden="true"
-                          className="absolute bottom-3 left-3.5 top-3 w-px bg-[#e5e5e2]"
+                          className="absolute bottom-3 left-3.5 top-3 w-px bg-[var(--color-edge-subtle)]"
                         />
                         <ol className="space-y-3">
                         {group.items.map((evt, idx) => {
@@ -547,7 +565,7 @@ export const TicketDetailPage: React.FC = () => {
                             <li key={evt.id || idx} className="relative pl-10">
                               <span
                                 aria-hidden="true"
-                                className="absolute left-0 top-0 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] text-[var(--color-primary)] shadow-2xs ring-4 ring-white"
+                                className="absolute left-0 top-0 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] text-[var(--color-primary)] shadow-2xs ring-4 ring-surface"
                               >
                                 {Icon ? (
                                   <Icon className="h-3.5 w-3.5" />
@@ -572,7 +590,7 @@ export const TicketDetailPage: React.FC = () => {
                                 <p className="mt-0.5 text-[11px] text-[var(--color-content-muted)]">
                                   Thực hiện bởi{' '}
                                   <span className="break-all font-mono font-semibold text-[var(--color-content)]">
-                                    {evt.actor_id || 'Hệ thống'}
+                                    {evt.actor_type === 'system' ? `Hệ thống${evt.actor_name ? ` (${evt.actor_name})` : ''}` : evt.actor_name || evt.actor_id || 'Không có thông tin tác nhân'}
                                   </span>
                                 </p>
 
@@ -590,7 +608,7 @@ export const TicketDetailPage: React.FC = () => {
                                 )}
 
                                 {summary.note && (
-                                  <div className="mt-2 rounded-[4px] border border-[#e5e5e2] bg-[#f6f5f3]/80 px-3 py-2">
+                                  <div className="mt-2 rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)]/80 px-3 py-2">
                                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8c8a85]">
                                       Ghi chú
                                     </p>
@@ -604,7 +622,7 @@ export const TicketDetailPage: React.FC = () => {
                                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[#27553c]">
                                       Cách giải quyết
                                     </p>
-                                    <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-content)]">
+                                    <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#27553c]">
                                       {summary.resolutionNote}
                                     </p>
                                   </div>
@@ -693,7 +711,7 @@ export const TicketDetailPage: React.FC = () => {
                   onSubmit={confirmTransition}
                   role="dialog"
                   aria-labelledby="transition-dialog-title"
-                  className="space-y-3 rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-subtle)] p-3 sm:p-4"
+                  className="space-y-3 rounded-[4px] border border-[var(--color-primary-border)] bg-surface-warm p-3 sm:p-4"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -795,7 +813,7 @@ export const TicketDetailPage: React.FC = () => {
                       >
                         Ghi chú chuyển trạng thái{' '}
                         <span className="font-normal normal-case tracking-normal text-[#8c8a85]">
-                          (không bắt buộc)
+                          {rejectionNoteRequired ? '(bắt buộc khi từ chối, ít nhất 5 ký tự)' : '(không bắt buộc)'}
                         </span>
                       </label>
                       <span className="font-mono text-[10px] text-[var(--color-content-muted)]">
@@ -808,9 +826,13 @@ export const TicketDetailPage: React.FC = () => {
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       maxLength={2000}
+                      required={rejectionNoteRequired}
+                      aria-invalid={Boolean(rejectionNoteError)}
+                      aria-describedby={rejectionNoteError ? 'transition-note-error' : undefined}
                       placeholder="VD: Đã gọi điện hướng dẫn người dùng khởi động lại modem."
                       className={TEXTAREA_CLASS}
                     />
+                    {rejectionNoteError && <p id="transition-note-error" className="mt-1 text-xs text-danger">{rejectionNoteError}</p>}
                   </div>
 
                   <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
@@ -880,7 +902,7 @@ export const TicketDetailPage: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="flex items-start gap-2 rounded-[4px] border border-[var(--color-edge)] bg-[#f6f5f3]/80 px-3 py-2.5">
+                <div className="flex items-start gap-2 rounded-[4px] border border-[var(--color-edge)] bg-[var(--color-surface-warm)]/80 px-3 py-2.5">
                   <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#8c8a85]" aria-hidden="true" />
                   <p className="text-xs leading-relaxed text-[var(--color-content-muted)]">
                     Hiện không có thao tác chuyển trạng thái nào khả dụng cho bạn với phiếu ở trạng
@@ -890,7 +912,7 @@ export const TicketDetailPage: React.FC = () => {
               )}
 
               {!activeEdge && (
-                <div className="rounded-[4px] border border-[#e5e5e2] bg-[#f6f5f3]/70 p-3 max-lg:hidden">
+                <div className="rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)]/70 p-3 max-lg:hidden">
                   <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-content)]">
                     <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary)]" aria-hidden="true" />
                     Biên bản giải quyết
