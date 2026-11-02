@@ -148,6 +148,15 @@ services:
       # Filer HTTP nội bộ của SeaweedFS cho bước PUT đối tượng sau khi quét sạch.
       SEAWEEDFS_ENDPOINT: "http://seaweedfs:8888"
       ATTACHMENT_SIGNING_KEY: ${ATTACHMENT_SIGNING_KEY}
+      AUTOMATION_ENABLED: ${AUTOMATION_ENABLED:-false}
+      AUTOMATION_CLIENT_ID: ${AUTOMATION_CLIENT_ID:-dxdesk-automation}
+      AUTOMATION_CLIENT_SECRET: ${AUTOMATION_CLIENT_SECRET:-}
+      OIDC_TOKEN_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
+      AUTOMATION_WEBHOOK_URL: http://n8n:5678/webhook/dxdesk-ticket-events
+      AUTOMATION_WEBHOOK_KEY: ${AUTOMATION_WEBHOOK_KEY:-}
+      MATTERMOST_URL: http://mattermost:8065
+      MATTERMOST_BOT_TOKEN: ${MATTERMOST_BOT_TOKEN:-}
+      MATTERMOST_TEAM_CHANNELS: ${MATTERMOST_TEAM_CHANNELS:-}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
@@ -218,6 +227,13 @@ services:
       DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       N8N_RUNNERS_ENABLED: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      DXDESK_AUTOMATION_ENABLED: ${AUTOMATION_ENABLED:-false}
+      DXDESK_WEBHOOK_KEY: ${AUTOMATION_WEBHOOK_KEY:-}
+      DXDESK_TOKEN_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
+      DXDESK_CLIENT_ID: ${AUTOMATION_CLIENT_ID:-dxdesk-automation}
+      DXDESK_CLIENT_SECRET: ${AUTOMATION_CLIENT_SECRET:-}
+      DXDESK_API_URL: http://api:3000
     command: ["import:workflow", "--separate", "--input=/import/workflows"]
     volumes:
       - ../n8n/workflows:/import/workflows:ro
@@ -231,7 +247,10 @@ services:
         condition: service_completed_successfully
     environment: *n8n-env
     # Mã workflow mẫu cố định trong infra/n8n/workflows/hello.json
-    command: ["publish:workflow", "--id=dxdeskHello001"]
+    entrypoint: ["node", "/import/publish-workflows.mjs"]
+    volumes:
+      - ../n8n/workflows:/import/workflows:ro
+      - ../n8n/publish-workflows.mjs:/import/publish-workflows.mjs:ro
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
@@ -254,7 +273,7 @@ services:
 
   ollama:
     image: ollama/ollama:${OLLAMA_VERSION}
-    profiles: ["benchmark"]
+    profiles: ["benchmark", "full"]
     <<: *restart
     ports:
       - "127.0.0.1:11434:11434"
@@ -264,8 +283,52 @@ services:
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_NUM_PARALLEL: "1"
 
+  mattermost-db:
+    image: postgres:${POSTGRES_VERSION}
+    profiles: ["full", "demo-light"]
+    <<: *restart
+    environment:
+      POSTGRES_DB: mattermost
+      POSTGRES_USER: mattermost
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD}
+    volumes:
+      - mattermost-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mattermost -d mattermost"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:${MATTERMOST_VERSION:-12.0.1}
+    profiles: ["full", "demo-light"]
+    <<: *restart
+    depends_on:
+      mattermost-db:
+        condition: service_healthy
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: postgres://mattermost:${N8N_DB_PASSWORD}@mattermost-db:5432/mattermost?sslmode=disable&connect_timeout=10
+      MM_SERVICESETTINGS_SITEURL: http://localhost:${MATTERMOST_PORT:-18065}
+      MM_SERVICESETTINGS_ENABLEBOTACCOUNTCREATION: "true"
+      MM_SERVICESETTINGS_ENABLEUSERACCESSTOKENS: "true"
+      MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
+      MM_LOGSETTINGS_CONSOLELEVEL: ERROR
+    ports:
+      - "127.0.0.1:${MATTERMOST_PORT:-18065}:8065"
+    volumes:
+      - mattermost-data:/mattermost/data
+    healthcheck:
+      test: ["CMD", "/mattermost/bin/mmctl", "--local", "system", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
 volumes:
   postgres-data:
   clamav-db:
   ollama-data:
   seaweedfs-data:
+  mattermost-db-data:
+  mattermost-data:

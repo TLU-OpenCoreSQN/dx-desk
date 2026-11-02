@@ -13,6 +13,9 @@ import { JwtGuard } from './auth';
 import { Database } from './database';
 import { AttachmentLinksController, AttachmentContentController } from './downloads';
 import { AttachmentsController, DeskController, HealthController, workflowExceptionForCode } from './controllers';
+import { AutomationGuard } from './service-auth';
+import { AutomationController, WorkQueueController } from './week4';
+import { OutboxDispatcher } from './outbox-dispatcher';
 
 @Catch()
 class Errors implements ExceptionFilter {
@@ -30,7 +33,7 @@ class Errors implements ExceptionFilter {
       response.status(workflow.status).json({ statusCode: workflow.status, message: workflow.message });
     } else if (code === '42501') {
       response.status(403).json({ statusCode: 403, message: 'Bạn không có quyền thực hiện thao tác này.' });
-    } else if (['23503', '23514', '22P02', '23502'].includes(code ?? '')) {
+    } else if (['23503', '23514', '22P02', '23502', '22023'].includes(code ?? '')) {
       response.status(400).json({ statusCode: 400, message: 'Dữ liệu không hợp lệ. Kiểm tra danh mục và các trường bắt buộc.' });
     } else if (code === '23505') {
       response.status(409).json({ statusCode: 409, message: 'Dữ liệu đã tồn tại.' });
@@ -42,8 +45,9 @@ class Errors implements ExceptionFilter {
 }
 
 @Module({
-  controllers: [HealthController, DeskController, AttachmentsController, AttachmentLinksController, AttachmentContentController],
-  providers: [Database, JwtGuard],
+  controllers: [HealthController, DeskController, AttachmentsController, AttachmentLinksController, AttachmentContentController,
+    WorkQueueController, AutomationController],
+  providers: [Database, JwtGuard, AutomationGuard, OutboxDispatcher],
 })
 export class AppModule {}
 
