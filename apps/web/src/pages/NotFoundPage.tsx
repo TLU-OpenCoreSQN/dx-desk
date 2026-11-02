@@ -11,11 +11,11 @@ export const NotFoundPage: React.FC = () => {
       <div className="w-16 h-16 rounded-[12px] bg-gradient-to-br from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] text-[var(--color-primary)] flex items-center justify-center mb-5 border border-[var(--color-primary-border)] shadow-sm">
         <HelpCircle className="w-8 h-8" aria-hidden="true" />
       </div>
-      <h1 className="text-5xl font-black text-[#211f1b] mb-2 tracking-tight">404</h1>
-      <h2 className="text-base sm:text-lg font-bold text-[#211f1b] mb-2">
+      <h1 className="text-5xl font-black text-[var(--color-content)] mb-2 tracking-tight">404</h1>
+      <h2 className="text-base sm:text-lg font-bold text-[var(--color-content)] mb-2">
         Không tìm thấy trang yêu cầu
       </h2>
-      <p className="text-xs sm:text-sm text-[#5f5e5a] mb-6 leading-relaxed">
+      <p className="text-xs sm:text-sm text-[var(--color-content-muted)] mb-6 leading-relaxed">
         Đường dẫn bạn truy cập không tồn tại hoặc đã được di chuyển trong hệ thống DX-Desk.
       </p>
       <Link

@@ -76,8 +76,8 @@
 :root[data-accent='pink']    { --color-primary: #c14c8a; --color-primary-hover: #a13a70; --color-primary-tint: #fbe4ee; }
 :root[data-accent='red']     { --color-primary: #ee0033; --color-primary-hover: #c7002b; --color-primary-tint: #ffe0e8; }
 
-/* Dark mode */
-.dark {
+/* Dark mode: stronger selector also wins over each interface preset. */
+:root.dark {
   color-scheme: dark;
   --color-surface: #1e1e1e;
   --color-surface-warm: #252525;
@@ -86,14 +86,10 @@
   --color-surface-card: #222222;
   --color-content: #f5f5f4;
   --color-content-muted: #a8a29e;
-  --color-content-subtle: #78716c;
+  --color-content-subtle: #a8a29e;
   --color-edge: #383838;
   --color-edge-subtle: #2e2e2e;
   --color-edge-strong: #525252;
-}
-.dark html, .dark body {
-  background-color: #181818;
-  color: #f5f5f4;
 }
 
 /* UI Presets */
@@ -116,55 +112,55 @@
 }
 
 [data-theme='clear'] .dx-app-header {
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: none;
   backdrop-filter: none;
 }
 [data-theme='clear'] .dx-sidebar,
 [data-theme='clear'] .dx-main {
-  background: #fff;
+  background: var(--color-surface);
 }
 [data-theme='clear'] .dx-main :is(section, form, article, header) {
   box-shadow: none;
 }
 [data-theme='clear'] .dx-ticket-list-header {
-  background: #f7f6f3;
+  background: var(--color-surface-warm);
 }
 
 [data-theme='modern'] .dx-app-header {
-  background: color-mix(in srgb, var(--color-primary-tint) 25%, white 75%);
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--color-surface));
   box-shadow: 0 2px 12px rgb(33 31 27 / 6%);
   backdrop-filter: blur(12px);
 }
 [data-theme='modern'] .dx-main {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary-tint) 36%, white), #faf9f7 55%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 4%, var(--color-surface)), var(--color-surface-sidebar) 55%);
 }
 [data-theme='modern'] .dx-main :is(section, form, article) {
   box-shadow: 0 3px 14px rgb(33 31 27 / 5%);
 }
 
 [data-theme='classic'] .dx-app-header {
-  background: color-mix(in srgb, var(--color-primary-tint) 70%, white);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
   border-bottom-color: var(--color-primary-border);
   box-shadow: none;
   backdrop-filter: none;
 }
 [data-theme='classic'] .dx-sidebar {
-  background: color-mix(in srgb, var(--color-primary-tint) 45%, #f2f1ee);
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface-sidebar));
   border-right-color: var(--color-primary-border);
 }
 [data-theme='classic'] .dx-main {
-  background: #f2f1ee;
+  background: var(--color-surface-sidebar);
 }
 [data-theme='classic'] .dx-ticket-list-header {
-  background: color-mix(in srgb, var(--color-primary-tint) 75%, white);
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
   border-color: var(--color-primary-border);
 }
 [data-theme='classic'] .dx-ticket-list > li:nth-child(even) {
-  background: color-mix(in srgb, var(--color-primary-tint) 22%, white);
+  background: color-mix(in srgb, var(--color-primary) 3%, var(--color-surface));
 }
 [data-theme='classic'] .dx-main :is(section, form, article) {
-  border-color: #c8c7c2;
+  border-color: var(--color-edge);
   box-shadow: none;
 }
 
@@ -178,8 +174,8 @@
 @layer base {
   html {
     font-family: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: #211f1b;
-    background-color: #ffffff;
+    color: var(--color-content);
+    background-color: var(--color-surface);
     font-size: 100%;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -188,8 +184,8 @@
   }
 
   body {
-    background-color: #ffffff;
-    color: #211f1b;
+    background-color: var(--color-surface);
+    color: var(--color-content);
     font-size: 1rem;
     line-height: 1.6;
     margin: 0;
@@ -197,7 +193,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid #0a78be;
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 
@@ -207,14 +203,14 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #f6f5f3;
+    background: var(--color-surface-muted);
   }
   ::-webkit-scrollbar-thumb {
-    background: #d4d4d0;
+    background: var(--color-edge);
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a2;
+    background: var(--color-edge-strong);
   }
 }
 
@@ -237,7 +233,7 @@
 
   /* Micro-interactions & Modern SaaS Utilities */
   .dx-card {
-    background-color: #ffffff;
+    background-color: var(--color-surface-card);
     border: 1px solid var(--color-edge-subtle, #e4e3e0);
     border-radius: var(--radius-md, 6px);
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
@@ -250,11 +246,11 @@
   .dx-card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    border-color: #d6d5d2;
+    border-color: var(--color-edge);
   }
 
   .dx-glass {
-    background-color: rgba(255, 255, 255, 0.92);
+    background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }

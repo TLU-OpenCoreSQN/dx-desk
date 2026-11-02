@@ -20,12 +20,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-white rounded-[8px] border border-dashed border-[#e4e3e0] shadow-2xs">
-      <div className="w-14 h-14 rounded-[10px] bg-[#f7f6f3] flex items-center justify-center text-[#5f5e5a] mb-4 border border-[#e4e3e0] shadow-2xs">
-        {icon || <Inbox className="w-6 h-6 text-[#5f5e5a]" aria-hidden="true" />}
+    <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center bg-surface rounded-[8px] border border-dashed border-[var(--color-edge-subtle)] shadow-2xs">
+      <div className="w-14 h-14 rounded-[10px] bg-[var(--color-surface-warm)] flex items-center justify-center text-[var(--color-content-muted)] mb-4 border border-[var(--color-edge-subtle)] shadow-2xs">
+        {icon || <Inbox className="w-6 h-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
       </div>
-      <h3 className="text-sm sm:text-base font-bold text-[#211f1b] mb-1.5 tracking-tight">{title}</h3>
-      <p className="text-xs sm:text-sm text-[#5f5e5a] max-w-md mb-6 leading-relaxed">{description}</p>
+      <h3 className="text-sm sm:text-base font-bold text-[var(--color-content)] mb-1.5 tracking-tight">{title}</h3>
+      <p className="text-xs sm:text-sm text-[var(--color-content-muted)] max-w-md mb-6 leading-relaxed">{description}</p>
       {actionText && onAction && (
         <button
           type="button"

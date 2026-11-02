@@ -53,7 +53,7 @@ export const Alert: React.FC<AlertProps> = ({
           type="button"
           onClick={onClose}
           aria-label="Đóng thông báo"
-          className="text-[#5f5e5a] hover:text-[#211f1b] focus:outline-none focus:ring-2 focus:ring-[#0a78be] rounded-[4px] p-1 min-w-[28px] min-h-[28px] flex items-center justify-center -mr-1 -mt-1 transition-colors"
+          className="text-[var(--color-content-muted)] hover:text-[var(--color-content)] focus:outline-none focus:ring-2 focus:ring-[#0a78be] rounded-[4px] p-1 min-w-[28px] min-h-[28px] flex items-center justify-center -mr-1 -mt-1 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>

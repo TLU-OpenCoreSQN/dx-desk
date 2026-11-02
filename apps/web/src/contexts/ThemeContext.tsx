@@ -67,6 +67,37 @@ export interface ThemeContextType {
 
 const STORAGE_KEY = 'dx-desk-theme';
 
+interface ThemePreferences {
+  mode: ThemeMode;
+  theme: ThemeKey;
+  accent: AccentKey;
+  customAccentHex: string;
+  customAccentBgHex: string;
+  tableGridLines: boolean;
+}
+
+function readPreferences(): ThemePreferences {
+  let saved: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      saved = parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Invalid JSON or unavailable storage must not prevent the app from loading.
+  }
+  const customAccentHex = typeof saved.customAccentHex === 'string' && /^#[\da-f]{6}$/i.test(saved.customAccentHex)
+    ? saved.customAccentHex : '#0a78be';
+  return {
+    mode: saved.mode === 'dark' ? 'dark' : 'light',
+    theme: THEME_PRESETS.find(preset => preset.key === saved.theme)?.key ?? 'modern',
+    accent: saved.accent === 'custom' ? 'custom' : ACCENT_PRESETS.find(preset => preset.key === saved.accent)?.key ?? 'blue',
+    customAccentHex,
+    customAccentBgHex: deriveLightTint(customAccentHex),
+    tableGridLines: typeof saved.tableGridLines === 'boolean' ? saved.tableGridLines : true,
+  };
+}
+
 function deriveLightTint(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -75,14 +106,7 @@ function deriveLightTint(hex: string): string {
   return `rgb(${Math.round(r * 0.12 + 255 * 0.88)},${Math.round(g * 0.12 + 255 * 0.88)},${Math.round(b * 0.12 + 255 * 0.88)})`;
 }
 
-function applyThemeToDOM(state: {
-  mode: ThemeMode;
-  theme: ThemeKey;
-  accent: AccentKey;
-  customAccentHex: string;
-  customAccentBgHex: string;
-  tableGridLines: boolean;
-}) {
+function applyThemeToDOM(state: ThemePreferences) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
@@ -113,21 +137,13 @@ function applyThemeToDOM(state: {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [saved] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    } catch {
-      return {};
-    }
-  });
-  const [mode, setModeState] = useState<ThemeMode>(saved.mode ?? 'light');
-  const [theme, setThemeState] = useState<ThemeKey>(saved.theme ?? 'modern');
-  const [accent, setAccentState] = useState<AccentKey>(saved.accent ?? 'blue');
-  const [customAccentHex, setCustomAccentHex] = useState<string>(saved.customAccentHex ?? '#0a78be');
-  const [customAccentBgHex, setCustomAccentBgHex] = useState<string>(saved.customAccentBgHex ?? '#deeef8');
-  const [tableGridLines, setTableGridLinesState] = useState<boolean>(
-    typeof saved.tableGridLines === 'boolean' ? saved.tableGridLines : true
-  );
+  const [saved] = useState(readPreferences);
+  const [mode, setModeState] = useState<ThemeMode>(saved.mode);
+  const [theme, setThemeState] = useState<ThemeKey>(saved.theme);
+  const [accent, setAccentState] = useState<AccentKey>(saved.accent);
+  const [customAccentHex, setCustomAccentHex] = useState(saved.customAccentHex);
+  const [customAccentBgHex, setCustomAccentBgHex] = useState(saved.customAccentBgHex);
+  const [tableGridLines, setTableGridLinesState] = useState(saved.tableGridLines);
 
   // Sync to DOM and localStorage whenever values change
   useEffect(() => {
