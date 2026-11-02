@@ -3,8 +3,9 @@
 openapi: 3.0.3
 info:
   title: DX-Desk Service Desk API
-  version: 0.2.0
-  description: Khung API tuần 3 — thêm máy trạng thái ticket, Poka-yoke và SLA. Tất cả thao tác nghiệp vụ áp dụng PostgreSQL RLS.
+  version: 0.3.0
+  description: >-
+    API tuần 4: luồng ticket, queue/team/claim, automation tách khỏi người dùng, outbox và SLA. RLS vẫn bảo vệ dữ liệu.
 servers:
   - url: http://localhost:9080/api
 security:
@@ -22,7 +23,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  status: { type: string, enum: [ok] }
+                  status: { type: string, enum: [ ok ] }
                   service: { type: string }
                   version: { type: string }
         "503": { $ref: "#/components/responses/Error" }
@@ -41,7 +42,7 @@ paths:
                   username: { type: string }
                   roles:
                     type: array
-                    items: { type: string, enum: [Employee, Agent, Manager] }
+                    items: { type: string, enum: [ Employee, Agent, Manager ] }
         "401": { $ref: "#/components/responses/Error" }
   /categories:
     get:
@@ -78,6 +79,35 @@ paths:
       parameters:
         - { $ref: "#/components/parameters/Limit" }
         - { $ref: "#/components/parameters/Offset" }
+        - in: query
+          name: queue
+          schema:
+            type: string
+            enum:
+              - my_open
+              - team_unassigned
+              - team_assigned
+              - pending_approval
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: team_id
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: assignee_id
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: assignee
+          schema:
+            type: string
+            enum:
+              - me
       responses:
         "200":
           description: Yêu cầu nhìn thấy theo RLS, mới nhất trước
@@ -91,8 +121,13 @@ paths:
                     items: { $ref: "#/components/schemas/Ticket" }
                   limit: { type: integer }
                   offset: { type: integer }
+                  total:
+                    type: integer
+                    minimum: 0
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "403":
+          $ref: "#/components/responses/Error"
     post:
       operationId: createTicket
       requestBody:
@@ -102,12 +137,12 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [category_id, title, description]
+              required: [ category_id, title, description ]
               properties:
                 category_id: { type: string, format: uuid }
                 title: { type: string, minLength: 5, maxLength: 200 }
                 description: { type: string, minLength: 10, maxLength: 5000 }
-                priority: { type: string, enum: [low, normal, high, critical], default: normal }
+                priority: { type: string, enum: [ low, normal, high, critical ], default: normal }
                 fields:
                   type: object
                   additionalProperties: { type: string }
@@ -115,9 +150,8 @@ paths:
       responses:
         "201":
           description: >-
-            Đã tạo ticket và audit trong cùng giao dịch. Employee tạo danh mục
-            'access' nhận trạng thái khởi đầu pending_approval; priority critical
-            chỉ Manager được phép.
+            Đã tạo ticket và audit trong cùng giao dịch. Employee tạo danh mục 'access' nhận trạng thái khởi đầu
+            pending_approval; priority critical chỉ Manager được phép.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Ticket" }
@@ -151,17 +185,24 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [to]
+              required: [ to ]
               properties:
-                to: { type: string, enum: [new, triaged, assigned, in_progress, waiting_user, pending_approval, resolved, closed, cancelled] }
+                to:
+                  {
+                    type: string,
+                    enum: [ new, triaged, assigned, in_progress, waiting_user, pending_approval, resolved, closed, cancelled ]
+                  }
                 note: { type: string, maxLength: 2000 }
                 resolution_note: { type: string, minLength: 5, maxLength: 2000 }
+                expected_version:
+                  type: integer
+                  minimum: 1
+                  description: Tùy chọn cho client cũ; phiên bản không khớp trả 409 trước khi đổi trạng thái.
       responses:
         "200":
           description: >-
-            Chuyển trạng thái hợp lệ theo máy trạng thái; ticket_events được ghi
-            trong cùng giao dịch. Vào waiting_user tạm dừng đồng hồ SLA, rời
-            waiting_user cộng dồn vào sla_paused_ms.
+            Chuyển trạng thái hợp lệ theo máy trạng thái; ticket_events được ghi trong cùng giao dịch. Vào waiting_user
+            tạm dừng đồng hồ SLA, rời waiting_user cộng dồn vào sla_paused_ms.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Ticket" }
@@ -183,18 +224,13 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - data
                 properties:
                   data:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id: { type: string, format: uuid }
-                        ticket_id: { type: string, format: uuid }
-                        actor_id: { type: string, format: uuid }
-                        event_type: { type: string }
-                        payload: { type: object }
-                        created_at: { type: string, format: date-time }
+                      $ref: "#/components/schemas/TicketEvent"
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -213,11 +249,10 @@ paths:
       operationId: uploadAttachment
       summary: Tải tệp đính kèm kèm quét virus clamd (ADR 0007)
       description: >-
-        Body JSON/base64 được buffer trong RAM, tối đa 10 MiB nhị phân.
-        API quét qua clamd INSTREAM/TCP TRƯỚC, commit intent pending rồi PUT object lên
-        SeaweedFS Filer khi sạch và hoàn tất metadata; infected => 422 (không ghi SeaweedFS,
-        metadata scan_status='infected'); clamd lỗi/timeout => 503 (scan_status='failed').
-        file_name chỉ lưu vào cột, không dùng làm object key (server sinh key).
+        Body JSON/base64 được buffer trong RAM, tối đa 10 MiB nhị phân. API quét qua clamd INSTREAM/TCP TRƯỚC, commit
+        intent pending rồi PUT object lên SeaweedFS Filer khi sạch và hoàn tất metadata; infected => 422 (không ghi
+        SeaweedFS, metadata scan_status='infected'); clamd lỗi/timeout => 503 (scan_status='failed'). file_name chỉ lưu
+        vào cột, không dùng làm object key (server sinh key).
       parameters:
         - { $ref: "#/components/parameters/Id" }
       requestBody:
@@ -227,12 +262,12 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [file_name, content_type, content_base64]
+              required: [ file_name, content_type, content_base64 ]
               properties:
                 file_name: { type: string, minLength: 1, maxLength: 255 }
                 content_type:
                   type: string
-                  enum: [image/png, image/jpeg, image/gif, image/webp, application/pdf, text/plain]
+                  enum: [ image/png, image/jpeg, image/gif, image/webp, application/pdf, text/plain ]
                 content_base64:
                   type: string
                   format: byte
@@ -266,7 +301,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [url, expires_at]
+                required: [ url, expires_at ]
                 properties:
                   url: { type: string }
                   expires_at: { type: string, format: date-time }
@@ -327,9 +362,9 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [device_type, reason]
+              required: [ device_type, reason ]
               properties:
-                device_type: { type: string, enum: [laptop, monitor, keyboard, mouse, other] }
+                device_type: { type: string, enum: [ laptop, monitor, keyboard, mouse, other ] }
                 reason: { type: string, minLength: 10, maxLength: 2000 }
                 quantity: { type: integer, minimum: 1, maximum: 10, default: 1 }
       responses:
@@ -341,6 +376,274 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+  /teams:
+    get:
+      operationId: listTeams
+      summary: Danh sách team và roster đang hoạt động; chỉ Agent/Manager
+      responses:
+        "200":
+          description: "{data:[{id,name,active,members:[{user_id,display_name,active}]}]}"
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Team"
+        "401": &a1
+          $ref: "#/components/responses/Error"
+        "403": *a1
+  /tickets/{id}/claim:
+    post:
+      operationId: claimTicket
+      summary: Agent thuộc team nhận phiếu assigned; cùng người retry 200, người khác 409
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+      responses:
+        "200":
+          description: Giao dịch thành công; phản hồi sau durable commit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "400": &a1
+          $ref: "#/components/responses/Error"
+        "401": *a1
+        "403": *a1
+        "404": *a1
+        "409": *a1
+        "422": *a1
+        "503": *a1
+  /system/events/{id}/process:
+    post:
+      operationId: processAutomationEvent
+      summary: Xử lý event lưu trong outbox; callback lặp trả kết quả durable
+      description: "Service JWT riêng: RS256, issuer/audience hợp lệ, role=ticket_automation, azp=dxdesk-automation, realm
+        role ticket-automation; không nhận human token."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                schema_version:
+                  type: integer
+                  enum:
+                    - 1
+              required:
+                - schema_version
+      responses:
+        "200":
+          description: Giao dịch thành công; phản hồi sau durable commit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutomationAck"
+        "400": &a1
+          $ref: "#/components/responses/Error"
+        "401": *a1
+        "403": *a1
+        "404": *a1
+        "409": *a1
+        "422": *a1
+        "503": *a1
+  /system/sla/evaluate:
+    post:
+      operationId: evaluateSla
+      summary: Đánh giá SLA và enqueue notice idempotent; không nhận clock từ client
+      description: "Service JWT riêng: RS256, issuer/audience hợp lệ, role=ticket_automation, azp=dxdesk-automation, realm
+        role ticket-automation; không nhận human token."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+      responses:
+        "200":
+          description: Giao dịch thành công; phản hồi sau durable commit.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - queued
+                properties:
+                  queued:
+                    type: integer
+                    minimum: 0
+        "400": &a1
+          $ref: "#/components/responses/Error"
+        "401": *a1
+        "403": *a1
+        "404": *a1
+        "409": *a1
+        "422": *a1
+        "503": *a1
+  /system/teams:
+    get:
+      operationId: automationTeams
+      summary: Metadata team tối thiểu phục vụ provisioning roster
+      description: "Service JWT riêng: RS256, issuer/audience hợp lệ, role=ticket_automation, azp=dxdesk-automation, realm
+        role ticket-automation; không nhận human token."
+      responses:
+        "200":
+          description: Giao dịch thành công; phản hồi sau durable commit.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Team"
+        "400": &a1
+          $ref: "#/components/responses/Error"
+        "401": *a1
+        "403": *a1
+        "404": *a1
+        "409": *a1
+        "422": *a1
+        "503": *a1
+  /system/outbox:
+    get:
+      operationId: outboxStatus
+      summary: pending/processing/failed/oldest_pending_at
+      description: "Service JWT riêng: RS256, issuer/audience hợp lệ, role=ticket_automation, azp=dxdesk-automation, realm
+        role ticket-automation; không nhận human token."
+      responses:
+        "200":
+          description: Giao dịch thành công; phản hồi sau durable commit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboxStatus"
+        "400": &a1
+          $ref: "#/components/responses/Error"
+        "401": *a1
+        "403": *a1
+        "404": *a1
+        "409": *a1
+        "422": *a1
+        "503": *a1
+  /system/outbox/{id}/replay:
+    post:
+      operationId: replayOutbox
+      summary: Chỉ đưa delivery failed về pending; không xóa inbox/audit
+      description: "Service JWT riêng: RS256, issuer/audience hợp lệ, role=ticket_automation, azp=dxdesk-automation, realm
+        role ticket-automation; không nhận human token."
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+      responses:
+        "200":
+          description: Giao dịch thành công; phản hồi sau durable commit.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - replayed
+                properties:
+                  replayed:
+                    type: boolean
+        "400": &a1
+          $ref: "#/components/responses/Error"
+        "401": *a1
+        "403": *a1
+        "404": *a1
+        "409": *a1
+        "422": *a1
+        "503": *a1
+  /system/roster:
+    post:
+      operationId: syncRoster
+      summary: Đồng bộ tối đa 100 thành viên có UUID Keycloak thật
+      description: "Service JWT riêng: RS256, issuer/audience hợp lệ, role=ticket_automation, azp=dxdesk-automation, realm
+        role ticket-automation; không nhận human token."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                members:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - team_id
+                      - user_id
+                      - display_name
+                      - active
+                    properties:
+                      team_id:
+                        type: string
+                        format: uuid
+                      user_id:
+                        type: string
+                        format: uuid
+                      display_name:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                      active:
+                        type: boolean
+              required:
+                - members
+      responses:
+        "200":
+          description: Giao dịch thành công; phản hồi sau durable commit.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - updated
+                properties:
+                  updated:
+                    type: integer
+                    minimum: 0
+        "400": &a1
+          $ref: "#/components/responses/Error"
+        "401": *a1
+        "403": *a1
+        "404": *a1
+        "409": *a1
+        "422": *a1
+        "503": *a1
 components:
   securitySchemes:
     bearerAuth:
@@ -384,8 +687,12 @@ components:
         category_id: { type: string, format: uuid }
         title: { type: string }
         description: { type: string }
-        priority: { type: string, enum: [low, normal, high, critical] }
-        status: { type: string, enum: [new, triaged, assigned, in_progress, waiting_user, pending_approval, resolved, closed, cancelled] }
+        priority: { type: string, enum: [ low, normal, high, critical ] }
+        status:
+          {
+            type: string,
+            enum: [ new, triaged, assigned, in_progress, waiting_user, pending_approval, resolved, closed, cancelled ]
+          }
         assigned_to: { type: string, format: uuid, nullable: true }
         resolution_note: { type: string, nullable: true, minLength: 5, maxLength: 2000 }
         request_fields:
@@ -395,15 +702,42 @@ components:
         sla_paused_ms: { type: integer, minimum: 0 }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        assigned_team_id:
+          type: string
+          format: uuid
+          nullable: true
+        team_name:
+          type: string
+          nullable: true
+        assignee_name:
+          type: string
+          nullable: true
+        requester_name:
+          type: string
+          nullable: true
+        ticket_version:
+          type: integer
+          format: int64
+          minimum: 1
+        sla_breached:
+          type: boolean
+        sla_breached_at:
+          type: string
+          format: date-time
+          nullable: true
+        waiting_since:
+          type: string
+          format: date-time
+          nullable: true
     DeviceRequest:
       type: object
       properties:
         id: { type: string, format: uuid }
         requester_id: { type: string, format: uuid }
-        device_type: { type: string, enum: [laptop, monitor, keyboard, mouse, other] }
+        device_type: { type: string, enum: [ laptop, monitor, keyboard, mouse, other ] }
         reason: { type: string }
         quantity: { type: integer }
-        status: { type: string, enum: [pending, approved, rejected, fulfilled] }
+        status: { type: string, enum: [ pending, approved, rejected, fulfilled ] }
         created_at: { type: string, format: date-time }
     Attachment:
       type: object
@@ -417,5 +751,133 @@ components:
           description: "Key do server sinh: attachments/<ticket>/<uuid>"
         content_type: { type: string }
         size_bytes: { type: integer, minimum: 1, maximum: 10485760 }
-        scan_status: { type: string, enum: [pending, clean, infected, failed] }
+        scan_status: { type: string, enum: [ pending, clean, infected, failed ] }
         created_at: { type: string, format: date-time }
+    TicketEvent:
+      type: object
+      required:
+        - id
+        - ticket_id
+        - actor_id
+        - event_type
+        - payload
+        - created_at
+        - actor_type
+        - actor_name
+      properties:
+        id: &a2
+          type: string
+          format: uuid
+        ticket_id: *a2
+        actor_id: *a2
+        event_type:
+          type: string
+          enum:
+            - created
+            - status_changed
+            - assignment_changed
+            - routing_unresolved
+            - sla_warning
+            - sla_breached
+        payload:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        actor_type:
+          type: string
+          enum:
+            - user
+            - system
+        actor_name:
+          type: string
+    Team:
+      type: object
+      required:
+        - id
+        - name
+        - active
+      properties:
+        id: &a2
+          type: string
+          format: uuid
+        name:
+          type: string
+        active:
+          type: boolean
+        members:
+          type: array
+          items:
+            type: object
+            required:
+              - user_id
+              - display_name
+              - active
+            properties:
+              user_id: *a2
+              display_name:
+                type: string
+              active:
+                type: boolean
+    AutomationAck:
+      type: object
+      required:
+        - event_id
+        - ticket_id
+        - result
+      properties:
+        event_id: &a2
+          type: string
+          format: uuid
+        ticket_id: *a2
+        result:
+          type: string
+          enum:
+            - routed
+            - skipped
+            - unresolved
+            - notification
+        status:
+          type: string
+        team_id:
+          type: string
+          format: uuid
+          nullable: true
+        notification:
+          type: object
+          required:
+            - kind
+            - team_id
+          properties:
+            kind:
+              type: string
+              enum:
+                - assignment
+                - status
+                - sla_warning
+                - sla_breached
+            team_id:
+              type: string
+              format: uuid
+              nullable: true
+    OutboxStatus:
+      type: object
+      required:
+        - pending
+        - processing
+        - failed
+        - oldest_pending_at
+      properties:
+        pending:
+          type: integer
+          minimum: 0
+        processing:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+        oldest_pending_at:
+          type: string
+          format: date-time
+          nullable: true

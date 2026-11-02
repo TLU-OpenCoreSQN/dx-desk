@@ -13,10 +13,31 @@ Kho mã này không chứa, không sửa và không đóng gói lẫn mã nguồ
 | ClamAV | 1.5.4 | GPL-2.0 | Quét mã độc, chạy container riêng |
 | n8n | 2.44.4 | Sustainable Use License (fair-code, không thuộc danh sách OSI) | Tự động hóa quy trình |
 
+## Image PoC, benchmark và build/runtime ứng dụng
+
+Các image sau cũng được ghim trong `infra/compose/tn04.yml`, `.env.example` hoặc
+Dockerfile. PoC được chạy tách biệt; profile benchmark không tự tải mô hình.
+
+| Image / phiên bản | Metadata giấy phép upstream | Phạm vi |
+|---|---|---|
+| `ghcr.io/requarks/wiki:2.5.315` | [AGPL-3.0](https://github.com/requarks/wiki/blob/v2.5.315/LICENSE) | PoC Wiki.js |
+| `mattermost/mattermost-team-edition:12.0.1` | [Giấy phép binary do Mattermost phát hành và các điều khoản nguồn](https://github.com/mattermost/mattermost/blob/v12.0.1/LICENSE.txt) | Team Edition, không thay bằng Enterprise |
+| `metabase/metabase:v0.64.3` | [AGPL cho binary OSS; Enterprise có giấy phép khác](https://github.com/metabase/metabase/blob/v0.64.3/LICENSE.txt) | PoC tài khoản nội bộ |
+| `ollama/ollama:0.12.6` | [MIT](https://github.com/ollama/ollama/blob/v0.12.6/LICENSE) | Công cụ benchmark tùy chọn; mô hình có giấy phép riêng |
+| `node:22.22.0-alpine` | Node.js MIT và notices thành phần đi kèm | Build web và runtime API |
+| `nginx:1.28.0-alpine` | Nginx BSD-2-Clause và notices thành phần đi kèm | Phục vụ static web |
+| `postgres:17.11-alpine` | PostgreSQL License và notices thành phần đi kèm | DB PoC |
+
+Tag image không thay thế notices trong image và giấy phép từng gói Alpine/dependency.
+Khi phân phối hoặc sửa thành phần bên thứ ba, giữ hồ sơ nguồn/license theo đúng bản;
+không suy rằng chạy container riêng tự giải quyết mọi nghĩa vụ giấy phép.
+
 ## Ghi chú về n8n
 
 n8n dùng giấy phép fair-code nên được để ngoài kho mã và chỉ nạp khi chạy: `docker-compose.yml` kéo image chính thức đã ghim phiên bản,
-còn các tệp workflow JSON do đội thiết kế được cấp phép Apache-2.0 và nạp tự động khi khởi chạy. Cách dùng này theo hướng dẫn của Ban tổ chức.
+còn các tệp workflow JSON do đội thiết kế được cấp phép Apache-2.0 và nạp tự động khi khởi chạy.
+Chưa có văn bản BTC được lưu trong kho xác nhận phạm vi sử dụng này; C23-07 theo dõi
+phản hồi cần bổ sung. Không coi bảng notices hoặc CI là xác nhận của BTC.
 Dự phòng khi cần thay thế: Node-RED hoặc Kestra (Apache-2.0).
 
 ## Ghi chú về ClamAV

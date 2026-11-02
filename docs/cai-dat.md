@@ -189,9 +189,17 @@ exec ... kcadm.sh` **chờ Docker/CI kiểm chứng**; cú pháp theo tài liệ
 - `docker compose ... exec apisix cat /usr/local/apisix/logs/access.log` — access log mặc định
   của APISIX ghi lại từng yêu cầu đi qua cổng (kèm request id); không cần cài plugin ghi log.
 - Route `/api/*` có `limit-req` (30 req/giây/source, burst 10, trả 429).
-  Chữ ký JWT hiện được kiểm tại API và PostgREST; plugin openid-connect tại gateway
-  đã bị gỡ vì discovery trả URL không truy cập được trong container. /api/health
-  đi route công khai riêng. Không coi cấu hình rate limit là nghiệm thu runtime 429.
+  **Cập nhật 02/11/2026 (đối chiếu code `72f72d7`):** câu cũ bên dưới cho rằng plugin
+  `openid-connect` "đã bị gỡ" ở gateway — **không còn đúng**. Template
+  `infra/apisix/apisix.yaml` hiện khai `openid-connect` (khối `&verify-jwt`, dòng 15-31) trên
+  route `rest` (`/rest/*`) **và** route `service-desk-api` (`/api/*`, dòng 68-77);
+  `scripts/dxdesk.mjs:50` render `runtime.yaml` từ chính template này và
+  `scripts/stack-test.mjs:36,86` vẫn mong đợi cổng trả 401 khi `openid-connect` từ chối token.
+  Algorithm RS256, `public_key` lấy từ JWKS đồng bộ lúc dựng, `claim_validator` siết issuer +
+  audience `dxdesk-api` (`infra/apisix/apisix.yaml:15-38`; xem ADR 0009).
+  API NestJS và PostgREST cũng tự kiểm chữ ký như lớp phòng thủ hai — không phải vì gateway
+  đã bỏ kiểm tra. /api/health đi route công khai riêng (`apisix.yaml:62-67`).
+  Không coi cấu hình rate limit là nghiệm thu runtime 429.
 
 ## Migration và cập nhật
 

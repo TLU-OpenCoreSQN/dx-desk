@@ -1,4 +1,51 @@
-# Hợp đồng API tuần 3
+# Hợp đồng API tuần 3–4
+
+## Phần thêm tuần 4 (0.3.0)
+
+- `GET /tickets` nhận `queue=my_open|team_unassigned|team_assigned|pending_approval`,
+  `status`, `team_id`, `assignee_id` hoặc `assignee=me`, `limit/offset`; trả thêm `total`.
+  Bộ lọc allow-list và truy vấn có tham số. Không có queue giữ phạm vi RLS cũ.
+  `my_open` là phiếu được giao cho staff hiện tại; với Employee là phiếu họ tạo.
+- `GET /teams` chỉ Agent/Manager: `{data:[{id,name,active,members:[{user_id,display_name,active}]}]}`.
+  Queue không mở rộng RLS; Employee không đọc team/roster hay queue staff.
+- `POST /tickets/:id/claim {}`: chỉ Agent là thành viên active của team, ticket phải
+  `assigned`. Lấy assignee từ JWT; cùng Agent retry trả 200, người khác thắng trước → 409.
+- `PATCH /tickets/:id/status` thêm `expected_version` tùy chọn. Khi có, sai phiên bản
+  trả 409 trước chuyển tiếp; client cũ vẫn hoạt động. Duyệt `pending_approval→assigned`
+  gắn team hợp lệ trong cùng giao dịch. Manager từ chối `→new` cần note 5–2000 ký tự;
+  direct PostgREST dùng header `X-Status-Note` cùng giới hạn, audit giữ nội dung này.
+  Các quyền Agent/Manager hiện có và đồ thị 17 cạnh được giữ nguyên.
+- Ticket trả thêm `ticket_version`, `assigned_team_id`, `team_name`, `assignee_name`,
+  `requester_name`, `sla_breached/sla_breached_at`. Tên thiếu được thể hiện bằng ID,
+  không tự bịa danh tính. Version đổi theo trạng thái/phân công/kết quả, không đổi
+  vì bookkeeping breach. Events thêm `actor_type=user|system` và `actor_name`.
+- Service có controller/guard riêng: Keycloak client `dxdesk-automation`, database
+  role `ticket_automation`, realm role `ticket-automation`. Không cấp Employee/
+  Manager giả cho bot và không nới guard người dùng. Service JWT vẫn kiểm issuer,
+  audience, RS256/expiry/sub/azp. Quyền DB service không cấp cho authenticator REST.
+- `POST /system/events/:id/process {schema_version:1}` đọc envelope đã lưu, không nhận
+  team/status/payload từ webhook. Mutation + inbox + audit/outbox cùng transaction.
+  Replay event thành công trả kết quả cũ; `unresolved` có thể thử lại sau sửa rule.
+- `POST /system/sla/evaluate {}`; `GET /system/teams`; `POST /system/roster {members}`;
+  `GET /system/outbox`; `POST /system/outbox/:id/replay {}` chỉ dùng service guard.
+  Giờ đánh giá SLA lấy phía server; không có endpoint cho client đặt breach/clock.
+
+SLA 24/7: nhắc tại `elapsed >= 80%`, breach khi `now > effective_deadline`; trừ pause
+đã chốt và waiting đang mở. Breach đã có không reset khi reopen. Ticket kết thúc
+không tạo notice mới; cảnh báo 80% lỗi thời được supersede. `response_minutes`
+chưa phải cam kết thời gian phản hồi đầu tiên. Hạn gốc không phải hạn sau pause.
+
+Outbox private có lease token, tối đa 8 lần tự claim/failure rồi quarantine; replay
+phải do operator có service credentials. ACK chỉ sau inbox durable, completion phải
+khớp lease còn hạn. HTTP at-least-once; n8n không giữ DB transaction trong lúc gọi mạng.
+Mattermost gửi bot vào private channel có thành viên thật, thông báo chỉ chứa ID/
+loại sự kiện. Trước retry có tra tối đa 200 post gần nhất theo correlation ID;
+crash giữa POST và ghi nhận DB vẫn có thể trùng thông báo ngoài cửa sổ đối soát.
+Không quảng cáo exactly-once delivery giữa hai hệ thống.
+
+Webhook nghiệp vụ chỉ gọi trong mạng Compose, kiểm header secret. Gateway chỉ công
+khai hello PoC, có rate limit; `/api/system/*` vẫn xác thực JWT và guard service.
+Xem [runbook tuần 4](../hoan-thien-tuan-4.md) cho setup, replay, profile và nghiệm thu.
 
 API NestJS/TypeScript. Trình duyệt truy cập cùng origin qua APISIX:
 `http://localhost:9080/api`. Vite dev proxy `/api` và `/rest` tới APISIX.
@@ -13,11 +60,12 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
   `requirement_fields` là mảng đối tượng `{key,label,required}` — trường động theo loại
   ticket (tuần 3 thêm danh mục `access` "Cấp quyền hệ thống" và `system-error` "Lỗi hệ thống",
   tổng cộng 6 danh mục active).
-- `GET /api/tickets?limit=25&offset=0`: `{data:Ticket[],limit,offset}`.
+- `GET /api/tickets?limit=25&offset=0`: `{data:Ticket[],limit,offset,total}`.
 - `GET /api/tickets/:id`: một Ticket, 404 nếu không tồn tại hoặc không có quyền
   (RLS ẩn bản ghi của người khác với Employee).
-- `GET /api/tickets/:id/events`: `{data:[{id,ticket_id,actor_id,event_type,payload,created_at}]}`.
-  `event_type` ∈ `created|status_changed`; payload status_changed là `{from,to,note}`.
+- `GET /api/tickets/:id/events`: `{data:[{id,ticket_id,actor_id,event_type,payload,created_at,actor_type,actor_name}]}`.
+  `event_type` ∈ `created|status_changed|assignment_changed|routing_unresolved|sla_warning|sla_breached`;
+  payload status_changed là `{from,to,note}` (có thêm `resolution_note` khi resolved).
 - `POST /api/tickets`: `{category_id:uuid,title:string(5..200),description:string(10..5000),
   priority?:"low"|"normal"|"high"|"critical",fields?:object}`. HTTP 201 trả Ticket.
   `fields` phải điền đủ các entry `required:true` của `requirement_fields` danh mục
@@ -84,7 +132,17 @@ migration 004) — `authenticated` không có INSERT trên `attachments` nên kh
 - Đáp ứng luôn `attachment`, `application/octet-stream`, `nosniff`, `no-store` và
   `Referrer-Policy: no-referrer`; không render nội dung theo MIME do client khai.
 
-## Máy trạng thái 8 trạng thái (9 giá trị chữ thường)
+## Máy trạng thái: 9 giá trị, 17 cạnh (DOCX gốc diễn đạt "8 trạng thái")
+
+> **Cập nhật 02/11/2026 (đối chiếu code `72f72d7`).** Đầu mục này trước đây ghi
+> "8 trạng thái (9 giá trị chữ thường)". Cách gọi "8 trạng thái" là diễn đạt của DOCX
+> đề án (coi `cancelled` như một cờ khép lại hơn là một trạng thái điều hướng); **code và
+> CSDL hiện hành có 9 giá trị `status`** và **17 cạnh chuyển tiếp**. Đếm trực tiếp:
+> `TICKET_STATUSES` có 9 phần tử (`apps/api/src/state-machine.ts:7-10`), `TRANSITIONS`
+> sinh 3+2+3+3+2+2+2 = 17 cạnh (`state-machine.ts:20-30`), `ROLE_EDGES` có 17 mục
+> (`state-machine.ts:52-72`), và INSERT `private.ticket_transitions` có đúng 17 hàng
+> (`db/migrations/003_ticket_workflow.sql:97-114`). Đồ thị không đổi; chỉ bỏ nhãn "8" dễ gây
+> nhầm. Chạy đơn test đồng bộ API↔DB xác nhận 1:1 (harness chống trôi ghi ở kế hoạch tuần 3).
 
 `new → triaged → assigned → in_progress → waiting_user → resolved → closed`,
 nhánh đặc biệt: `new|assigned|in_progress → pending_approval` (duyệt cấp quyền nhạy cảm),
@@ -114,8 +172,19 @@ created_at, updated_at` + các cột MỚI (migration 003):
 `sla_due_at` (timestamptz, = `created_at + sla_policies.resolution_minutes` theo priority,
 tính bằng trigger lúc INSERT), `sla_paused_ms` (bigint **miligiây** tạm dừng cộng dồn khi
 rời `waiting_user`; ngưỡng hiệu lực cộng thêm `max(0, now-waiting_since)` khi còn chờ;
-cờ `sla_breached`
-do W4-03 dùng), `waiting_since` (timestamptz|null, nội bộ vận hành),
+cờ `sla_breached` do W4-03 dùng), `waiting_since` (timestamptz|null, nội bộ vận hành),
+
+> **Cập nhật 02/11/2026 (đối chiếu code `72f72d7`).** Công thức trần deadline lấy từ trigger
+> `private.compute_ticket_sla_due` (`db/migrations/003_ticket_workflow.sql:193-208`:
+> `sla_due_at = created_at + make_interval(mins => resolution_minutes)`). Ngưỡng **hiệu lực** =
+> `sla_due_at + sla_paused_ms + max(0, now − waiting_since)`; **vi phạm** khi
+> `now > ngưỡng hiệu lực` — đúng như `effectiveSlaDeadline` và `isSlaBreached`
+> (`apps/api/src/rules.ts:100-110`). `sla_paused_ms` cộng bằng miligiây khi RỜI `waiting_user`
+> (`003_ticket_workflow.sql:151-159`, `005_ticket_integrity.sql:110-118`); migration 005
+> REVOKE quyền UPDATE các cột SLA khỏi `authenticated` nên client không tự sửa được
+> (`005_ticket_integrity.sql:68`). Giá trị `resolution_minutes` theo priority: low 2880,
+> normal 1440, high 480, critical 120 (`db/migrations/002_reference_data.sql:8-9`).
+> Cờ `sla_breached` vẫn dành cho W4-03; tuần 3 chỉ tính và lưu, chưa bật hiển thị.
 `resolution_note` (text|null, 5..2000 khi có giá trị), `request_fields` (jsonb object,
 lưu `fields` đã kiểm tra theo danh mục).
 

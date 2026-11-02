@@ -3,9 +3,10 @@
 Hệ thống tiếp nhận và tự động xử lý yêu cầu IT nội bộ, xây dựng trên nền tảng DX-OS Open-Core theo mô hình H-P-D-I.
 Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung Phần mềm nguồn mở (đội TLU-OpenCoreSQN, Trường Đại học Thủy lợi).
 
-> Trạng thái: **hoàn thiện tuần 3, chưa phát hành**. Có nền tảng/RLS, workflow,
-> SLA, OTP acceptance và luồng tệp quét virus/URL ký trên API và web.
-> Xem [báo cáo tuần 3](docs/hoan-thien-tuan-3.md) và CI đúng SHA để biết bằng chứng
+> Trạng thái: **bàn giao kỹ thuật tuần 4, chưa phát hành**. Có auto-route VPN,
+> outbox/retry, kênh Mattermost, bảng việc Agent và queue phê duyệt Manager,
+> cùng nền tảng/RLS, OTP và tệp quét virus/URL ký của tuần 3.
+> Xem [báo cáo tuần 4](docs/hoan-thien-tuan-4.md) và CI đúng SHA để biết bằng chứng
 > cùng các phần cần nghiệm thu bởi thành viên/máy demo.
 
 ## Tầng 1 gồm những gì
@@ -18,6 +19,7 @@ Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung P
 | SeaweedFS | Kho tệp, tương thích S3 | chỉ trong mạng nội bộ |
 | ClamAV | Quét mã độc tệp tải lên | chỉ trong mạng nội bộ |
 | n8n | Tự động hóa quy trình | qua APISIX: `/webhook/` |
+| Mattermost Team Edition | Thông báo riêng cho nhóm hỗ trợ | http://localhost:18065 |
 
 ## Yêu cầu
 
@@ -90,8 +92,11 @@ TOKEN=$(curl -s -X POST http://localhost:8080/realms/dxdesk/protocol/openid-conn
 curl -H "Authorization: Bearer $TOKEN" http://localhost:9080/rest/
 ```
 
-Người dùng mẫu (chỉ dùng cho phát triển): `employee.a`, `employee.b`, `agent.1`, `manager.1`, cùng mật khẩu `DxDesk@2026`.
+Người dùng mẫu (chỉ dùng cho phát triển): `employee.a`, `employee.b`, `agent.1`, `agent.2`, `manager.1`, cùng mật khẩu `DxDesk@2026`.
 Tài khoản quản trị Keycloak nằm trong `.env`.
+Automation mặc định bật với profile `demo-light`; runner sinh secret local và bootstrap roster/kênh riêng.
+Agent vào `/work-queue`, Manager vào `/approvals`. Xem [runbook tuần 4](docs/hoan-thien-tuan-4.md#chạy-và-kiểm-tra)
+để chạy acceptance, replay outbox, seed và đo tài nguyên; tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env`.
 
 ## Cấu trúc kho mã
 
