@@ -139,7 +139,7 @@ Chưa cài Docker/WSL, chưa commit/push/PR/tag/release hoặc gửi tin BTC tro
 
 ### W2-11 — Xác nhận hạn nộp
 
-- [x] Soạn nội dung hỏi BTC và nơi lưu bằng chứng trong `docs/phat-hanh-tuan-2.md`.
+- [x] Soạn nội dung hỏi BTC và nơi lưu bằng chứng trong `docs/phat-hanh-v0.1.0.md`.
 - [ ] Người trong nhóm gửi Telegram cho BTC.
 - [ ] Lưu câu trả lời xác nhận hạn 06/12/2026.
 
