@@ -110,3 +110,6 @@ try {
   await writeFile(resolve(root, '.local/reports/integration.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(`Isolated test database stopped. Evidence directory: ${databaseDir}`);
 }
+// embedded-postgres uses async-exit-hook, whose beforeExit handler otherwise
+// exits 0 despite exitCode=1. Cleanup/reports are complete; pass the explicit code.
+if (!report.passed) process.exit(1);
