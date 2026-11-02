@@ -12,7 +12,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { parseClamdAddr, parseClamdReply, scanWithClamd } from '../dist/clamd.js';
 import { deleteObject, putObject } from '../dist/seaweedfs.js';
 import { AttachmentsController } from '../dist/controllers.js';
-import { UploadAttachment } from '../dist/dto.js';
+import { MAX_ATTACHMENT_BYTES, UploadAttachment } from '../dist/dto.js';
 
 const PAYLOAD = Buffer.from('DX-DESK attachment payload: 0123456789', 'utf8');
 
@@ -393,4 +393,35 @@ test('DTO chặn content type ngoài allow-list, base64 rác, thiếu/trùng fie
   await assert.rejects(validate({ ...validBody, file_name: '' }));
   await assert.rejects(validate({ ...validBody, scan_status: 'clean' })); // không cho spoof
   await assert.rejects(validate({ content_type: 'text/plain', content_base64: validBody.content_base64 })); // thiếu file_name
+});
+
+test('the exact 10 MiB attachment passes the DTO and decoded-byte gate', async () => {
+  const body = await validate({
+    file_name: 'boundary.txt', content_type: 'text/plain',
+    content_base64: Buffer.alloc(MAX_ATTACHMENT_BYTES).toString('base64'),
+  });
+  assert.equal(body.content_base64.length, 13981016);
+  // An invisible ticket stops at the next gate without scanning/storing a large fixture.
+  const db = fakeDatabase({ ticketVisible: false });
+  await assert.rejects(new AttachmentsController(db).uploadAttachment(
+    request, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', body), error => error.getStatus() === 404);
+  assert.equal(db.calls.length, 1, 'The exact limit must reach the RLS visibility lookup');
+});
+
+test('10 MiB + 1/+2 decode above the limit despite the same base64 length, before DB/scan/store', async () => {
+  await withServices('clean', async ({ clamd, swfs }) => {
+    const db = fakeDatabase();
+    for (const extra of [1, 2]) {
+      const body = await validate({
+        file_name: 'boundary.txt', content_type: 'text/plain',
+        content_base64: Buffer.alloc(MAX_ATTACHMENT_BYTES + extra).toString('base64'),
+      });
+      assert.equal(body.content_base64.length, 13981016, 'Base64 text length alone cannot enforce the decoded limit');
+      await assert.rejects(new AttachmentsController(db).uploadAttachment(
+        request, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', body), error => error.getStatus() === 422);
+    }
+    assert.equal(db.calls.length, 0);
+    assert.equal(clamd.state.connections, 0);
+    assert.equal(swfs.puts.length, 0);
+  });
 });

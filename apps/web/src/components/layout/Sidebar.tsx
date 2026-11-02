@@ -12,6 +12,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -21,7 +23,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, roles } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -82,6 +84,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           { to: '/tickets', label: 'Danh sách phiếu', icon: Ticket },
           { to: '/tickets/new', label: 'Tạo phiếu hỗ trợ', icon: PlusCircle },
           { to: '/device-requests', label: 'Yêu cầu cấp thiết bị', icon: Laptop },
+          ...(roles.includes('Agent') || roles.includes('Manager') ? [
+            { to: '/work-queue', label: 'Bảng việc kỹ thuật viên', icon: ClipboardList },
+          ] : []),
+          ...(roles.includes('Manager') ? [
+            { to: '/approvals', label: 'Phê duyệt phiếu hỗ trợ', icon: ShieldCheck },
+          ] : []),
         ]
       : []),
   ];
@@ -90,13 +98,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const isCompact = !isMobile && collapsed;
 
     return (
-      <div className="dx-sidebar h-full bg-[color-mix(in_srgb,var(--color-primary-tint)_28%,#fbfaf8)] flex flex-col text-[#211f1b] border-r border-[#e4e3e0] select-none">
+      <div className="dx-sidebar h-full bg-[color-mix(in_srgb,var(--color-primary)_3%,var(--color-surface-sidebar))] flex flex-col text-[var(--color-content)] border-r border-[var(--color-edge-subtle)] select-none">
         {/* Section title / header */}
         <div className="p-3 pb-2 flex items-center justify-between">
           {!isCompact && (
             <div className="flex items-center gap-1.5 px-2 mt-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
-              <p className="text-[11px] font-bold tracking-wider uppercase text-[#8a8884]">
+              <p className="text-[11px] font-bold tracking-wider uppercase text-[var(--color-content-subtle)]">
                 Hỗ trợ IT
               </p>
             </div>
@@ -107,7 +115,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClick={() => setCollapsed((prev) => !prev)}
               aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
               title={collapsed ? 'Mở rộng thanh bên (256px)' : 'Thu gọn thanh bên (56px)'}
-              className={`p-1.5 rounded-[6px] text-[#5f5e5a] hover:text-[#211f1b] hover:bg-[#f1f1ef] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-colors ${
+              className={`p-1.5 rounded-[6px] text-[var(--color-content-muted)] hover:text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-colors ${
                 isCompact ? 'mx-auto' : ''
               }`}
             >
@@ -129,18 +137,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               end
               onClick={isMobile ? onClose : undefined}
               title={isCompact ? label : undefined}
+              aria-label={label}
               className={({ isActive }) =>
                 `group flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm font-medium transition-all min-h-[40px] ${
                   isCompact ? 'justify-center px-2' : ''
                 } ${
                   isActive
                     ? 'bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] font-semibold shadow-2xs border border-[var(--color-primary-border)]/50'
-                    : 'text-[#5f5e5a] hover:bg-[#f1f1ef] hover:text-[#211f1b]'
+                    : 'text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)]'
                 }`
               }
             >
               <Icon
                 size={18}
+                aria-hidden="true"
                 className="shrink-0 transition-transform group-hover:scale-110"
               />
               {!isCompact && <span className="truncate">{label}</span>}
@@ -149,22 +159,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer info */}
-        <div className="mt-auto border-t border-[#e4e3e0] p-3 text-xs text-[#5f5e5a]">
+        <div className="mt-auto border-t border-[var(--color-edge-subtle)] p-3 text-xs text-[var(--color-content-muted)]">
           {!isCompact ? (
-            <div className="bg-white/80 p-2.5 rounded-[6px] border border-[#e4e3e0] shadow-2xs">
-              <div className="flex items-center gap-2 font-semibold text-[#211f1b]">
+            <div className="bg-surface/80 p-2.5 rounded-[6px] border border-[var(--color-edge-subtle)] shadow-2xs">
+              <div className="flex items-center gap-2 font-semibold text-[var(--color-content)]">
                 <div className="w-5 h-5 rounded-[4px] bg-[var(--color-primary-tint)] flex items-center justify-center text-[var(--color-primary)]">
                   <Shield size={13} />
                 </div>
                 <span className="text-xs">TLU-OpenCoreSQN</span>
               </div>
-              <p className="mt-1.5 text-[11px] text-[#8a8884] leading-relaxed">
+              <p className="mt-1.5 text-[11px] text-[var(--color-content-subtle)] leading-relaxed">
                 Không gian tiếp nhận yêu cầu IT của tổ chức.
               </p>
             </div>
           ) : (
             <div className="flex justify-center py-1" title="TLU-OpenCoreSQN: Hệ thống hỗ trợ IT">
-              <div className="w-7 h-7 rounded-[4px] bg-white border border-[#e4e3e0] flex items-center justify-center text-[var(--color-primary)] shadow-2xs">
+              <div className="w-7 h-7 rounded-[4px] bg-surface border border-[var(--color-edge-subtle)] flex items-center justify-center text-[var(--color-primary)] shadow-2xs">
                 <Shield size={15} />
               </div>
             </div>
@@ -201,7 +211,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div
             onClick={onClose}
             aria-hidden="true"
-            className="absolute inset-0 bg-[#211f1b]/50 backdrop-blur-[1px] transition-opacity"
+            className="absolute inset-0 bg-black/50 backdrop-blur-[1px] transition-opacity"
           />
 
           {/* Drawer container */}
@@ -210,7 +220,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               type="button"
               aria-label="Đóng menu"
               onClick={onClose}
-              className="absolute right-2 top-2 p-2.5 text-[#4a4945] hover:text-[#211f1b] hover:bg-[#eeede9] rounded-[4px] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] z-10 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
+              className="absolute right-2 top-2 p-2.5 text-[var(--color-content-muted)] hover:text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] rounded-[4px] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] z-10 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
             >
               <X size={20} />
             </button>

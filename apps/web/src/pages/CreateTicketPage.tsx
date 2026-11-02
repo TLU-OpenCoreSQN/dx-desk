@@ -35,11 +35,11 @@ const isDateField = (field: RequirementField): boolean => field.key.toLowerCase(
 
 const fieldClass = (invalid: boolean): string =>
   [
-    'w-full min-h-[44px] rounded-[6px] border bg-[#fbfaf8] px-3.5 py-2.5 text-sm text-[#211f1b]',
-    'transition-all focus:bg-white focus:outline-none focus:ring-2',
+    'w-full min-h-[44px] rounded-[6px] border bg-[var(--color-surface-sidebar)] px-3.5 py-2.5 text-sm text-[var(--color-content)]',
+    'transition-all focus:bg-surface focus:outline-none focus:ring-2',
     invalid
       ? 'border-[#f6c3c1] focus:border-[#d44c47] focus:ring-[#d44c47]'
-      : 'border-[#e4e3e0] focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]',
+      : 'border-[var(--color-edge-subtle)] focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]',
   ].join(' ');
 
 const FieldError: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => (
@@ -303,14 +303,14 @@ export const CreateTicketPage: React.FC = () => {
       </div>
 
       {successTicketId ? (
-        <div className="mx-auto max-w-2xl space-y-4 rounded-[8px] border border-[#b8dcce] bg-white p-6 text-center shadow-xs sm:p-10">
+        <div className="mx-auto max-w-2xl space-y-4 rounded-[8px] border border-[#b8dcce] bg-surface p-6 text-center shadow-xs sm:p-10">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[8px] border border-[#b8dcce] bg-[#edf3ec] text-[#448361] shadow-2xs">
             <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
           </div>
-          <h2 className="text-lg font-bold tracking-tight text-[#211f1b] sm:text-xl">
+          <h2 className="text-lg font-bold tracking-tight text-[var(--color-content)] sm:text-xl">
             Tạo phiếu yêu cầu thành công!
           </h2>
-          <p className="mx-auto max-w-md text-xs leading-relaxed text-[#5f5e5a] sm:text-sm">
+          <p className="mx-auto max-w-md text-xs leading-relaxed text-[var(--color-content-muted)] sm:text-sm">
             Phiếu của bạn đã được ghi nhận vào hệ thống với mã định danh{' '}
             <code className="break-all rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2 py-0.5 font-mono font-bold text-[var(--color-primary)]">
               {successTicketId}
@@ -340,7 +340,7 @@ export const CreateTicketPage: React.FC = () => {
               type="button"
               onClick={resetForm}
               disabled={isSubmitting}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] border border-[#e4e3e0] bg-white px-5 text-xs font-semibold text-[#211f1b] transition-all hover:bg-[#f1f1ef] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] border border-[var(--color-edge-subtle)] bg-surface px-5 text-xs font-semibold text-[var(--color-content)] transition-all hover:bg-[var(--color-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               Tạo phiếu khác
             </button>
@@ -353,7 +353,7 @@ export const CreateTicketPage: React.FC = () => {
             <form
               onSubmit={handleSubmit}
               noValidate
-              className="rounded-[8px] border border-[#e4e3e0] bg-white shadow-2xs"
+              className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs"
             >
               <div className="space-y-6 p-4 sm:p-6">
                 {!!serverError && (
@@ -416,7 +416,7 @@ export const CreateTicketPage: React.FC = () => {
                 {/* Dynamic requirement fields */}
                 {requirementFields.length > 0 && (
                   <fieldset className="min-w-0 rounded-[4px] border border-edge bg-surface-muted/60 p-4">
-                    <legend className="flex items-center gap-1.5 rounded-[4px] bg-white px-1.5 py-0.5">
+                    <legend className="flex items-center gap-1.5 rounded-[4px] bg-surface px-1.5 py-0.5">
                       <ClipboardList className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                       <span className="text-[11px] font-bold uppercase tracking-wider text-content">
                         Thông tin bổ sung theo danh mục
@@ -603,7 +603,7 @@ export const CreateTicketPage: React.FC = () => {
                                 ? isCritical
                                   ? 'border-danger bg-danger-tint shadow-xs'
                                   : 'border-primary bg-primary-tint shadow-xs'
-                                : 'border-edge bg-white hover:border-edge-strong hover:bg-surface-warm/40'
+                                : 'border-edge bg-surface hover:border-edge-strong hover:bg-surface-warm/40'
                           }`}
                         >
                           <span className="flex items-center justify-between gap-1">
@@ -625,7 +625,7 @@ export const CreateTicketPage: React.FC = () => {
                               />
                             )}
                           </span>
-                          <span className="mt-1 block text-[11px] leading-snug text-content-muted">
+                          <span className={`mt-1 block text-[11px] leading-snug ${isSelected ? isCritical ? 'text-[#962824]' : 'text-[var(--color-primary-text)]' : 'text-content-muted'}`}>
                             {PRIORITY_META[p].desc}
                           </span>
                         </button>
@@ -679,8 +679,8 @@ export const CreateTicketPage: React.FC = () => {
 
               <div className="mx-4 mb-4 rounded-lg border border-edge bg-surface-muted p-3 text-xs sm:mx-6">
                 <label htmlFor="ticket-attachment" className="block font-semibold">Ảnh hoặc tệp đính kèm (không bắt buộc)</label>
-                <p>PNG, JPEG, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.</p>
-                <input id="ticket-attachment" type="file" accept={ATTACHMENT_TYPES.join(',')}
+                <p>PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.</p>
+                <input id="ticket-attachment" type="file" className="block w-full min-w-0" accept={ATTACHMENT_TYPES.join(',')}
                   disabled={isSubmitting} onChange={event => {
                     const file = event.target.files?.[0] ?? null;
                     const issue = file ? fileError(file) : null;
@@ -691,21 +691,21 @@ export const CreateTicketPage: React.FC = () => {
               </div>
 
               {/* Action bar: sticky bottom on mobile, inline on desktop */}
-              <div className="sticky bottom-0 z-20 flex items-center gap-2.5 border-t border-edge bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:static lg:bg-surface-warm/30 rounded-b-[8px]">
+              <div className="sticky bottom-0 z-20 flex items-center gap-2.5 border-t border-edge bg-surface/95 px-4 py-3 backdrop-blur sm:px-6 lg:static lg:bg-surface-warm/30 rounded-b-[8px]">
                 <p className="mr-auto hidden text-[11px] text-content-muted lg:block">
                   Mục có dấu <span className="font-semibold text-danger">*</span> là bắt buộc.
                 </p>
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[6px] border border-edge bg-white px-4 text-xs font-semibold text-content-muted transition-all hover:bg-surface-warm hover:text-content focus:outline-none focus:ring-2 focus:ring-primary lg:min-h-[40px]"
+                  className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[6px] border border-edge bg-surface px-4 text-xs font-semibold text-content-muted transition-all hover:bg-surface-warm hover:text-content focus:outline-none focus:ring-2 focus:ring-primary lg:min-h-[40px]"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || categoriesLoading}
-                  aria-disabled={!canSubmit}
+                  aria-disabled={!canSubmit || undefined}
                   aria-busy={isSubmitting || undefined}
                   aria-describedby={
                     missingFieldLabels.length > 0 ? 'missing-fields-summary' : undefined
@@ -737,7 +737,7 @@ export const CreateTicketPage: React.FC = () => {
 
           {/* Summary panel */}
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start">
-            <section className="rounded-[8px] border border-edge bg-white shadow-2xs overflow-hidden">
+            <section className="rounded-[8px] border border-edge bg-surface shadow-2xs overflow-hidden">
               <div className="flex items-center justify-between gap-2 border-b border-edge-subtle bg-surface-warm/60 px-4 py-3">
                 <h2 className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
                   Tóm tắt phiếu
@@ -833,8 +833,7 @@ export const CreateTicketPage: React.FC = () => {
                 <li className="flex gap-1.5">
                   <span aria-hidden="true">•</span>
                   <span>
-                    Tệp đính kèm chưa khả dụng trong phiên bản này — vui lòng mô tả lỗi bằng văn
-                    bản.
+                    Đính kèm ảnh lỗi hoặc tài liệu liên quan để IT có thêm thông tin xử lý.
                   </span>
                 </li>
               </ul>

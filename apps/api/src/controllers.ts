@@ -16,6 +16,8 @@ import {
 } from './dto';
 import { TransitionViolation, validateTransition } from './state-machine';
 import { activeRoles, checkRequirementFields, criticalViolation, initialStatusFor } from './rules';
+import { TicketListQuery } from './dto-week4';
+import { TICKET_SELECT } from './week4';
 
 @Controller('api')
 export class HealthController {
@@ -39,6 +41,10 @@ function transitionException(violation: TransitionViolation) {
 
 /** SQLSTATE do trigger private.guard_ticket_update() raise — thông báo cố định tiếng Việt, không lộ SQL. */
 export function workflowExceptionForCode(code?: string): { status: number; message: string } | null {
+  if (code === 'PT404') return { status: 404, message: 'Không tìm thấy yêu cầu hoặc sự kiện.' };
+  if (code === 'PT409') return { status: 409, message: 'Yêu cầu đã được nhận hoặc trạng thái không còn phù hợp.' };
+  if (code === '45004') return { status: 422, message: 'Cần lý do từ chối từ 5 đến 2000 ký tự.' };
+  if (code === '45005') return { status: 422, message: 'Chưa có nhóm xử lý hoạt động cho danh mục này.' };
   if (code === 'PT400') {
     return { status: 400, message: 'Giá trị trường biểu mẫu không hợp lệ với danh mục đã chọn.' };
   }
@@ -77,19 +83,40 @@ export class DeskController {
     }));
   }
   @Get('tickets')
-  tickets(@Req() request: AuthRequest, @Query() query: ListQuery) {
-    return this.db.asUser(request.claims, async client => ({
-      data: (await client.query(
-        'SELECT * FROM public.tickets ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2',
-        [query.limit, query.offset],
-      )).rows,
-      limit: query.limit, offset: query.offset,
-    }));
+  tickets(@Req() request: AuthRequest, @Query() query: TicketListQuery) {
+    const staff = request.claims.realm_access.roles.some(role => ['Agent', 'Manager'].includes(role));
+    if (query.queue && query.queue !== 'my_open' && !staff) {
+      throw new ForbiddenException('Hàng chờ này chỉ dành cho nhân viên xử lý.');
+    }
+    if (query.assignee && query.assignee_id || query.queue === 'team_unassigned' && (query.assignee || query.assignee_id)
+      || query.queue === 'pending_approval' && query.status && query.status !== 'pending_approval'
+      || ['my_open', 'team_unassigned', 'team_assigned'].includes(query.queue ?? '') && ['closed', 'cancelled'].includes(query.status ?? '')) {
+      throw new BadRequestException('Tổ hợp bộ lọc hàng chờ không hợp lệ.');
+    }
+    return this.db.asUser(request.claims, async client => {
+      const clauses: string[] = [];
+      const values: unknown[] = [];
+      const filter = (sql: string, value: unknown) => { values.push(value); clauses.push(`${sql}$${values.length}`); };
+      if (query.queue === 'my_open') filter(staff ? 't.assigned_to=' : 't.requester_id=', request.claims.sub);
+      if (['my_open', 'team_unassigned', 'team_assigned'].includes(query.queue ?? '')) clauses.push("t.status NOT IN ('closed','cancelled')");
+      if (query.queue === 'team_unassigned') clauses.push("t.assigned_to IS NULL AND t.status='assigned' AND private.is_team_member(t.assigned_team_id)");
+      if (query.queue === 'team_assigned') clauses.push('t.assigned_to IS NOT NULL AND private.is_team_member(t.assigned_team_id)');
+      if (query.queue === 'pending_approval') clauses.push("t.status='pending_approval'");
+      if (query.status) filter('t.status=', query.status);
+      if (query.team_id) filter('t.assigned_team_id=', query.team_id);
+      if (query.assignee_id || query.assignee) filter('t.assigned_to=', query.assignee_id ?? request.claims.sub);
+      const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
+      const total = Number((await client.query(`SELECT count(*) AS total FROM public.tickets t${where}`, values)).rows[0].total);
+      const data = (await client.query(`SELECT ${TICKET_SELECT} FROM public.tickets t${where}
+        ORDER BY t.created_at DESC,t.id DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, query.limit, query.offset])).rows;
+      return { data, total, limit: query.limit, offset: query.offset, queue: query.queue ?? null };
+    });
   }
   @Get('tickets/:id')
   ticket(@Req() request: AuthRequest, @Param('id', ParseUUIDPipe) id: string) {
     return this.db.asUser(request.claims, async client => {
-      const result = await client.query('SELECT * FROM public.tickets WHERE id = $1', [id]);
+      const result = await client.query(`SELECT ${TICKET_SELECT} FROM public.tickets t WHERE t.id = $1`, [id]);
       if (!result.rows[0]) throw new NotFoundException('Không tìm thấy yêu cầu.');
       return result.rows[0];
     });
@@ -100,7 +127,7 @@ export class DeskController {
       const ticket = await client.query('SELECT id FROM public.tickets WHERE id = $1', [id]);
       if (!ticket.rowCount) throw new NotFoundException('Không tìm thấy yêu cầu.');
       return { data: (await client.query(
-        'SELECT * FROM public.ticket_events WHERE ticket_id = $1 ORDER BY created_at, id', [id],
+        'SELECT id,ticket_id,actor_id,actor_type,actor_name,event_type,payload,created_at FROM public.ticket_events WHERE ticket_id = $1 ORDER BY created_at, id', [id],
       )).rows };
     });
   }
@@ -131,12 +158,13 @@ export class DeskController {
       }
       // W3-02 rule 3: Employee tạo ticket loại 'access' vào hàng chờ phê duyệt.
       const status = initialStatusFor(category.code, roles);
-      return (await client.query(
+      const created = (await client.query(
         `INSERT INTO public.tickets(category_id, title, description, priority, status, request_fields)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
         [body.category_id, body.title, body.description, body.priority ?? 'normal',
           status, JSON.stringify(check.values)],
       )).rows[0];
+      return (await client.query(`SELECT ${TICKET_SELECT} FROM public.tickets t WHERE t.id=$1`, [created.id])).rows[0];
     });
   }
   /**
@@ -155,9 +183,12 @@ export class DeskController {
     const roles = activeRoles(request.claims.realm_access.roles);
     return this.db.asUser(request.claims, async client => {
       const ticket = (await client.query(
-        'SELECT status, requester_id FROM public.tickets WHERE id = $1 FOR UPDATE', [id],
-      )).rows[0] as { status: string; requester_id: string } | undefined;
+        'SELECT status, requester_id,ticket_version FROM public.tickets WHERE id = $1 FOR UPDATE', [id],
+      )).rows[0] as { status: string; requester_id: string; ticket_version: string } | undefined;
       if (!ticket) throw new NotFoundException('Không tìm thấy yêu cầu.');
+      if (body.expected_version !== undefined && Number(ticket.ticket_version) !== body.expected_version) {
+        throw new ConflictException('Yêu cầu đã được cập nhật. Vui lòng tải lại trước khi thao tác.');
+      }
       const result = validateTransition(ticket.status, body.to, {
         roles,
         isRequester: ticket.requester_id === request.claims.sub,
@@ -174,7 +205,7 @@ export class DeskController {
       if (!updated.rowCount) {
         throw new ForbiddenException('Bạn không có quyền chuyển trạng thái yêu cầu này.');
       }
-      return (await client.query('SELECT * FROM public.tickets WHERE id = $1', [id])).rows[0];
+      return (await client.query(`SELECT ${TICKET_SELECT} FROM public.tickets t WHERE t.id = $1`, [id])).rows[0];
     });
   }
   @Get('device-requests')

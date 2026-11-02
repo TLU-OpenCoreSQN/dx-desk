@@ -54,13 +54,25 @@ routes:
       nodes:
         "api:3000": 1
   - id: n8n-webhook
-    uri: /webhook/*
+    # Only the non-sensitive hello PoC is public. Business callbacks need their
+    # own authenticated route after the week-4 contract gate.
+    uri: /webhook/dxdesk-hello
+    plugins:
+      limit-req: &probe-limit
+        rate: 5
+        burst: 5
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        rejected_msg: '{"statusCode":429,"message":"Vượt quá tần suất cho phép, vui lòng thử lại sau."}'
     upstream:
       type: roundrobin
       nodes:
         "n8n:5678": 1
   - id: api-health
     uri: /api/health
+    plugins:
+      limit-req: *probe-limit
     upstream:
       type: roundrobin
       nodes:

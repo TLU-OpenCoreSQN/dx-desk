@@ -31,7 +31,7 @@ export const AttachmentPanel: React.FC<{ ticketId: string }> = ({ ticketId }) =>
     catch (err) { setError(err); }
     finally { setBusy(false); }
   };
-  return <section aria-label="Tệp đính kèm" className="bg-white rounded-xl border border-slate-200 p-6 space-y-3 text-sm">
+  return <section aria-label="Tệp đính kèm" className="bg-surface rounded-xl border border-edge p-6 space-y-3 text-sm">
     <h2 className="font-bold">Tệp đính kèm</h2>
     {error != null && <ErrorMessage error={error} title="Không xử lý được tệp" />}
     <button type="button" onClick={() => void reload()} disabled={busy}>Làm mới danh sách tệp</button>
@@ -40,19 +40,19 @@ export const AttachmentPanel: React.FC<{ ticketId: string }> = ({ ticketId }) =>
       <span>{labels[item.scan_status]}</span>
       <span>{Number(item.size_bytes).toLocaleString('vi-VN')} byte</span>
       {item.scan_status === 'clean' && <button type="button" disabled={busy} onClick={() => void open(item)}
-        className="text-teal-700 underline">Lấy liên kết tải {item.file_name}</button>}
+        className="text-primary underline">Lấy liên kết tải {item.file_name}</button>}
     </li>)}</ul>
     {items.length === 0 && <p>Chưa có tệp đính kèm.</p>}
-    {readyLink && <p><a href={readyLink.url} download rel="noreferrer" className="text-teal-700 underline">Tải {readyLink.name}</a>
+    {readyLink && <p><a href={readyLink.url} download rel="noreferrer" className="text-primary underline">Tải {readyLink.name}</a>
       {' '}— liên kết có hạn 2 phút; lấy liên kết mới nếu hết hạn.</p>}
-    <label className="block">Bổ sung tệp (PNG, JPEG, PDF, TXT; tối đa 10 MiB)
-      <input type="file" accept={ATTACHMENT_TYPES.join(',')} disabled={busy} onChange={event => {
+    <label className="block">Bổ sung tệp (PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB)
+      <input type="file" className="block w-full min-w-0" accept={ATTACHMENT_TYPES.join(',')} disabled={busy} onChange={event => {
         const chosen = event.target.files?.[0] ?? null;
         const issue = chosen ? fileError(chosen) : null;
         setError(issue ? new Error(issue) : null); setFile(issue ? null : chosen);
       }} />
     </label>
-    <button type="button" disabled={!file || busy} onClick={() => void upload()} className="text-teal-700 underline">
+    <button type="button" disabled={!file || busy} onClick={() => void upload()} className="text-primary underline">
       {busy ? 'Đang xử lý tệp…' : 'Tải tệp lên phiếu này'}
     </button>
   </section>;

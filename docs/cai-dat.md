@@ -189,9 +189,10 @@ exec ... kcadm.sh` **chờ Docker/CI kiểm chứng**; cú pháp theo tài liệ
 - `docker compose ... exec apisix cat /usr/local/apisix/logs/access.log` — access log mặc định
   của APISIX ghi lại từng yêu cầu đi qua cổng (kèm request id); không cần cài plugin ghi log.
 - Route `/api/*` có `limit-req` (30 req/giây/source, burst 10, trả 429).
-  Chữ ký JWT hiện được kiểm tại API và PostgREST; plugin openid-connect tại gateway
-  đã bị gỡ vì discovery trả URL không truy cập được trong container. /api/health
-  đi route công khai riêng. Không coi cấu hình rate limit là nghiệm thu runtime 429.
+  APISIX kiểm JWT bằng `openid-connect` cho `/api/*` và `/rest/*`: RS256,
+  khóa công khai đồng bộ từ JWKS, issuer và audience `dxdesk-api` (ADR 0009).
+  API và PostgREST cũng tự kiểm chữ ký. `/api/health` có route công khai riêng.
+  Không coi cấu hình rate limit là nghiệm thu runtime 429.
 
 ## Migration và cập nhật
 

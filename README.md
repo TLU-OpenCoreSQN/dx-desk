@@ -3,10 +3,10 @@
 Hệ thống tiếp nhận và tự động xử lý yêu cầu IT nội bộ, xây dựng trên nền tảng DX-OS Open-Core theo mô hình H-P-D-I.
 Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung Phần mềm nguồn mở (đội TLU-OpenCoreSQN, Trường Đại học Thủy lợi).
 
-> Trạng thái: **hoàn thiện tuần 3, chưa phát hành**. Có nền tảng/RLS, workflow,
-> SLA, OTP acceptance và luồng tệp quét virus/URL ký trên API và web.
-> Xem [báo cáo tuần 3](docs/hoan-thien-tuan-3.md) và CI đúng SHA để biết bằng chứng
-> cùng các phần cần nghiệm thu bởi thành viên/máy demo.
+> Trạng thái: **bàn giao kỹ thuật tuần 4, chưa phát hành**. Có auto-route VPN,
+> outbox/retry, kênh Mattermost, bảng việc Agent và queue phê duyệt Manager,
+> cùng nền tảng/RLS, OTP và tệp quét virus/URL ký của tuần 3.
+> Xem [hợp đồng API](docs/api/contract.md), các lệnh kiểm thử bên dưới và CI đúng SHA.
 
 ## Tầng 1 gồm những gì
 
@@ -18,6 +18,7 @@ Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung P
 | SeaweedFS | Kho tệp, tương thích S3 | chỉ trong mạng nội bộ |
 | ClamAV | Quét mã độc tệp tải lên | chỉ trong mạng nội bộ |
 | n8n | Tự động hóa quy trình | qua APISIX: `/webhook/` |
+| Mattermost Team Edition | Thông báo riêng cho nhóm hỗ trợ | http://localhost:18065 |
 
 ## Yêu cầu
 
@@ -74,6 +75,26 @@ Nghiệm thu đầy đủ Keycloak/APISIX/n8n cần Docker:
 `node scripts/stack-test.mjs --restart-n8n`.
 Các số đo TN-05 được tạo bằng `node scripts/benchmark.mjs` khi có máy demo.
 
+### Tự động hóa và hàng đợi
+
+`node scripts/dxdesk.mjs up` sinh secret local và cấu hình client automation,
+roster Keycloak thật cùng kênh Mattermost riêng. Agent dùng `/work-queue`, Manager
+dùng `/approvals`. `demo-light` đủ luồng tuần 4; `full` bật thêm Ollama, không tự tải model.
+
+```sh
+node tools/testing/week4-stack.mjs
+node tools/testing/week4-browser.mjs
+node scripts/replay-outbox.mjs status
+node scripts/replay-outbox.mjs <event-uuid>
+node scripts/seed-synthetic.mjs --help
+node scripts/benchmark-stack.mjs --profile=demo-light --project=dx-desk --duration=30 --interval=1000
+```
+
+Chạy acceptance trên project demo: bài stack ngắt/khởi động n8n và tạm đổi policy
+để tạo một phiếu SLA 1 phút, rồi khôi phục policy. Không chạy đồng thời các bài dùng cùng stack.
+Seed mặc định dry-run; apply cần DB demo/test và identity map thật. Số đo local không
+thay nghiệm thu máy demo 16 GB, reviewer/BTC hoặc quyết định release.
+
 ## Kiểm tra nhanh
 
 ```bash
@@ -90,8 +111,10 @@ TOKEN=$(curl -s -X POST http://localhost:8080/realms/dxdesk/protocol/openid-conn
 curl -H "Authorization: Bearer $TOKEN" http://localhost:9080/rest/
 ```
 
-Người dùng mẫu (chỉ dùng cho phát triển): `employee.a`, `employee.b`, `agent.1`, `manager.1`, cùng mật khẩu `DxDesk@2026`.
+Người dùng mẫu (chỉ dùng cho phát triển): `employee.a`, `employee.b`, `agent.1`, `agent.2`, `manager.1`, cùng mật khẩu `DxDesk@2026`.
 Tài khoản quản trị Keycloak nằm trong `.env`.
+Automation mặc định bật với profile `demo-light`; runner sinh secret local và bootstrap roster/kênh riêng.
+Tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env` (`MATTERMOST_DEMO_PASSWORD`).
 
 ## Cấu trúc kho mã
 

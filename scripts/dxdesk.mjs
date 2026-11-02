@@ -7,6 +7,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import { renderGateway } from './render-gateway.mjs';
+import { prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
@@ -54,8 +55,10 @@ async function syncKeys() {
   ));
 }
 if (action === 'up') {
+  await prepareAutomation(root, env);
   await initialize();
   compose('up', '-d', '--wait', 'postgres', 'keycloak');
+  await setupIdentity(env);
   migrate();
   await syncKeys();
   compose('up', '-d', '--build', '--wait');
@@ -71,6 +74,13 @@ if (action === 'up') {
   // Restart cổng là biện pháp duy nhất đã kiểm chứng; chi phí là một lần cổng khởi động lại.
   compose('restart', 'apisix');
   compose('up', '-d', '--wait', 'apisix');
+  if (env.AUTOMATION_ENABLED === 'true') {
+    await setupChannelsAndRoster(root, env);
+    // API env changed after channel/token bootstrap; refresh gateway upstreams too.
+    compose('up', '-d', '--wait', 'api');
+    compose('restart', 'apisix');
+    compose('up', '-d', '--wait', 'apisix');
+  }
   console.log(`DX-Desk: http://localhost:${env.APISIX_PORT}`);
 } else if (action === 'migrate') {
   migrate();

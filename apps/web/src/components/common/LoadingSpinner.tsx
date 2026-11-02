@@ -25,10 +25,10 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     <div
       role="status"
       aria-live="polite"
-      className={`flex flex-col items-center justify-center p-8 gap-3 text-[#5f5e5a] ${className}`}
+      className={`flex flex-col items-center justify-center p-8 gap-3 text-[var(--color-content-muted)] ${className}`}
     >
       <Loader2 className={`animate-spin text-[var(--color-primary)] ${sizeClasses}`} />
-      {label && <span className="text-xs sm:text-sm font-medium text-[#5f5e5a]">{label}</span>}
+      {label && <span className="text-xs sm:text-sm font-medium text-[var(--color-content-muted)]">{label}</span>}
       <span className="sr-only">{label}</span>
     </div>
   );

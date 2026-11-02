@@ -9,6 +9,9 @@ import {
   getTickets,
   createTicket,
   createDeviceRequest,
+  claimTicket,
+  getTeams,
+  updateTicketStatus,
   ApiClientError,
 } from '../services/api';
 
@@ -53,6 +56,29 @@ describe('API Service Client', () => {
     const headers = options?.headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer mock-jwt-token');
     expect(result).toEqual(mockTickets);
+  });
+
+  it('serializes server-side queue filters without changing the legacy list request', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [], total: 0, limit: 25, offset: 25 })));
+    await getTickets(25, 25, { queue: 'team_unassigned', team_id: 'team/one', status: 'assigned', assignee_id: 'me' });
+    const url = new URL(String(fetchSpy.mock.calls[0][0]), 'http://fixture');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ limit: '25', offset: '25', queue: 'team_unassigned', team_id: 'team/one', status: 'assigned', assignee_id: 'me' });
+  });
+
+  it('claims using only the ticket path and empty body; identity stays server-derived', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}'));
+    await claimTicket('ticket/one');
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toBe('/api/tickets/ticket%2Fone/claim');
+    expect(options?.method).toBe('POST'); expect(options?.body).toBe('{}');
+    expect((options?.headers as Headers).get('Authorization')).toBe('Bearer mock-jwt-token');
+    await getTeams(); expect(fetchSpy.mock.calls[1][0]).toBe('/api/teams');
+  });
+
+  it('sends the observed ticket version with approval decisions', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'));
+    await updateTicketStatus('ticket-1', { to: 'new', note: 'Thông tin chưa đầy đủ', expected_version: 7 });
+    expect(fetchSpy.mock.calls[0][1]?.body).toBe(JSON.stringify({ to: 'new', note: 'Thông tin chưa đầy đủ', expected_version: 7 }));
   });
 
   it('throws ApiClientError(401) when access token is missing', async () => {

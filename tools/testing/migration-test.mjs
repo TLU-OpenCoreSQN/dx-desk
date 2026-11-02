@@ -97,3 +97,5 @@ finally {
   report.finished_at = new Date().toISOString();
   await writeFile(resolve(root, '.local/reports/migrations.json'), JSON.stringify(report, null, 2) + '\n');
 }
+// Preserve failure through embedded-postgres's async beforeExit hook.
+if (!report.passed) process.exit(1);
