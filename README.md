@@ -3,10 +3,10 @@
 Hệ thống tiếp nhận và tự động xử lý yêu cầu IT nội bộ, xây dựng trên nền tảng DX-OS Open-Core theo mô hình H-P-D-I.
 Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung Phần mềm nguồn mở (đội TLU-OpenCoreSQN, Trường Đại học Thủy lợi).
 
-> Trạng thái: **bàn giao kỹ thuật tuần 4, chưa phát hành**. Có auto-route VPN,
+> Trạng thái: **v0.1.0**, bàn giao kỹ thuật tuần 4. Có auto-route VPN,
 > outbox/retry, kênh Mattermost, bảng việc Agent và queue phê duyệt Manager,
 > cùng nền tảng/RLS, OTP và tệp quét virus/URL ký của tuần 3.
-> Xem [hợp đồng API](docs/api/contract.md), các lệnh kiểm thử bên dưới và CI đúng SHA.
+> Xem [CHANGELOG](CHANGELOG.md), [hợp đồng API](docs/api/contract.md), các lệnh kiểm thử bên dưới và CI đúng SHA.
 
 ## Tầng 1 gồm những gì
 
@@ -56,7 +56,8 @@ Mọi request web đi qua APISIX. Employee chỉ xem dữ liệu của mình, Ag
 Tài liệu: [cài đặt](docs/cai-dat.md), [dữ liệu](docs/du-lieu.md),
 [hợp đồng API](docs/api/contract.md), [OpenAPI](docs/api/openapi.yaml),
 [demo tuần 2](docs/demo-tuan-2.md), [ADR](docs/adr/README.md).
-Kết quả đã chạy và phần còn thiếu: [báo cáo kiểm thử tuần 2](docs/bao-cao-kiem-thu-tuan-2.md).
+Kết quả đã chạy và phần còn thiếu: [báo cáo kiểm thử tuần 2](docs/bao-cao-kiem-thu-tuan-2.md),
+[hoàn thiện tuần 3](docs/hoan-thien-tuan-3.md), [phát hành v0.1.0](docs/phat-hanh-v0.1.0.md).
 
 ## Kiểm thử
 
