@@ -11,6 +11,9 @@ import * as auth from '../contexts/AuthContext';
 
 describe('ticket attachments', () => {
   beforeEach(() => { vi.restoreAllMocks(); });
+  it.each(['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'])('accepts the API-supported MIME type %s', type => {
+    expect(fileError(new File(['content'], 'attachment', { type }))).toBeNull();
+  });
   it('rejects unsupported, empty and oversized files before reading base64', () => {
     expect(fileError(new File([], 'empty.txt', {type:'text/plain'}))).toBeTruthy();
     expect(fileError(new File(['x'], 'x.html', {type:'text/html'}))).toBeTruthy();

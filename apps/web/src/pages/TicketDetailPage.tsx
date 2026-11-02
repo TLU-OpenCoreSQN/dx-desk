@@ -51,12 +51,12 @@ const BTN_BASE =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] px-3.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 lg:min-h-10';
 const BTN_PRIMARY = `${BTN_BASE} border border-[var(--color-primary)] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] text-white shadow-xs hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] focus-visible:ring-[var(--color-primary)]`;
 const BTN_SUCCESS = `${BTN_BASE} border border-[#448361] bg-[#448361] text-white shadow-xs hover:bg-[#36694e] focus-visible:ring-[#448361]`;
-const BTN_SECONDARY = `${BTN_BASE} border border-[#e4e3e0] bg-white text-[#211f1b] hover:bg-[#f1f1ef] focus-visible:ring-[var(--color-primary)] shadow-2xs`;
-const BTN_DANGER = `${BTN_BASE} border border-[#f6c3c1] bg-white text-[#d44c47] hover:bg-[#fbe4e4] focus-visible:ring-[#d44c47]`;
+const BTN_SECONDARY = `${BTN_BASE} border border-[var(--color-edge-subtle)] bg-surface text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] focus-visible:ring-[var(--color-primary)] shadow-2xs`;
+const BTN_DANGER = `${BTN_BASE} border border-[#f6c3c1] bg-surface text-[#d44c47] hover:bg-[#fbe4e4] focus-visible:ring-[#d44c47]`;
 const BTN_DANGER_SOLID = `${BTN_BASE} border border-[#d44c47] bg-[#d44c47] text-white shadow-xs hover:bg-[#b53c37] focus-visible:ring-[#d44c47]`;
 
 const TEXTAREA_CLASS =
-  'w-full rounded-[6px] border border-[#e4e3e0] bg-[#fbfaf8] p-3 text-xs leading-relaxed text-[#211f1b] focus:bg-white focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm transition-all';
+  'w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-3 text-xs leading-relaxed text-[var(--color-content)] focus:bg-surface focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm transition-all';
 
 function eventSummary(evt: TicketEvent): {
   heading: string;
@@ -292,15 +292,15 @@ export const TicketDetailPage: React.FC = () => {
           <div className="min-w-0 space-y-5">
             <div className="rounded-[4px] border border-[#e5e5e2] p-5">
               <div className="flex flex-wrap gap-2">
-                <div className="h-5 w-20 animate-pulse rounded-[4px] bg-[#eeede9]" />
-                <div className="h-5 w-16 animate-pulse rounded-[4px] bg-[#eeede9]" />
+                <div className="h-5 w-20 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
+                <div className="h-5 w-16 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
               </div>
-              <div className="mt-4 h-7 w-3/4 animate-pulse rounded-[4px] bg-[#eeede9]" />
+              <div className="mt-4 h-7 w-3/4 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
               <div className="mt-3 h-4 w-1/2 animate-pulse rounded-[4px] bg-[#f6f5f3]" />
               <div className="mt-6 h-24 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
             </div>
             <div className="rounded-[4px] border border-[#e5e5e2] p-5">
-              <div className="h-4 w-36 animate-pulse rounded-[4px] bg-[#eeede9]" />
+              <div className="h-4 w-36 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
               <div className="mt-4 space-y-2">
                 <div className="h-3 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
                 <div className="h-3 w-11/12 animate-pulse rounded-[4px] bg-[#f6f5f3]" />
@@ -309,7 +309,7 @@ export const TicketDetailPage: React.FC = () => {
             </div>
           </div>
           <div className="rounded-[4px] border border-[#e5e5e2] p-4 max-lg:hidden">
-            <div className="h-4 w-24 animate-pulse rounded-[4px] bg-[#eeede9]" />
+            <div className="h-4 w-24 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
             <div className="mt-4 space-y-2">
               <div className="h-10 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
               <div className="h-10 w-full animate-pulse rounded-[4px] bg-[#f6f5f3]" />
@@ -326,7 +326,7 @@ export const TicketDetailPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/tickets')}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[#5f5e5a] transition-colors hover:text-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Quay lại danh sách phiếu</span>
@@ -351,11 +351,11 @@ export const TicketDetailPage: React.FC = () => {
       }`}
     >
       {/* Top navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#d4d4d0] pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-edge)] pb-2">
         <button
           type="button"
           onClick={() => navigate('/tickets')}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[#5f5e5a] transition-colors hover:text-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Quay lại danh sách phiếu</span>
@@ -365,7 +365,7 @@ export const TicketDetailPage: React.FC = () => {
           type="button"
           onClick={() => void loadTicketData(true)}
           disabled={isRefreshing}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] border border-[#d4d4d0] bg-white px-3 text-xs font-semibold text-[#211f1b] shadow-xs transition-colors hover:bg-[#eeede9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-9"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] border border-[var(--color-edge)] bg-surface px-3 text-xs font-semibold text-[var(--color-content)] shadow-xs transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-9"
         >
           <RefreshCw
             className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
@@ -379,91 +379,91 @@ export const TicketDetailPage: React.FC = () => {
         {/* ===== Left column: content ===== */}
         <div className="min-w-0 space-y-5">
           {/* Status header + meta */}
-          <header className="overflow-hidden rounded-[8px] border border-[#e4e3e0] bg-white shadow-2xs">
-            <div className="border-b border-[#e4e3e0] bg-gradient-to-b from-[#fbfaf8] to-white px-5 py-5 sm:px-6 sm:py-6">
+          <header className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
+            <div className="border-b border-[var(--color-edge-subtle)] bg-gradient-to-b from-[var(--color-surface-sidebar)] to-surface px-5 py-5 sm:px-6 sm:py-6">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={currentStatus} />
                 <PriorityBadge priority={ticket.priority} />
                 <span className="inline-flex max-w-full items-center gap-1.5 rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-0.5 font-mono text-[11px] text-[var(--color-primary-text)]">
-                  <span className="text-[#5f5e5a]">ID</span>
+                  <span className="text-[var(--color-content-muted)]">ID</span>
                   <span className="break-all font-bold">{ticket.id}</span>
                 </span>
               </div>
 
-              <h1 className="mt-3 break-words text-lg font-bold leading-snug tracking-tight text-[#211f1b] sm:text-2xl">
+              <h1 className="mt-3 break-words text-lg font-bold leading-snug tracking-tight text-[var(--color-content)] sm:text-2xl">
                 {ticket.title}
               </h1>
 
               <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2.5 text-xs sm:grid-cols-2">
                 <div className="flex min-w-0 items-start gap-1.5">
-                  <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8a8884]" aria-hidden="true" />
-                  <dt className="shrink-0 text-[#5f5e5a]">Người tạo:</dt>
-                  <dd className="min-w-0 break-all font-mono font-semibold text-[#211f1b]">
+                  <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
+                  <dt className="shrink-0 text-[var(--color-content-muted)]">Người tạo:</dt>
+                  <dd className="min-w-0 break-all font-mono font-semibold text-[var(--color-content)]">
                     {ticket.requester_id}
                   </dd>
                 </div>
 
                 <div className="flex min-w-0 items-start gap-1.5">
-                  <Tag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8a8884]" aria-hidden="true" />
-                  <dt className="shrink-0 text-[#5f5e5a]">Danh mục:</dt>
-                  <dd className="min-w-0 break-words font-semibold text-[#211f1b]">
+                  <Tag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
+                  <dt className="shrink-0 text-[var(--color-content-muted)]">Danh mục:</dt>
+                  <dd className="min-w-0 break-words font-semibold text-[var(--color-content)]">
                     {category ? `${category.name} (${category.code})` : ticket.category_id}
                   </dd>
                 </div>
 
                 <div className="flex min-w-0 items-start gap-1.5">
                   <UserCheck
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8a8884]"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]"
                     aria-hidden="true"
                   />
-                  <dt className="shrink-0 text-[#5f5e5a]">Phụ trách:</dt>
-                  <dd className="min-w-0 break-all font-semibold text-[#211f1b]">
+                  <dt className="shrink-0 text-[var(--color-content-muted)]">Phụ trách:</dt>
+                  <dd className="min-w-0 break-all font-semibold text-[var(--color-content)]">
                     {ticket.assigned_to ? (
                       <span className="font-mono text-[var(--color-primary)]">{ticket.assigned_to}</span>
                     ) : (
-                      <span className="font-normal italic text-[#8a8884]">Chưa phân công</span>
+                      <span className="font-normal italic text-[var(--color-content-subtle)]">Chưa phân công</span>
                     )}
                   </dd>
                 </div>
 
                 <div className="flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5">
                   <Calendar
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8a8884]"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]"
                     aria-hidden="true"
                   />
-                  <dt className="shrink-0 text-[#5f5e5a]">Tạo lúc:</dt>
-                  <dd className="font-medium text-[#211f1b]">{formatDateTime(ticket.created_at)}</dd>
+                  <dt className="shrink-0 text-[var(--color-content-muted)]">Tạo lúc:</dt>
+                  <dd className="font-medium text-[var(--color-content)]">{formatDateTime(ticket.created_at)}</dd>
                 </div>
 
                 <div className="flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5">
                   <Clock
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8a8884]"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]"
                     aria-hidden="true"
                   />
-                  <dt className="shrink-0 text-[#5f5e5a]">Cập nhật:</dt>
-                  <dd className="font-medium text-[#211f1b]">{formatDateTime(ticket.updated_at)}</dd>
+                  <dt className="shrink-0 text-[var(--color-content-muted)]">Cập nhật:</dt>
+                  <dd className="font-medium text-[var(--color-content)]">{formatDateTime(ticket.updated_at)}</dd>
                 </div>
               </dl>
             </div>
           </header>
 
           {/* Description + dynamic fields */}
-          <section className="overflow-hidden rounded-[8px] border border-[#e4e3e0] bg-white shadow-2xs">
-            <div className="flex items-center gap-2 border-b border-[#e4e3e0] px-5 py-3.5">
+          <section className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
+            <div className="flex items-center gap-2 border-b border-[var(--color-edge-subtle)] px-5 py-3.5">
               <FileText className="h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
-              <h2 className="text-sm font-bold tracking-tight text-[#211f1b]">
+              <h2 className="text-sm font-bold tracking-tight text-[var(--color-content)]">
                 Mô tả chi tiết nội dung sự cố
               </h2>
             </div>
             <div className="px-5 py-4">
-              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[#211f1b]">
+              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--color-content)]">
                 {ticket.description}
               </p>
             </div>
 
             {hasFields && (
-              <div className="border-t border-[#e4e3e0] px-5 py-4">
-                <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#211f1b]">
+              <div className="border-t border-[var(--color-edge-subtle)] px-5 py-4">
+                <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]">
                   <ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary)]" aria-hidden="true" />
                   <span>Thông tin bổ sung theo danh mục</span>
                 </h2>
@@ -472,12 +472,12 @@ export const TicketDetailPage: React.FC = () => {
                     typeof val === 'string' ? (
                       <div
                         key={key}
-                        className="min-w-0 rounded-[6px] border border-[#e4e3e0] bg-[#fbfaf8] p-3"
+                        className="min-w-0 rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-3"
                       >
-                        <dt className="mb-0.5 break-all text-[11px] text-[#5f5e5a]">
+                        <dt className="mb-0.5 break-all text-[11px] text-[var(--color-content-muted)]">
                           {category?.requirement_fields?.find((field) => field.key === key)?.label || key}
                         </dt>
-                        <dd className="whitespace-pre-wrap break-words text-xs font-semibold text-[#211f1b]">{val}</dd>
+                        <dd className="whitespace-pre-wrap break-words text-xs font-semibold text-[var(--color-content)]">{val}</dd>
                       </div>
                     ) : null
                   )}
@@ -485,11 +485,11 @@ export const TicketDetailPage: React.FC = () => {
               </div>
             )}
             {ticket.resolution_note && (
-              <section aria-label="Kết quả xử lý" className="border-t border-[#e4e3e0] px-5 py-4">
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-[#211f1b]">
+              <section aria-label="Kết quả xử lý" className="border-t border-[var(--color-edge-subtle)] px-5 py-4">
+                <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]">
                   Kết quả xử lý
                 </h2>
-                <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#211f1b]">
+                <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-content)]">
                   {ticket.resolution_note}
                 </p>
               </section>
@@ -499,15 +499,15 @@ export const TicketDetailPage: React.FC = () => {
           <AttachmentPanel ticketId={ticket.id} />
 
           {/* Timeline */}
-          <section className="overflow-hidden rounded-[8px] border border-[#e4e3e0] bg-white shadow-2xs">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e3e0] px-5 py-3.5">
+          <section className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] px-5 py-3.5">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
-                <h2 className="text-sm font-bold tracking-tight text-[#211f1b]">
+                <h2 className="text-sm font-bold tracking-tight text-[var(--color-content)]">
                   Dòng thời gian xử lý
                 </h2>
               </div>
-              <span className="rounded-[4px] border border-[#e4e3e0] bg-[#f1f1ef] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#5f5e5a]">
+              <span className="rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--color-content-muted)]">
                 {events.length} sự kiện
               </span>
             </div>
@@ -517,7 +517,7 @@ export const TicketDetailPage: React.FC = () => {
                 <EmptyState
                   title="Chưa có sự kiện nào"
                   description="Phiếu này chưa ghi nhận thêm sự kiện xử lý nào trên hệ thống."
-                  icon={<History className="h-6 w-6 text-[#5f5e5a]" aria-hidden="true" />}
+                  icon={<History className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
                 />
               ) : (
                 <div className="space-y-5">
@@ -526,7 +526,7 @@ export const TicketDetailPage: React.FC = () => {
                       <h3 className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#8c8a85]">
                         <Calendar className="h-3 w-3" aria-hidden="true" />
                         <span>{group.label}</span>
-                        <span className="rounded-[4px] bg-[#f6f5f3] px-1.5 py-0.5 font-mono text-[10px] normal-case tracking-normal text-[#5f5e5a]">
+                        <span className="rounded-[4px] bg-[#f6f5f3] px-1.5 py-0.5 font-mono text-[10px] normal-case tracking-normal text-[var(--color-content-muted)]">
                           {group.items.length} sự kiện
                         </span>
                       </h3>
@@ -552,13 +552,13 @@ export const TicketDetailPage: React.FC = () => {
                                 {Icon ? (
                                   <Icon className="h-3.5 w-3.5" />
                                 ) : (
-                                  <History className="h-3.5 w-3.5 text-[#5f5e5a]" />
+                                  <History className="h-3.5 w-3.5 text-[var(--color-content-muted)]" />
                                 )}
                               </span>
 
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
-                                  <p className="min-w-0 break-words text-sm font-semibold leading-snug text-[#211f1b]">
+                                  <p className="min-w-0 break-words text-sm font-semibold leading-snug text-[var(--color-content)]">
                                     {summary.heading}
                                   </p>
                                   <time
@@ -569,9 +569,9 @@ export const TicketDetailPage: React.FC = () => {
                                   </time>
                                 </div>
 
-                                <p className="mt-0.5 text-[11px] text-[#5f5e5a]">
+                                <p className="mt-0.5 text-[11px] text-[var(--color-content-muted)]">
                                   Thực hiện bởi{' '}
-                                  <span className="break-all font-mono font-semibold text-[#211f1b]">
+                                  <span className="break-all font-mono font-semibold text-[var(--color-content)]">
                                     {evt.actor_id || 'Hệ thống'}
                                   </span>
                                 </p>
@@ -594,7 +594,7 @@ export const TicketDetailPage: React.FC = () => {
                                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8c8a85]">
                                       Ghi chú
                                     </p>
-                                    <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#211f1b]">
+                                    <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-content)]">
                                       {summary.note}
                                     </p>
                                   </div>
@@ -604,7 +604,7 @@ export const TicketDetailPage: React.FC = () => {
                                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[#27553c]">
                                       Cách giải quyết
                                     </p>
-                                    <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#211f1b]">
+                                    <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-content)]">
                                       {summary.resolutionNote}
                                     </p>
                                   </div>
@@ -623,10 +623,10 @@ export const TicketDetailPage: React.FC = () => {
           </section>
 
           {/* Role-aware guidance */}
-          <div className="flex items-start gap-3 rounded-[8px] border border-[#e4e3e0] bg-[#fbfaf8] p-4 text-xs text-[#5f5e5a] shadow-2xs">
+          <div className="flex items-start gap-3 rounded-[8px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-4 text-xs text-[var(--color-content-muted)] shadow-2xs">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
             <p className="leading-relaxed">
-              <span className="font-bold text-[#211f1b]">Lưu ý:</span> Các nút chuyển trạng thái
+              <span className="font-bold text-[var(--color-content)]">Lưu ý:</span> Các nút chuyển trạng thái
               hiển thị theo vai trò của bạn và máy trạng thái của phiếu. Chuyển sang “
               {statusLabel('resolved')}” bắt buộc mô tả cách giải quyết (từ {RESOLUTION_NOTE_MIN}{' '}
               đến {RESOLUTION_NOTE_MAX} ký tự).
@@ -643,11 +643,11 @@ export const TicketDetailPage: React.FC = () => {
               : ''
           }`}
         >
-          <div className="max-lg:max-h-[70vh] max-lg:overflow-y-auto max-lg:border-t max-lg:border-[#e4e3e0] max-lg:bg-white/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-3 max-lg:shadow-[0_-8px_24px_rgba(33,31,27,0.12)] max-lg:backdrop-blur-sm lg:max-h-[calc(100vh_-_6rem)] lg:overflow-y-auto lg:rounded-[8px] lg:border lg:border-[#e4e3e0] lg:bg-white lg:shadow-2xs">
-            <div className="flex items-center justify-between gap-2 border-b border-[#e4e3e0] px-4 py-3 max-lg:hidden bg-[#fbfaf8]">
+          <div className="max-lg:max-h-[70vh] max-lg:overflow-y-auto max-lg:border-t max-lg:border-[var(--color-edge-subtle)] max-lg:bg-surface/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-3 max-lg:shadow-[0_-8px_24px_rgba(33,31,27,0.12)] max-lg:backdrop-blur-sm lg:max-h-[calc(100vh_-_6rem)] lg:overflow-y-auto lg:rounded-[8px] lg:border lg:border-[var(--color-edge-subtle)] lg:bg-surface lg:shadow-2xs">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] px-4 py-3 max-lg:hidden bg-[var(--color-surface-sidebar)]">
               <div className="flex min-w-0 items-center gap-2">
                 <GitBranch className="h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
-                <h2 className="truncate text-sm font-bold tracking-tight text-[#211f1b]">
+                <h2 className="truncate text-sm font-bold tracking-tight text-[var(--color-content)]">
                   Thao tác
                 </h2>
               </div>
@@ -671,7 +671,7 @@ export const TicketDetailPage: React.FC = () => {
                     type="button"
                     onClick={() => setSuccessMessage(null)}
                     aria-label="Đóng thông báo chuyển trạng thái"
-                    className="-mr-1 -mt-0.5 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[4px] text-[#5f5e5a] transition-colors hover:text-[#211f1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
+                    className="-mr-1 -mt-0.5 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[4px] text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-content)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -699,12 +699,12 @@ export const TicketDetailPage: React.FC = () => {
                     <div className="min-w-0">
                       <h3
                         id="transition-dialog-title"
-                        className="break-words text-sm font-bold leading-snug text-[#211f1b]"
+                        className="break-words text-sm font-bold leading-snug text-[var(--color-content)]"
                       >
                         Chuyển phiếu sang “{statusLabel(activeEdge.to)}”
                       </h3>
                       {activeEdge.hint && (
-                        <p className="mt-1 text-xs leading-relaxed text-[#5f5e5a]">
+                        <p className="mt-1 text-xs leading-relaxed text-[var(--color-content-muted)]">
                           {activeEdge.hint}
                         </p>
                       )}
@@ -713,7 +713,7 @@ export const TicketDetailPage: React.FC = () => {
                       type="button"
                       onClick={closeTransitionForm}
                       aria-label="Đóng form chuyển trạng thái"
-                      className="-mr-1 -mt-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[4px] text-[#5f5e5a] transition-colors hover:text-[#211f1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
+                      className="-mr-1 -mt-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[4px] text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-content)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -740,18 +740,18 @@ export const TicketDetailPage: React.FC = () => {
                   )}
 
                   {activeEdge.resolutionNoteRequired && (
-                    <div className="rounded-[4px] border border-[var(--color-primary-border)] bg-white p-3">
+                    <div className="rounded-[4px] border border-[var(--color-primary-border)] bg-surface p-3">
                       <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                         <label
                           htmlFor="transition-resolution-note"
-                          className="text-[11px] font-bold uppercase tracking-wider text-[#211f1b]"
+                          className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]"
                         >
                           Mô tả cách giải quyết{' '}
                           <span className="text-[#d44c47]" aria-hidden="true">
                             *
                           </span>
                         </label>
-                        <span className="font-mono text-[10px] text-[#5f5e5a]">
+                        <span className="font-mono text-[10px] text-[var(--color-content-muted)]">
                           {resolutionNote.trim().length} / {RESOLUTION_NOTE_MAX}
                         </span>
                       </div>
@@ -774,7 +774,7 @@ export const TicketDetailPage: React.FC = () => {
                       />
                       <p
                         id="transition-resolution-note-help"
-                        className="mt-1 text-[11px] leading-relaxed text-[#5f5e5a]"
+                        className="mt-1 text-[11px] leading-relaxed text-[var(--color-content-muted)]"
                       >
                         Bắt buộc khi chuyển sang “{statusLabel(activeEdge.to)}”, từ{' '}
                         {RESOLUTION_NOTE_MIN} đến {RESOLUTION_NOTE_MAX} ký tự.
@@ -791,14 +791,14 @@ export const TicketDetailPage: React.FC = () => {
                     <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                       <label
                         htmlFor="transition-note"
-                        className="text-[11px] font-bold uppercase tracking-wider text-[#211f1b]"
+                        className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]"
                       >
                         Ghi chú chuyển trạng thái{' '}
                         <span className="font-normal normal-case tracking-normal text-[#8c8a85]">
                           (không bắt buộc)
                         </span>
                       </label>
-                      <span className="font-mono text-[10px] text-[#5f5e5a]">
+                      <span className="font-mono text-[10px] text-[var(--color-content-muted)]">
                         {note.trim().length} / 2000 ký tự
                       </span>
                     </div>
@@ -848,7 +848,7 @@ export const TicketDetailPage: React.FC = () => {
                 </form>
               ) : allowedTransitions.length > 0 ? (
                 <>
-                  <p className="text-[11px] leading-relaxed text-[#5f5e5a] max-lg:hidden">
+                  <p className="text-[11px] leading-relaxed text-[var(--color-content-muted)] max-lg:hidden">
                     Chọn thao tác phù hợp với vai trò của bạn.
                   </p>
                   <div className="flex flex-col gap-2">
@@ -880,9 +880,9 @@ export const TicketDetailPage: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="flex items-start gap-2 rounded-[4px] border border-[#d4d4d0] bg-[#f6f5f3]/80 px-3 py-2.5">
+                <div className="flex items-start gap-2 rounded-[4px] border border-[var(--color-edge)] bg-[#f6f5f3]/80 px-3 py-2.5">
                   <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#8c8a85]" aria-hidden="true" />
-                  <p className="text-xs leading-relaxed text-[#5f5e5a]">
+                  <p className="text-xs leading-relaxed text-[var(--color-content-muted)]">
                     Hiện không có thao tác chuyển trạng thái nào khả dụng cho bạn với phiếu ở trạng
                     thái «{statusLabel(currentStatus)}».
                   </p>
@@ -891,11 +891,11 @@ export const TicketDetailPage: React.FC = () => {
 
               {!activeEdge && (
                 <div className="rounded-[4px] border border-[#e5e5e2] bg-[#f6f5f3]/70 p-3 max-lg:hidden">
-                  <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[#211f1b]">
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-content)]">
                     <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary)]" aria-hidden="true" />
                     Biên bản giải quyết
                   </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-[#5f5e5a]">
+                  <p className="mt-1 text-[11px] leading-relaxed text-[var(--color-content-muted)]">
                     Bắt buộc mô tả cách giải quyết từ {RESOLUTION_NOTE_MIN} đến {RESOLUTION_NOTE_MAX}{' '}
                     ký tự khi chuyển phiếu sang “{statusLabel('resolved')}”.
                   </p>

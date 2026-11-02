@@ -72,7 +72,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#962824] bg-white hover:bg-[#fbe4e4] rounded-[6px] border border-[#f6c3c1] transition-all focus:outline-none focus:ring-2 focus:ring-[#d44c47] shadow-2xs min-h-[36px] active:scale-[0.98]"
+              className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#962824] bg-surface hover:bg-[#fbe4e4] rounded-[6px] border border-[#f6c3c1] transition-all focus:outline-none focus:ring-2 focus:ring-[#d44c47] shadow-2xs min-h-[36px] active:scale-[0.98]"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Thử lại</span>

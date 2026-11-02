@@ -167,17 +167,17 @@ export const TicketListPage: React.FC = () => {
   return (
     <div className="w-full space-y-5">
       {/* Page title & primary actions */}
-      <div className="flex flex-col gap-3 border-b border-[#e4e3e0] pb-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-[var(--color-edge-subtle)] pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-[#211f1b] sm:text-2xl">
+            <h1 className="text-xl font-bold tracking-tight text-[var(--color-content)] sm:text-2xl">
               Danh sách phiếu yêu cầu IT
             </h1>
             <span className="inline-flex items-center rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-primary-text)] shadow-2xs">
               {isStaff ? 'Toàn bộ phiếu' : 'Phiếu của tôi'}
             </span>
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-[#5f5e5a]">
+          <p className="mt-1 text-xs leading-relaxed text-[var(--color-content-muted)]">
             Mỗi trang hiển thị tối đa {PAGE_SIZE} phiếu. Tìm kiếm và bộ lọc chỉ áp dụng cho
             trang đang xem — dùng phân trang để xem các phiếu còn lại.
           </p>
@@ -188,11 +188,11 @@ export const TicketListPage: React.FC = () => {
             type="button"
             onClick={() => void loadData(offset)}
             disabled={isLoading}
-            className={`inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-[6px] border border-[#e4e3e0] bg-white px-3.5 text-xs font-semibold text-[#211f1b] shadow-2xs transition-all hover:bg-[#f1f1ef] hover:border-[#d6d5d2] disabled:cursor-not-allowed disabled:text-[#8a8884] sm:min-h-[38px] ${FOCUS_RING}`}
+            className={`inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-[6px] border border-[var(--color-edge-subtle)] bg-surface px-3.5 text-xs font-semibold text-[var(--color-content)] shadow-2xs transition-all hover:bg-[var(--color-surface-muted)] hover:border-[var(--color-edge)] disabled:cursor-not-allowed disabled:text-[var(--color-content-subtle)] sm:min-h-[38px] ${FOCUS_RING}`}
             title="Làm mới danh sách"
           >
             <RefreshCw
-              className={`h-3.5 w-3.5 text-[#5f5e5a] ${isLoading ? 'animate-spin' : ''}`}
+              className={`h-3.5 w-3.5 text-[var(--color-content-muted)] ${isLoading ? 'animate-spin' : ''}`}
               aria-hidden="true"
             />
             <span>Làm mới</span>
@@ -211,19 +211,19 @@ export const TicketListPage: React.FC = () => {
       {/* Consolidated toolbar: search + filters + clear + result count */}
       <section
         aria-label="Tìm kiếm và lọc phiếu"
-        className="rounded-[8px] border border-[#e4e3e0] bg-white p-4 shadow-2xs transition-all"
+        className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-4 shadow-2xs transition-all"
       >
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
           <div className="min-w-0 flex-1">
             <label
               htmlFor="ticket-search"
-              className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#5f5e5a]"
+              className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
             >
               Tìm kiếm
             </label>
             <div className="relative">
               <Search
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a8884]"
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-content-subtle)]"
                 aria-hidden="true"
               />
               <input
@@ -233,14 +233,14 @@ export const TicketListPage: React.FC = () => {
                 placeholder="Tìm theo mã hoặc tiêu đề trong trang này..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="min-h-[42px] w-full rounded-[6px] border border-[#e4e3e0] bg-[#fbfaf8] py-2 pl-9 pr-10 text-xs text-[#211f1b] placeholder:text-[#8a8884] focus:border-[var(--color-primary)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px]"
+                className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] py-2 pl-9 pr-10 text-xs text-[var(--color-content)] placeholder:text-[var(--color-content-subtle)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px]"
               />
               {searchQuery !== '' && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Xóa từ khóa tìm kiếm"
-                  className={`absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[4px] text-[#8a8884] transition-colors hover:bg-[#f1f1ef] hover:text-[#211f1b] ${FOCUS_RING}`}
+                  className={`absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[4px] text-[var(--color-content-subtle)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] ${FOCUS_RING}`}
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -252,7 +252,7 @@ export const TicketListPage: React.FC = () => {
             <div className="min-w-0">
               <label
                 htmlFor="ticket-filter-priority"
-                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#5f5e5a]"
+                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
               >
                 Ưu tiên
               </label>
@@ -261,7 +261,7 @@ export const TicketListPage: React.FC = () => {
                 aria-label="Mức ưu tiên"
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
-                className="min-h-[42px] w-full rounded-[6px] border border-[#e4e3e0] bg-[#fbfaf8] px-3 py-1.5 text-xs text-[#211f1b] focus:border-[var(--color-primary)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[168px]"
+                className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] px-3 py-1.5 text-xs text-[var(--color-content)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[168px]"
               >
                 <option value="all">Tất cả ưu tiên</option>
                 <option value="critical">Khẩn cấp</option>
@@ -274,7 +274,7 @@ export const TicketListPage: React.FC = () => {
             <div className="min-w-0">
               <label
                 htmlFor="ticket-filter-status"
-                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#5f5e5a]"
+                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
               >
                 Trạng thái
               </label>
@@ -283,7 +283,7 @@ export const TicketListPage: React.FC = () => {
                 aria-label="Trạng thái"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="min-h-[42px] w-full rounded-[6px] border border-[#e4e3e0] bg-[#fbfaf8] px-3 py-1.5 text-xs text-[#211f1b] focus:border-[var(--color-primary)] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[176px]"
+                className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] px-3 py-1.5 text-xs text-[var(--color-content)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[176px]"
               >
                 <option value="all">Tất cả trạng thái</option>
                 <option value="new">Mới tạo</option>
@@ -303,7 +303,7 @@ export const TicketListPage: React.FC = () => {
             <button
               type="button"
               onClick={resetFilters}
-              className={`inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[6px] border border-[#e4e3e0] bg-[#f7f6f3] px-3 text-xs font-semibold text-[#211f1b] transition-all hover:bg-[#f1f1ef] sm:min-h-[38px] ${FOCUS_RING}`}
+              className={`inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)] px-3 text-xs font-semibold text-[var(--color-content)] transition-all hover:bg-[var(--color-surface-muted)] sm:min-h-[38px] ${FOCUS_RING}`}
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Bỏ lọc</span>
@@ -311,8 +311,8 @@ export const TicketListPage: React.FC = () => {
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] leading-relaxed border-t border-[#e4e3e0] pt-2.5">
-          <p aria-live="polite" className="font-semibold text-[#211f1b]">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] leading-relaxed border-t border-[var(--color-edge-subtle)] pt-2.5">
+          <p aria-live="polite" className="font-semibold text-[var(--color-content)]">
             {isLoading
               ? 'Đang tải dữ liệu...'
               : error
@@ -321,7 +321,7 @@ export const TicketListPage: React.FC = () => {
                   ? resultSummary
                   : 'Không có phiếu nào trên trang này'}
           </p>
-          <p className="text-[#8a8884]">Áp dụng cho trang đang xem.</p>
+          <p className="text-[var(--color-content-subtle)]">Áp dụng cho trang đang xem.</p>
         </div>
       </section>
 
@@ -341,7 +341,7 @@ export const TicketListPage: React.FC = () => {
             description="Hãy quay lại trang trước để xem các phiếu đã tải."
             actionText="Quay lại trang trước"
             onAction={handlePrevPage}
-            icon={<Inbox className="h-6 w-6 text-[#5f5e5a]" aria-hidden="true" />}
+            icon={<Inbox className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
           />
         ) : tickets.length === 0 && !hasActiveFilters ? (
           <EmptyState
@@ -349,7 +349,7 @@ export const TicketListPage: React.FC = () => {
             description="Hệ thống chưa ghi nhận phiếu hỗ trợ IT nào trong danh mục này. Bạn có thể tạo phiếu mới để gửi sự cố tới bộ phận hỗ trợ."
             actionText="Tạo phiếu hỗ trợ ngay"
             onAction={() => navigate('/tickets/new')}
-            icon={<Inbox className="h-6 w-6 text-[#5f5e5a]" aria-hidden="true" />}
+            icon={<Inbox className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
           />
         ) : (
           <EmptyState
@@ -361,15 +361,15 @@ export const TicketListPage: React.FC = () => {
             }
             actionText="Xóa bộ lọc"
             onAction={resetFilters}
-            icon={<SearchX className="h-6 w-6 text-[#5f5e5a]" aria-hidden="true" />}
+            icon={<SearchX className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
           />
         )
       ) : (
-        <div className="rounded-[8px] border border-[#e4e3e0] bg-white shadow-2xs overflow-hidden">
+        <div className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs overflow-hidden">
           {/* Sticky column header (desktop only, sticks below the app header) */}
           <div
             aria-hidden="true"
-            className={`dx-ticket-list-header sticky top-14 z-20 hidden border-b border-[#e4e3e0] bg-[color-mix(in_srgb,var(--color-primary-tint)_35%,#f7f6f3)] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#5f5e5a] lg:grid lg:gap-x-4 ${TABLE_GRID}`}
+            className={`dx-ticket-list-header sticky top-14 z-20 hidden border-b border-[var(--color-edge-subtle)] bg-[color-mix(in_srgb,var(--color-primary-tint)_35%,#f7f6f3)] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)] lg:grid lg:gap-x-4 ${TABLE_GRID}`}
           >
             <span>Mã phiếu</span>
             <span>Tiêu đề</span>
@@ -381,7 +381,7 @@ export const TicketListPage: React.FC = () => {
 
           <ul
             aria-label="Danh sách phiếu yêu cầu"
-            className="dx-ticket-list divide-y divide-[#e4e3e0] bg-white"
+            className="dx-ticket-list divide-y divide-[var(--color-edge-subtle)] bg-surface"
           >
             {filteredTickets.map((ticket) => {
               const categoryName = categories[ticket.category_id]?.name || 'Chưa xác định';
@@ -399,7 +399,7 @@ export const TicketListPage: React.FC = () => {
                     <div className="col-start-1 row-start-1 lg:col-auto lg:row-auto">
                       <span
                         title={ticket.id}
-                        className="inline-flex items-center rounded-[4px] border border-[#e4e3e0] bg-[#f1f1ef] px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-tight text-[#5f5e5a] group-hover:border-[var(--color-primary-border)] group-hover:bg-[var(--color-primary-tint)] group-hover:text-[var(--color-primary-text)] transition-colors"
+                        className="inline-flex items-center rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-tight text-[var(--color-content-muted)] group-hover:border-[var(--color-primary-border)] group-hover:bg-[var(--color-primary-tint)] group-hover:text-[var(--color-primary-text)] transition-colors"
                       >
                         #{shortTicketId(ticket.id)}
                       </span>
@@ -409,12 +409,12 @@ export const TicketListPage: React.FC = () => {
                     <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-auto lg:row-auto">
                       <p
                         title={ticket.title}
-                        className="line-clamp-2 text-sm font-semibold leading-snug text-[#211f1b] transition-colors group-hover:text-[var(--color-primary)]"
+                        className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-content)] transition-colors group-hover:text-[var(--color-primary)]"
                       >
                         {ticket.title}
                       </p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#5f5e5a]">
-                        <Tag className="h-3 w-3 shrink-0 text-[#8a8884]" aria-hidden="true" />
+                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--color-content-muted)]">
+                        <Tag className="h-3 w-3 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
                         <span className="truncate">{categoryName}</span>
                       </p>
                     </div>
@@ -432,20 +432,20 @@ export const TicketListPage: React.FC = () => {
                     {/* Assignee */}
                     <div className="col-start-2 row-start-3 min-w-0 lg:col-auto lg:row-auto">
                       {ticket.assigned_to ? (
-                        <span className="flex items-center gap-1.5 text-[11px] text-[#5f5e5a] lg:text-xs">
+                        <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-content-muted)] lg:text-xs">
                           <UserCheck
                             className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary)]"
                             aria-hidden="true"
                           />
                           <span
-                            className="truncate font-semibold text-[#211f1b]"
+                            className="truncate font-semibold text-[var(--color-content)]"
                             title={ticket.assigned_to}
                           >
                             {ticket.assigned_to}
                           </span>
                         </span>
                       ) : (
-                        <span className="text-[11px] italic text-[#8a8884] lg:text-xs">
+                        <span className="text-[11px] italic text-[var(--color-content-subtle)] lg:text-xs">
                           Chưa phân công
                         </span>
                       )}
@@ -453,10 +453,10 @@ export const TicketListPage: React.FC = () => {
 
                     {/* Created at */}
                     <div className="col-start-3 row-start-3 justify-self-end text-right lg:col-auto lg:row-auto lg:text-left">
-                      <p className="whitespace-nowrap font-mono text-[11px] leading-tight text-[#5f5e5a]">
+                      <p className="whitespace-nowrap font-mono text-[11px] leading-tight text-[var(--color-content-muted)]">
                         {created.date}
                       </p>
-                      <p className="whitespace-nowrap font-mono text-[10px] leading-tight text-[#8a8884]">
+                      <p className="whitespace-nowrap font-mono text-[10px] leading-tight text-[var(--color-content-subtle)]">
                         {created.time}
                       </p>
                     </div>
@@ -472,7 +472,7 @@ export const TicketListPage: React.FC = () => {
         <button
           type="button"
           onClick={handlePrevPage}
-          className={`inline-flex min-h-[44px] items-center gap-1 rounded-[6px] border border-[#e4e3e0] bg-white px-3 text-sm font-semibold text-[#211f1b] ${FOCUS_RING}`}
+          className={`inline-flex min-h-[44px] items-center gap-1 rounded-[6px] border border-[var(--color-edge-subtle)] bg-surface px-3 text-sm font-semibold text-[var(--color-content)] ${FOCUS_RING}`}
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           Trang trước
@@ -483,21 +483,21 @@ export const TicketListPage: React.FC = () => {
       {!isLoading && !error && canPaginate && (
         <nav
           aria-label="Phân trang danh sách phiếu"
-          className="flex flex-col gap-3 rounded-[8px] border border-[#e4e3e0] bg-white px-4 py-3 text-xs text-[#5f5e5a] shadow-2xs sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface px-4 py-3 text-xs text-[var(--color-content-muted)] shadow-2xs sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="leading-relaxed">
             {tickets.length > 0 ? (
               <>
                 Hiển thị{' '}
-                <span className="font-semibold text-[#211f1b]">
+                <span className="font-semibold text-[var(--color-content)]">
                   {offset + 1}–{offset + tickets.length}
                 </span>{' '}
                 phiếu · Trang{' '}
-                <span className="font-semibold text-[#211f1b]">{pageNumber}</span>
+                <span className="font-semibold text-[var(--color-content)]">{pageNumber}</span>
               </>
             ) : (
               <>
-                Trang <span className="font-semibold text-[#211f1b]">{pageNumber}</span> · Không
+                Trang <span className="font-semibold text-[var(--color-content)]">{pageNumber}</span> · Không
                 có phiếu nào
               </>
             )}
@@ -510,8 +510,8 @@ export const TicketListPage: React.FC = () => {
               disabled={isFirstPage || isLoading}
               className={`inline-flex min-h-[38px] items-center justify-center gap-1 rounded-[6px] border px-3 text-xs font-semibold transition-all sm:min-h-[36px] ${FOCUS_RING} ${
                 isFirstPage || isLoading
-                  ? 'cursor-not-allowed border-[#e4e3e0] bg-[#f7f6f3] text-[#8a8884]'
-                  : 'border-[#e4e3e0] bg-white text-[#211f1b] hover:bg-[#f1f1ef] shadow-2xs'
+                  ? 'cursor-not-allowed border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)] text-[var(--color-content-subtle)]'
+                  : 'border-[var(--color-edge-subtle)] bg-surface text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] shadow-2xs'
               }`}
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
@@ -524,8 +524,8 @@ export const TicketListPage: React.FC = () => {
               disabled={isLastPage || isLoading}
               className={`inline-flex min-h-[38px] items-center justify-center gap-1 rounded-[6px] border px-3 text-xs font-semibold transition-all sm:min-h-[36px] ${FOCUS_RING} ${
                 isLastPage || isLoading
-                  ? 'cursor-not-allowed border-[#e4e3e0] bg-[#f7f6f3] text-[#8a8884]'
-                  : 'border-[#e4e3e0] bg-white text-[#211f1b] hover:bg-[#f1f1ef] shadow-2xs'
+                  ? 'cursor-not-allowed border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)] text-[var(--color-content-subtle)]'
+                  : 'border-[var(--color-edge-subtle)] bg-surface text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] shadow-2xs'
               }`}
             >
               <span>Trang sau</span>
