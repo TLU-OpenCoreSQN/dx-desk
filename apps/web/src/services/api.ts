@@ -11,6 +11,8 @@ import {
   PaginatedResponse,
   Ticket,
   TicketEvent,
+  TicketFilters,
+  Team,
   UpdateTicketStatusPayload,
   UserProfile,
 } from '../types/api';
@@ -134,12 +136,28 @@ export async function getCategories(): Promise<{ data: Category[] }> {
  */
 export async function getTickets(
   limit = 25,
-  offset = 0
+  offset = 0,
+  filters: TicketFilters = {}
 ): Promise<PaginatedResponse<Ticket>> {
+  const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) query.set(key, value);
+  }
   return request<PaginatedResponse<Ticket>>(
-    `/tickets?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`,
+    `/tickets?${query}`,
     { method: 'GET' }
   );
+}
+
+export function getTeams(): Promise<{ data: Team[] }> {
+  return request('/teams', { method: 'GET' });
+}
+
+export function claimTicket(id: string): Promise<Ticket> {
+  return request(`/tickets/${encodeURIComponent(id)}/claim`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }
 
 /**

@@ -58,6 +58,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isMobileNavOp
       }
     } else if (path.startsWith('/device-requests')) {
       crumbs.push({ label: 'Yêu cầu cấp thiết bị', to: '/device-requests' });
+    } else if (path === '/work-queue') {
+      crumbs.push({ label: 'Bảng việc kỹ thuật viên', to: '/work-queue' });
+    } else if (path === '/approvals') {
+      crumbs.push({ label: 'Phê duyệt phiếu hỗ trợ', to: '/approvals' });
     }
 
     return crumbs;
