@@ -26,7 +26,7 @@ upstream.listen(0, '0.0.0.0'); await once(upstream, 'listening');
 const probe = createServer(); probe.listen(0, '127.0.0.1'); await once(probe, 'listening');
 const port = probe.address().port; await new Promise(r => probe.close(r));
 const template = (await readFile(resolve(root, 'infra/apisix/apisix.yaml'), 'utf8'))
-  .replace(/"(?:api:3000|postgrest:3000|web:80)"/g, `"host.docker.internal:${upstream.address().port}"`);
+  .replace(/"(?:api:3000|postgrest:3000|web:80|n8n:5678)"/g, `"host.docker.internal:${upstream.address().port}"`);
 const routes = resolve(dir, 'apisix.yaml');
 await writeFile(routes, renderGateway(template, { keys: [jwk] }, issuer, 'dxdesk-api'));
 const version = /^APISIX_VERSION=(.+)$/m.exec(await readFile(resolve(root, '.env.example'), 'utf8'))[1].trim();
@@ -77,6 +77,15 @@ try {
       assert.ok(statuses.includes(429), `${path} must reject burst traffic`);
       assert.ok(statuses.every(code => [200,429].includes(code)));
       await new Promise(r => setTimeout(r, 1200));
+    }
+  });
+  await check('public DB health and the hello PoC are rate limited', async () => {
+    for (const path of ['/api/health', '/webhook/dxdesk-hello']) {
+      const statuses = await Promise.all(Array.from({length: 25}, async () => (await call(path)).status));
+      assert.ok(statuses.includes(200), `${path} must remain usable for probes`);
+      assert.ok(statuses.includes(429), `${path} must throttle an anonymous burst`);
+      assert.ok(statuses.every(status => [200,429].includes(status)));
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
   });
   await check('gateway accepts 14 MiB JSON envelope and rejects bodies over 20 MiB', async () => {
