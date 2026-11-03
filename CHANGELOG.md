@@ -4,6 +4,11 @@
 
 ## [Chưa phát hành]
 
+### Tài liệu
+- W4-09: bảng RAM theo dịch vụ cho hồ sơ `demo-light` và `full` trên máy dev 16 GB (số đo tạm), đầu vào TN-05 vòng 2 (`docs/tai-nguyen.md`).
+- W4-04: ADR 0008 ghi Mattermost Team Edition 12.0.1 đã chạy runtime trong CI và kết quả kiểm giấy phép image; kịch bản demo tuần 4 (`docs/demo-tuan-4.md`).
+- W4-10: câu hỏi khảo sát Trung tâm CNTT và tham số giả định của đội cho bộ sinh dữ liệu (`docs/khao-sat-trung-tam-cntt.md`).
+
 ## [0.1.0] - 2026-11-02
 
 ### Thêm

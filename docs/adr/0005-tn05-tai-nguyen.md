@@ -33,6 +33,10 @@ Ollama vào số Tầng 1. Không so sánh số liệu giữa các máy như th�
 
 ## Kết quả hiện tại
 
+> Cập nhật 03/11/2026 (W4-09): đã có số đo RAM tạm theo dịch vụ cho hồ sơ `demo-light` và
+> `full` (chưa nạp mô hình) trên máy dev 16 GB — xem [tai-nguyen.md](../tai-nguyen.md).
+> Phần mô hình Ollama vẫn chưa đo; đoạn dưới giữ làm lịch sử tuần 2.
+
 **Chưa đo:** máy làm việc thiếu Docker và Ollama. Không có bảng số liệu giả.
 Script thất bại rõ ràng khi thiếu dịch vụ/model, vẫn lưu báo cáo lỗi và các số đo
 đã có, đặt `completed:false`.

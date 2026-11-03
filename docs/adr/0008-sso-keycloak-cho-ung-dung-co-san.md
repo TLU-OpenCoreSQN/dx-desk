@@ -8,10 +8,26 @@
 > Superset dùng Flask-AppBuilder `AUTH_OAUTH` với provider Keycloak (đính chính
 > `AUTH_OIDC` trong nhật ký dưới đây). Các nhận định 27/10 được giữ làm lịch sử.
 
-- Trạng thái: QĐ-2 chốt theo tài liệu chính thức — chưa thử runtime (máy không có Docker)
+- Trạng thái: QĐ-2 chốt theo tài liệu chính thức; Mattermost Team Edition 12.0.1 đã chạy thật trong CI và trên máy dev (xem "Cập nhật tuần 4" bên dưới). Ngày 27/10 chưa thử runtime — giữ phần đó làm lịch sử.
 - Ngày: 27/10/2026
 - Người ghi: TV1 (Nền tảng và DevOps)
 - Mã kế hoạch: W3-08, TN-04, QĐ-2
+
+## Cập nhật tuần 4 (03/11/2026) — Mattermost đã chạy runtime
+
+Các nhận định "chờ Docker/CI" về Mattermost trong ADR này đã được kiểm chứng; quyết định QĐ-2 **không đổi**.
+
+- **Runtime trong CI.** Run [41427289265](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/41427289265) trên `main` (SHA `6a4f5a7`, PR #14) xanh toàn bộ, gồm:
+  - [TN-04 runtime (mattermost)](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/41427289265/job/125216859343): PoC cô lập `infra/compose/tn04.yml`, đăng nhập tài khoản nội bộ và webhook.
+  - [nghiệm thu stack và browser OTP tuần 3](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/41427289265/job/125216859310), bước "Outbox, Mattermost, claim race và phục hồi n8n" (`tools/testing/week4-stack.mjs`): kiểm thử *Mattermost receives the routed ticket in its private team channel* trên stack đầy đủ, hồ sơ `demo-light`.
+- **Tích hợp sản phẩm (W4-04, PR #12).** Dịch vụ `mattermost` + `mattermost-db` nằm trong hồ sơ `full` và `demo-light`, cổng `127.0.0.1:18065`. `scripts/setup-automation.mjs` tạo bot và một kênh riêng cho từng team IT, sinh mật khẩu và token vào `.env` (không đưa vào git). Người dùng nghiệp vụ không đăng nhập Mattermost bằng Keycloak; bot dùng personal access token — đúng phương án dự phòng của QĐ-2.
+- **Xác nhận giấy phép với image đang ghim** `mattermost/mattermost-team-edition:12.0.1`:
+  - `LICENSE.txt` tại tag [`v12.0.1`](https://github.com/mattermost/mattermost/blob/v12.0.1/LICENSE.txt): bản biên dịch do Mattermost, Inc. phát hành được cấp phép **MIT** (chi tiết trong `MIT-COMPILED-LICENSE.md` đi kèm bản biên dịch); mã nguồn theo AGPL-3.0 hoặc giấy phép thương mại; Admin Tools và tệp cấu hình theo Apache-2.0. Tên "Mattermost" là nhãn hiệu, cần xin phép nếu dùng ngoài mục đích mô tả.
+  - Kiểm tra trực tiếp image trên máy dev (03/11, digest `sha256:8ca1050cb8a2…cf31b`): thư mục `/mattermost` chứa `MIT-COMPILED-LICENSE.md` (MIT, "Copyright (c) 2016-present Mattermost, Inc.") và không có `ENTERPRISE-EDITION-LICENSE.txt`; API `/api/v4/config/client` của container đang chạy trả `Version=12.0.1`, `BuildEnterpriseReady=false` — đúng là bản Team Edition, không phải binary Enterprise.
+  - DX-Desk chỉ chạy image chính thức như dịch vụ độc lập, giao tiếp qua REST API, không sửa hay đóng gói lại mã Mattermost, nên không phát sinh nghĩa vụ AGPL. Khớp dòng Mattermost trong [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md) ("Team Edition, không thay bằng Enterprise").
+  - SSO (SAML/OIDC) vẫn chỉ có ở gói trả phí hoặc chế độ Entry của binary Enterprise, nên việc treo "nâng quyết định Mattermost nếu Entry cho phép SAML miễn phí" **đóng lại**: đội không chuyển sang binary Enterprise.
+- **Kịch bản demo.** Cảnh 1 trình diễn SSO trên DX-Desk (và Wiki.js khi client `wikijs` đã vào realm); Mattermost chỉ xuất hiện ở cảnh thông báo ticket, không đăng nhập bằng Keycloak. Xem [kịch bản demo tuần 4](../demo-tuan-4.md).
+- Còn mở (không thuộc Mattermost): client `wikijs` trong realm và SSO Wiki.js trên stack sản phẩm; RAM ba ứng dụng — số đo Mattermost trong hồ sơ `demo-light` ở [tai-nguyen.md](../tai-nguyen.md).
 
 ## Bối cảnh
 
