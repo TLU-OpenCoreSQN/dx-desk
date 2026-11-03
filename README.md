@@ -24,7 +24,8 @@ Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung P
 
 - Docker Engine và Docker Compose v2; cấu hình đã kiểm bằng Compose 2.40.3.
 - Node.js >=22.12 cho runner đa nền tảng; GNU Make là giao diện lệnh tùy chọn dùng chung runner.
-- Máy demo mục tiêu 16 GB RAM; mức sử dụng thực tế sẽ được đo trong TN-05.
+- Máy demo mục tiêu 16 GB RAM. Số đo tạm W4-09: cả hai hồ sơ dùng khoảng 3 GiB RAM container
+  (chưa nạp mô hình Ollama); bảng theo dịch vụ ở [docs/tai-nguyen.md](docs/tai-nguyen.md).
 
 ## Chạy từ mã nguồn
 
@@ -74,7 +75,8 @@ npm run integration --prefix tools/testing
 Integration dùng PostgreSQL portable và PostgREST thật, không cần Docker.
 Nghiệm thu đầy đủ Keycloak/APISIX/n8n cần Docker:
 `node scripts/stack-test.mjs --restart-n8n`.
-Các số đo TN-05 được tạo bằng `node scripts/benchmark.mjs` khi có máy demo.
+RAM theo dịch vụ đo bằng `node scripts/benchmark-stack.mjs`, kết quả ở [docs/tai-nguyen.md](docs/tai-nguyen.md);
+đo mô hình Ollama (TN-05 vòng 2) bằng `node scripts/benchmark.mjs`.
 
 ### Tự động hóa và hàng đợi
 
