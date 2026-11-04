@@ -33,6 +33,7 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 
 - Wiki.js tri thức với SSO Keycloak, bài gợi ý theo danh mục và lượt tự phục vụ: [cài đặt](cai-dat.md#wikijs-tri-thức-w5-08), [bài nguồn](wiki/), [ADR 0008](adr/0008-sso-keycloak-cho-ung-dung-co-san.md) (W5-08).
 - [ADR 0010 — nơi chạy bản Internet](adr/0010-noi-chay-ban-internet.md) (QĐ-7, đề xuất).
+- [Chuẩn bị phát hành v0.5.0 và bảng mốc M4](phat-hanh-v0.5.0.md) (W5-09).
 
 ## Tài liệu tuần 4
 
