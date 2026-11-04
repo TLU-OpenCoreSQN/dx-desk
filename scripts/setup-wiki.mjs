@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 // W5-08: cấu hình Wiki.js bằng mã (không thao tác tay): client Keycloak, cài đặt lần đầu,
-// SSO OIDC với ánh xạ vai trò -> nhóm, chặn khách, nạp 6 bài tri thức từ docs/wiki/*.md.
+// SSO OIDC với ánh xạ vai trò -> nhóm, chặn khách, nạp 6 bài tri thức và trang chủ (home) từ docs/wiki/*.md.
 // Chạy lặp lại an toàn; không in mật khẩu, secret hay token.
 import { randomBytes } from 'node:crypto';
 import { readFile, readdir, writeFile } from 'node:fs/promises';

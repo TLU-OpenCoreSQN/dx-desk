@@ -5,7 +5,7 @@
 ## [Chưa phát hành]
 
 ### Thêm
-- W5-08: Wiki.js 2.5.315 trong hồ sơ `full`/`demo-light`, đăng nhập bằng Keycloak (client `wikijs`, OIDC, nhóm theo vai trò), cấu hình tự động bằng `scripts/setup-wiki.mjs`; 6 bài tri thức CC BY 4.0 trong `docs/wiki/`.
+- W5-08: Wiki.js 2.5.315 trong hồ sơ `full`/`demo-light`, đăng nhập bằng Keycloak (client `wikijs`, OIDC, nhóm theo vai trò), cấu hình tự động bằng `scripts/setup-wiki.mjs`; 6 bài tri thức CC BY 4.0 và trang chủ mục lục (`docs/wiki/home.md`, tránh màn "Welcome to your wiki" khi vào `/`) trong `docs/wiki/`.
 - W5-08: migration 012 — bài tri thức, ánh xạ danh mục → bài, lượt "Đã tự xử lý được" (RLS chỉ chủ sở hữu đọc) và view `reporting.self_service_weekly` cho Metabase; endpoint `GET /api/categories/:id/articles`, `POST /api/self-service`; biểu mẫu tạo phiếu hiện bài gợi ý theo danh mục.
 - Kiểm thử: integration W5-08 (API + PostgREST thật), `tests/setup-wiki.test.mjs`, nghiệm thu stack `tools/testing/week5-wiki.mjs`.
 

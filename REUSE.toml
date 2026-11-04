@@ -27,6 +27,7 @@ path = [
   "docs/wiki/lms.md",
   "docs/wiki/mat-khau.md",
   "docs/wiki/phan-mem-ban-quyen.md",
+  "docs/wiki/home.md",
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"

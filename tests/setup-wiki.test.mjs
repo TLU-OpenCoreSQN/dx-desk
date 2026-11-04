@@ -10,7 +10,10 @@ import { loadArticles, parseArticle, wikiClient, wikiEnabled, WIKI_GROUPS } from
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 test('W5-08 six CC BY 4.0 articles match the wiki paths seeded in migration 012', async () => {
-  const articles = await loadArticles(root);
+  const all = await loadArticles(root);
+  // Trang chủ (path home) là trang mục lục của Wiki.js, không phải bài gợi ý theo danh mục.
+  assert.equal(all.filter(article => article.path === 'home').length, 1, 'Wiki.js has a home page for /');
+  const articles = all.filter(article => article.path !== 'home');
   assert.equal(articles.length, 6);
   const migration = await readFile(resolve(root, 'db/migrations/012_knowledge_self_service.sql'), 'utf8');
   const seeded = [...migration.matchAll(/'(ho-tro\/[a-z-]+)'\)/g)].map(match => match[1]).sort();
@@ -21,6 +24,9 @@ test('W5-08 six CC BY 4.0 articles match the wiki paths seeded in migration 012'
   }
   const reuse = await readFile(resolve(root, 'REUSE.toml'), 'utf8');
   for (const article of articles) assert.ok(reuse.includes(`"docs/wiki/${article.path.split('/').pop()}.md"`));
+  assert.ok(reuse.includes('"docs/wiki/home.md"'));
+  const home = all.find(article => article.path === 'home');
+  for (const article of articles) assert.ok(home.content.includes(`](/${article.path})`), `home links ${article.path}`);
 });
 
 test('W5-08 front matter parser rejects missing metadata and unsafe paths', () => {

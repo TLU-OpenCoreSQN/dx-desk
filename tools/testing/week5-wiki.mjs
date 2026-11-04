@@ -97,6 +97,12 @@ try {
       assert.equal((await employeeBrowser(wiki + '/ho-tro/' + path)).status, 200, path);
     }
   });
+  await check('home page lists the articles instead of the Wiki.js welcome screen', async () => {
+    const home = await employeeBrowser(wiki + '/');
+    assert.equal(home.status, 200);
+    assert.ok(!home.text.includes('Welcome to your wiki'), 'Home page exists');
+    assert.ok(home.text.includes('/ho-tro/vpn'), 'Home page links the articles');
+  });
   await check('role mapping: Employee cannot edit, Agent can open the editor', async () => {
     const employeeEdit = await employeeBrowser(wiki + '/e/en/ho-tro/vpn');
     assert.equal(employeeEdit.status, 403);
