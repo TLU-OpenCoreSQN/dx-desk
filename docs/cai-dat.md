@@ -31,6 +31,23 @@ User dev: `employee.a`, `employee.b`, `agent.1`, `manager.1`, mật khẩu `DxDe
 Admin Keycloak lấy từ `.env`. Đây là tài khoản mẫu dùng cho demo cục bộ.
 Web đăng nhập bằng redirect Keycloak, không nhận mật khẩu trong form của ứng dụng.
 
+### Wiki.js tri thức (W5-08)
+
+Hồ sơ `demo-light` và `full` có Wiki.js 2.5.315 tại `http://localhost:18030` (đổi bằng `WIKI_PORT`,
+`WIKI_PUBLIC_URL`) và một PostgreSQL riêng không công bố ra host. `up` tự sinh `WIKI_DB_PASSWORD`,
+`WIKI_ADMIN_PASSWORD`, `WIKI_CLIENT_SECRET` vào `.env`, rồi `scripts/setup-wiki.mjs`:
+
+- tạo/cập nhật client Keycloak `wikijs` (confidential, chỉ callback `/login/keycloak/callback`,
+  claim `dxdesk_roles`, không mang audience `dxdesk-api`);
+- hoàn tất cài đặt lần đầu, bật OIDC + `autoLogin`, chặn khách đọc bài;
+- tạo nhóm Wiki trùng tên vai trò: `Employee` chỉ đọc/bình luận, `Agent`/`Manager` sửa bài;
+- nạp 6 bài trong `docs/wiki/*.md` (CC BY 4.0); chạy lại chỉ cập nhật bài có nội dung đổi.
+
+Người dùng vào bài lần đầu thấy trang "Unauthorized" của Wiki.js; bấm **Đăng nhập** sẽ chuyển
+thẳng tới Keycloak (đã có phiên thì không hỏi lại mật khẩu) rồi quay về đúng bài.
+Quản trị cục bộ: `http://localhost:18030/login?all=1`, tài khoản `wiki.admin@dxdesk.local`,
+mật khẩu `WIKI_ADMIN_PASSWORD` trong `.env`. Nghiệm thu: `node tools/testing/week5-wiki.mjs`.
+
 Khởi tạo lần đầu ClamAV cần tải cơ sở dữ liệu mẫu virus; chờ healthcheck vài phút.
 Nếu Docker chưa chạy, lệnh phải báo lỗi; không coi build web cục bộ là full stack.
 
@@ -208,6 +225,13 @@ khi realm chưa tồn tại: với realm cũ, thêm mapper audience `dxdesk-api`
 Không tự xóa volume Keycloak để cập nhật cấu hình.
 
 ## Xử lý sự cố
+
+- **Volume cũ lệch với `.env` hoặc realm hiện hành.** Realm chỉ được import khi tạo mới; volume
+  Keycloak từ trước tuần 3 có thể thiếu mapper `api-audience` của `dxdesk-web` (APISIX trả 403
+  "required audience claim not present"). Tương tự, volume Mattermost giữ mật khẩu admin/token bot
+  cũ nếu `.env` đã sinh lại. Cách sạch nhất trên máy dev: `make reset` (xóa dữ liệu); hoặc sửa tay
+  mapper trong Keycloak và đặt lại mật khẩu bằng `mmctl --local user change-password`, rồi xóa
+  `MATTERMOST_BOT_TOKEN` trong `.env` để `up` cấp token mới.
 
 - `401` sau login: kiểm tra issuer trong token khớp `KEYCLOAK_PUBLIC_URL/realms/dxdesk`,
   audience có `dxdesk-api`, JWKS đã đồng bộ; không in token vào báo cáo.

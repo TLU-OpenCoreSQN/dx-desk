@@ -14,9 +14,10 @@ Dùng cho demo nội bộ 07/11/2026 và làm khung cho demo giám khảo. Kiể
 ## Cảnh 1 — Đăng nhập một cửa (SSO)
 
 1. Mở `http://localhost:9080`, đăng nhập `employee.a` qua Keycloak (realm `dxdesk`).
-2. Wiki.js: chỉ trình diễn SSO khi client `wikijs` đã được thêm vào realm và nối OIDC
-   trên stack sản phẩm. Đến 03/11 Wiki.js mới chạy ở PoC TN-04 (module Keycloak có trong
-   image, chưa nối realm); nếu chưa xong trước demo thì cảnh 1 chỉ trình diễn DX-Desk và nói rõ điều đó.
+2. Wiki.js (từ tuần 5, W5-08): ở **Tạo phiếu**, chọn danh mục *Kết nối VPN* — khung "Thử tự xử lý
+   trước khi gửi phiếu" hiện bài *Kết nối VPN của trường từ xa*. Bấm tiêu đề bài: Wiki.js mở ở tab mới,
+   bấm **Đăng nhập** một lần, Keycloak không hỏi lại mật khẩu và quay về đúng bài. Quay lại DX-Desk,
+   bấm **Đã tự xử lý được**: hệ thống ghi một lượt tự phục vụ, không tạo phiếu.
 3. **Không** đăng nhập Mattermost bằng Keycloak. Mattermost Team Edition không có SSO
    trong bản nguồn mở (QĐ-2, [ADR 0008](adr/0008-sso-keycloak-cho-ung-dung-co-san.md));
    Mattermost chỉ là kênh bot thông báo, xuất hiện ở cảnh 3 với tài khoản nội bộ.

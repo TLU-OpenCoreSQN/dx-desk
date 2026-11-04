@@ -3,9 +3,9 @@
 openapi: 3.0.3
 info:
   title: DX-Desk Service Desk API
-  version: 0.3.0
+  version: 0.4.0
   description: >-
-    API tuần 4: luồng ticket, queue/team/claim, automation tách khỏi người dùng, outbox và SLA. RLS vẫn bảo vệ dữ liệu.
+    API tuần 4–5: luồng ticket, queue/team/claim, automation tách khỏi người dùng, outbox, SLA; tuần 5 thêm gợi ý bài Wiki và lượt tự phục vụ. RLS vẫn bảo vệ dữ liệu.
 servers:
   - url: http://localhost:9080/api
 security:
@@ -73,6 +73,66 @@ paths:
                               label: { type: string }
                               required: { type: boolean }
         "401": { $ref: "#/components/responses/Error" }
+  /categories/{id}/articles:
+    get:
+      operationId: categoryArticles
+      description: W5-08. Bài Wiki.js gợi ý cho danh mục, theo bảng ánh xạ category_articles. `url` là null khi API chưa có WIKI_PUBLIC_URL.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Bài gợi ý theo thứ tự hiển thị
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        slug: { type: string }
+                        title: { type: string }
+                        summary: { type: string }
+                        url: { type: string, format: uri, nullable: true }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /self-service:
+    post:
+      operationId: recordSelfService
+      description: >-
+        W5-08. Ghi một lượt "Đã tự xử lý được"; không tạo ticket. Chủ thể lấy từ JWT, không nhận user_id.
+        Mỗi người chỉ đọc được lượt của mình (RLS); số liệu tổng hợp ở view reporting.self_service_weekly.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [category_id, article_id]
+              properties:
+                category_id: { type: string, format: uuid }
+                article_id: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Lượt tự phục vụ đã ghi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  category_id: { type: string, format: uuid }
+                  article_id: { type: string, format: uuid }
+                  created_at: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /tickets:
     get:
       operationId: listTickets

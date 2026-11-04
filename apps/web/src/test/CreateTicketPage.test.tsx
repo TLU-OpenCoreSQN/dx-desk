@@ -40,6 +40,7 @@ describe('CreateTicketPage Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(apiService, 'getCategories').mockResolvedValue({ data: mockCategories });
+    vi.spyOn(apiService, 'getCategoryArticles').mockResolvedValue({ data: [] });
   });
 
   const renderWithAuth = (roles: ('Employee' | 'Agent' | 'Manager')[] = ['Employee']) => {
@@ -182,6 +183,7 @@ describe('CreateTicketPage — trường động theo requirement_fields (W3-04)
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(apiService, 'getCategories').mockResolvedValue({ data: [vpnCategory, emptyCategory] });
+    vi.spyOn(apiService, 'getCategoryArticles').mockResolvedValue({ data: [] });
   });
 
   it('render input động khi chọn danh mục; key chứa "until" dùng input date', async () => {
@@ -327,5 +329,63 @@ describe('CreateTicketPage — trường động theo requirement_fields (W3-04)
     mockRenderWithAuth(['Manager']);
     await waitFor(() => expect(screen.getByText('Truy cập VPN (VPN)')).toBeInTheDocument());
     expect(screen.getByText('Khẩn cấp').closest('button')).not.toBeDisabled();
+  });
+});
+
+describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
+  const vpnArticle = {
+    id: 'art-vpn', slug: 'vpn', title: 'Kết nối VPN của trường từ xa',
+    summary: 'Cài OpenVPN và xử lý lỗi xác thực.', url: 'http://localhost:18030/ho-tro/vpn',
+  };
+  const passwordArticle = {
+    id: 'art-pass', slug: 'mat-khau', title: 'Đổi và khôi phục mật khẩu', summary: '', url: null,
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(apiService, 'getCategories').mockResolvedValue({ data: mockCategories });
+    vi.spyOn(apiService, 'getCategoryArticles').mockImplementation(async (categoryId: string) => ({
+      data: categoryId === 'cat-2222-uuid' ? [vpnArticle] : [passwordArticle],
+    }));
+  });
+
+  it('hiện đúng bài theo danh mục đang chọn, liên kết mở Wiki ở tab mới', async () => {
+    mockRenderWithAuth(['Employee']);
+    await waitFor(() => expect(screen.getByText('Đổi và khôi phục mật khẩu')).toBeInTheDocument());
+    expect(apiService.getCategoryArticles).toHaveBeenCalledWith('cat-1111-uuid');
+    // Bài chưa có URL (Wiki.js chưa cấu hình) chỉ hiện tiêu đề, không có liên kết hỏng.
+    expect(screen.queryByRole('link', { name: /Đổi và khôi phục mật khẩu/ })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Danh mục sự cố/), { target: { value: 'cat-2222-uuid' } });
+    const link = await screen.findByRole('link', { name: /Kết nối VPN của trường từ xa/ });
+    expect(link).toHaveAttribute('href', 'http://localhost:18030/ho-tro/vpn');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(screen.queryByText('Đổi và khôi phục mật khẩu')).not.toBeInTheDocument();
+  });
+
+  it('bấm "Đã tự xử lý được" ghi đúng một lượt và không tạo phiếu', async () => {
+    const record = vi.spyOn(apiService, 'recordSelfService').mockResolvedValue({
+      id: 'ss-1', category_id: 'cat-2222-uuid', article_id: 'art-vpn', created_at: '2026-11-04T00:00:00Z',
+    });
+    const create = vi.spyOn(apiService, 'createTicket');
+    mockRenderWithAuth(['Employee']);
+    await waitFor(() => expect(screen.getByText('Đổi và khôi phục mật khẩu')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/Danh mục sự cố/), { target: { value: 'cat-2222-uuid' } });
+    const button = await screen.findByRole('button', { name: 'Đã tự xử lý được' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Đã ghi nhận bạn tự xử lý được'));
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledWith('cat-2222-uuid', 'art-vpn');
+    expect(create).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Đã tự xử lý được' })).not.toBeInTheDocument();
+  });
+
+  it('lỗi tải gợi ý không chặn biểu mẫu', async () => {
+    vi.spyOn(apiService, 'getCategoryArticles').mockRejectedValue(new Error('offline'));
+    mockRenderWithAuth(['Employee']);
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    expect(screen.queryByText('Thử tự xử lý trước khi gửi phiếu')).not.toBeInTheDocument();
   });
 });

@@ -13,6 +13,23 @@
 - Người ghi: TV1 (Nền tảng và DevOps)
 - Mã kế hoạch: W3-08, TN-04, QĐ-2
 
+## Cập nhật tuần 5 (04/11/2026) — Wiki.js SSO trên stack sản phẩm (W5-08)
+
+Phần "còn mở" về Wiki.js đã làm xong trên máy dev; QĐ-2 **không đổi**.
+
+- Wiki.js 2.5.315 + PostgreSQL riêng vào hồ sơ `full`/`demo-light`; client `wikijs` có trong cả hai
+  realm và được `scripts/setup-wiki.mjs` cập nhật qua admin API (secret từ `.env`).
+- Dùng chiến lược **Generic OIDC** của Wiki.js thay vì module "Keycloak": chỉ OIDC có `mapGroups`,
+  nên claim `dxdesk_roles` (mapper realm role) gán nhóm `Employee`/`Agent`/`Manager` mỗi lần đăng nhập.
+  Trình duyệt dùng URL công khai của Keycloak, còn token/userinfo gọi `http://keycloak:8080` trong
+  mạng compose; issuer cố định nhờ `KC_HOSTNAME`.
+- Token của `wikijs` không có audience `dxdesk-api` nên API/PostgREST không chấp nhận
+  (`tools/testing/check-config.mjs` kiểm).
+- Kiểm chứng runtime: `node tools/testing/week5-wiki.mjs` — khách bị chặn, đăng nhập bằng
+  Authorization Code thật qua Keycloak, đọc đủ 6 bài, Employee không mở được trình sửa, Agent mở được.
+- Giới hạn đã biết: khách mở thẳng một bài thấy trang 403 của Wiki.js và phải bấm Đăng nhập một
+  lần (Wiki.js 2.5 chỉ tự chuyển tới trang đăng nhập với trang chủ); sau đó quay về đúng bài.
+
 ## Cập nhật tuần 4 (03/11/2026) — Mattermost đã chạy runtime
 
 Các nhận định "chờ Docker/CI" về Mattermost trong ADR này đã được kiểm chứng; quyết định QĐ-2 **không đổi**.
@@ -27,7 +44,7 @@ Các nhận định "chờ Docker/CI" về Mattermost trong ADR này đã đư�
   - DX-Desk chỉ chạy image chính thức như dịch vụ độc lập, giao tiếp qua REST API, không sửa hay đóng gói lại mã Mattermost, nên không phát sinh nghĩa vụ AGPL. Khớp dòng Mattermost trong [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md) ("Team Edition, không thay bằng Enterprise").
   - SSO (SAML/OIDC) vẫn chỉ có ở gói trả phí hoặc chế độ Entry của binary Enterprise, nên việc treo "nâng quyết định Mattermost nếu Entry cho phép SAML miễn phí" **đóng lại**: đội không chuyển sang binary Enterprise.
 - **Kịch bản demo.** Cảnh 1 trình diễn SSO trên DX-Desk (và Wiki.js khi client `wikijs` đã vào realm); Mattermost chỉ xuất hiện ở cảnh thông báo ticket, không đăng nhập bằng Keycloak. Xem [kịch bản demo tuần 4](../demo-tuan-4.md).
-- Còn mở (không thuộc Mattermost): client `wikijs` trong realm và SSO Wiki.js trên stack sản phẩm; RAM ba ứng dụng — số đo Mattermost trong hồ sơ `demo-light` ở [tai-nguyen.md](../tai-nguyen.md).
+- Còn mở (không thuộc Mattermost): ~~client `wikijs` trong realm và SSO Wiki.js trên stack sản phẩm~~ (xong tuần 5, xem trên); RAM ba ứng dụng — số đo Mattermost trong hồ sơ `demo-light` ở [tai-nguyen.md](../tai-nguyen.md).
 
 ## Bối cảnh
 

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import { renderGateway } from './render-gateway.mjs';
 import { prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
+import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled } from './setup-wiki.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
@@ -56,9 +57,11 @@ async function syncKeys() {
 }
 if (action === 'up') {
   await prepareAutomation(root, env);
+  await prepareWiki(root, env);
   await initialize();
   compose('up', '-d', '--wait', 'postgres', 'keycloak');
   await setupIdentity(env);
+  await setupWikiClient(env);
   migrate();
   await syncKeys();
   compose('up', '-d', '--build', '--wait');
@@ -81,7 +84,9 @@ if (action === 'up') {
     compose('restart', 'apisix');
     compose('up', '-d', '--wait', 'apisix');
   }
+  await setupWiki(root, env);
   console.log(`DX-Desk: http://localhost:${env.APISIX_PORT}`);
+  if (wikiEnabled(env)) console.log(`Wiki.js: ${env.WIKI_PUBLIC_URL}`);
 } else if (action === 'migrate') {
   migrate();
 } else if (action === 'verify') {

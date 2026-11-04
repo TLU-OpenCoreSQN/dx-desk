@@ -157,6 +157,8 @@ services:
       MATTERMOST_URL: http://mattermost:8065
       MATTERMOST_BOT_TOKEN: ${MATTERMOST_BOT_TOKEN:-}
       MATTERMOST_TEAM_CHANNELS: ${MATTERMOST_TEAM_CHANNELS:-}
+      # W5-08: gốc Wiki.js mà trình duyệt mở khi gợi ý bài; trống thì chỉ hiện tiêu đề bài.
+      WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
@@ -325,6 +327,47 @@ services:
       retries: 30
       start_period: 60s
 
+  # ---------------------------------------------------------------- Tri thức (W5-08)
+  # Wiki.js đăng nhập bằng Keycloak (OIDC); cấu hình bằng scripts/setup-wiki.mjs, không thao tác tay.
+  wiki-db:
+    image: postgres:${POSTGRES_VERSION}
+    profiles: ["full", "demo-light"]
+    <<: *restart
+    environment:
+      POSTGRES_DB: wiki
+      POSTGRES_USER: wiki
+      POSTGRES_PASSWORD: ${WIKI_DB_PASSWORD:-}
+    volumes:
+      - wiki-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wiki -d wiki"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  wikijs:
+    image: ghcr.io/requarks/wiki:${WIKIJS_VERSION:-2.5.315}
+    profiles: ["full", "demo-light"]
+    <<: *restart
+    depends_on:
+      wiki-db:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: wiki-db
+      DB_PORT: "5432"
+      DB_USER: wiki
+      DB_PASS: ${WIKI_DB_PASSWORD:-}
+      DB_NAME: wiki
+    ports:
+      - "127.0.0.1:${WIKI_PORT:-18030}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
 volumes:
   postgres-data:
   clamav-db:
@@ -332,3 +375,4 @@ volumes:
   seaweedfs-data:
   mattermost-db-data:
   mattermost-data:
+  wiki-db-data:

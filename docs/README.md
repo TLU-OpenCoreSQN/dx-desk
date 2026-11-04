@@ -29,6 +29,11 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 - [Các bản sửa sau review source](sec-dev-fixes.md).
 - ADR tuần 3: [0007 vị trí quét ClamAV](adr/0007-vi-tri-quet-clamav.md), [0008 SSO cho ứng dụng có sẵn](adr/0008-sso-keycloak-cho-ung-dung-co-san.md), [0009 JWT tại gateway và URL tải tệp](adr/0009-gateway-jwt-va-url-tai-tep.md).
 
+## Tài liệu tuần 5
+
+- Wiki.js tri thức với SSO Keycloak, bài gợi ý theo danh mục và lượt tự phục vụ: [cài đặt](cai-dat.md#wikijs-tri-thức-w5-08), [bài nguồn](wiki/), [ADR 0008](adr/0008-sso-keycloak-cho-ung-dung-co-san.md) (W5-08).
+- [ADR 0010 — nơi chạy bản Internet](adr/0010-noi-chay-ban-internet.md) (QĐ-7, đề xuất).
+
 ## Tài liệu tuần 4
 
 - Lệnh tự động hóa, replay outbox, seed và đo tài nguyên: [README – Tự động hóa và hàng đợi](../README.md#tự-động-hóa-và-hàng-đợi).

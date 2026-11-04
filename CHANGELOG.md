@@ -4,6 +4,15 @@
 
 ## [Chưa phát hành]
 
+### Thêm
+- W5-08: Wiki.js 2.5.315 trong hồ sơ `full`/`demo-light`, đăng nhập bằng Keycloak (client `wikijs`, OIDC, nhóm theo vai trò), cấu hình tự động bằng `scripts/setup-wiki.mjs`; 6 bài tri thức CC BY 4.0 trong `docs/wiki/`.
+- W5-08: migration 012 — bài tri thức, ánh xạ danh mục → bài, lượt "Đã tự xử lý được" (RLS chỉ chủ sở hữu đọc) và view `reporting.self_service_weekly` cho Metabase; endpoint `GET /api/categories/:id/articles`, `POST /api/self-service`; biểu mẫu tạo phiếu hiện bài gợi ý theo danh mục.
+- Kiểm thử: integration W5-08 (API + PostgREST thật), `tests/setup-wiki.test.mjs`, nghiệm thu stack `tools/testing/week5-wiki.mjs`.
+
+### Tài liệu (tuần 5)
+- QĐ-7: ADR 0010 đề xuất nơi chạy bản Internet (VPS 8 GB, dự phòng Cloudflare Tunnel), chờ đội và thầy chốt trước 14/11.
+- ADR 0008, `cai-dat.md`, `tai-nguyen.md`, hợp đồng API/OpenAPI và kịch bản demo cảnh 1 cập nhật theo W5-08.
+
 ### Tài liệu
 - W4-09: bảng RAM theo dịch vụ cho hồ sơ `demo-light` và `full` trên máy dev 16 GB (số đo tạm), đầu vào TN-05 vòng 2 (`docs/tai-nguyen.md`).
 - W4-04: ADR 0008 ghi Mattermost Team Edition 12.0.1 đã chạy runtime trong CI và kết quả kiểm giấy phép image; kịch bản demo tuần 4 (`docs/demo-tuan-4.md`).
