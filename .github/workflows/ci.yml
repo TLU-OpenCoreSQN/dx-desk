@@ -94,7 +94,7 @@ jobs:
             tools/testing/package-lock.json
       - run: npm ci --prefix apps/api
       - run: npm run build --prefix apps/api
-      - run: node --test tests/seed-synthetic.test.mjs
+      - run: node --test tests/seed-synthetic.test.mjs tests/setup-wiki.test.mjs
       - run: npm ci --prefix tools/testing
       - run: npm run integration --prefix tools/testing
       - name: Kiểm tra migration runner, checksum và rollback
@@ -164,6 +164,8 @@ jobs:
         run: node tools/testing/week4-stack.mjs
       - name: Browser thật tuần 4 — VPN, bảng việc và phê duyệt
         run: node tools/testing/week4-browser.mjs
+      - name: Wiki.js SSO, bài gợi ý và lượt tự phục vụ (W5-08)
+        run: node tools/testing/week5-wiki.mjs
       - name: Nhật ký khi lỗi
         if: failure()
         run: docker compose --env-file .env -f infra/compose/docker-compose.yml logs --tail=100

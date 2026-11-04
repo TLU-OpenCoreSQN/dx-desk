@@ -56,6 +56,21 @@ JSON/CSV gốc nằm ở `.local/reports/stack-memory-*.json|csv` trên máy đo
 - ClamAV (~1 GB, chủ yếu cơ sở dữ liệu chữ ký) và Keycloak (~0,8 GB, JVM) chiếm hơn một nửa tổng.
 - Cả hai hồ sơ dùng ~3 GiB, dưới mức 7,59 GiB Docker Desktop cấp mặc định trên máy 16 GB.
 
+## Bổ sung tuần 5 — Wiki.js (W5-08, 04/11/2026)
+
+Một lần chụp `docker stats --no-stream` trên máy dev, hồ sơ `full` (chưa nạp mô hình), sau khi
+`up` nạp 6 bài và chạy `tools/testing/week5-wiki.mjs`. **Một mẫu, chưa phải ba lượt** như quy trình
+W4-09; W5-09 đo lại đủ quy trình khi đã có Metabase và ứng dụng 2.
+
+| Dịch vụ | MiB |
+|---|---|
+| wikijs | 151 |
+| wiki-db | 40 |
+| **Cộng thêm do Wiki.js** | **~191** |
+
+Tổng container lúc chụp khoảng 3,8 GiB (gồm ClamAV ~1,0 GiB, Keycloak ~0,7 GiB). Wiki.js không
+làm thay đổi kết luận ngân sách 16 GB.
+
 ## So sánh với W2-10
 
 W2-10 (ADR [0005](adr/0005-tn05-tai-nguyen.md)) chỉ có công cụ và quy trình, **chưa có số đo**

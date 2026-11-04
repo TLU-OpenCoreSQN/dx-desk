@@ -40,6 +40,20 @@ for (const clientId of ['dxdesk-web', 'appsmith']) {
   assert.ok(client.protocolMappers.some(mapper => mapper.config['included.client.audience'] === 'dxdesk-api'));
   assert.ok(client.protocolMappers.some(mapper => mapper.config['claim.value'] === 'authenticated'));
 }
+// W5-08: Wiki.js chỉ dùng client riêng, không mang audience API, có claim vai trò cho mapGroups.
+for (const realmPath of ['infra/keycloak/realm-dxdesk.json', 'infra/keycloak/realm-dxdesk-otp.json']) {
+  const wiki = JSON.parse(await read(realmPath)).clients.find(client => client.clientId === 'wikijs');
+  assert.ok(wiki && !wiki.publicClient && !wiki.directAccessGrantsEnabled, `${realmPath}: wikijs must be a confidential code-flow client`);
+  assert.ok(wiki.redirectUris.every(uri => uri.endsWith('/login/keycloak/callback')), `${realmPath}: wikijs redirect must be the OIDC callback`);
+  assert.ok(!wiki.protocolMappers.some(mapper => mapper.config['included.client.audience'] === 'dxdesk-api'),
+    `${realmPath}: Wiki.js tokens must never be accepted by the API`);
+  assert.ok(wiki.protocolMappers.some(mapper => mapper.config['claim.name'] === 'dxdesk_roles'));
+}
+for (const service of ['wiki-db', 'wikijs']) {
+  assert.deepEqual(compose.services[service].profiles, ['full', 'demo-light'], `${service} belongs to product profiles`);
+}
+assert.ok(compose.services.wikijs.ports.every(port => port.startsWith('127.0.0.1:')), 'Wiki.js binds to loopback only');
+assert.ok(!compose.services['wiki-db'].ports, 'Wiki database is not published');
 for (const path of ['infra/compose/docker-compose.yml', '.github/workflows/ci.yml', 'docs/api/openapi.yaml']) {
   parse(await read(path));
 }

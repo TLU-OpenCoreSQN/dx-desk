@@ -34,3 +34,13 @@ Các trạng thái được dự trù trong schema, nhưng quy tắc chuyển tr
 Poka-yoke theo loại yêu cầu, SLA, routing và upload thuộc tuần 3–4.
 JSON-LD/DCAT thuộc tuần 5–7. Không đánh dấu những chức năng này hoàn thành chỉ vì
 đã có cột hoặc bảng.
+
+## Tri thức và tự phục vụ (migration 012, W5-08)
+
+- `knowledge_articles`: 6 bài Wiki.js (slug, tiêu đề, tóm tắt, `wiki_path`); nội dung bài ở `docs/wiki/`.
+- `category_articles`: ánh xạ danh mục → bài kèm thứ tự; giao diện đọc bảng này qua API, không viết cứng.
+- `self_service_resolutions`: một dòng mỗi lần người dùng bấm "Đã tự xử lý được" (người dùng từ JWT,
+  danh mục, bài, thời điểm). RLS: mỗi người chỉ đọc dòng của mình; khóa ngoại kép bảo đảm bài thuộc
+  gợi ý của danh mục.
+- `reporting.self_service_weekly`: số lượt và số người theo tuần/danh mục/bài, không có định danh;
+  chỉ cấp cho vai trò `reporting_reader` (Metabase, W5-06), không lộ qua PostgREST.

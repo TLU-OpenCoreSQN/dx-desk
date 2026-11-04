@@ -29,6 +29,22 @@ export interface Category {
   requirement_fields?: RequirementField[] | null;
 }
 
+/** W5-08: bài Wiki.js gợi ý theo danh mục; url null khi máy chủ chưa cấu hình Wiki.js. */
+export interface KnowledgeArticle {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  url: string | null;
+}
+
+export interface SelfServiceRecord {
+  id: string;
+  category_id: string;
+  article_id: string;
+  created_at: string;
+}
+
 export type TicketPriority = 'low' | 'normal' | 'high' | 'critical';
 
 export interface Ticket {

@@ -60,6 +60,13 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
   `requirement_fields` là mảng đối tượng `{key,label,required}` — trường động theo loại
   ticket (tuần 3 thêm danh mục `access` "Cấp quyền hệ thống" và `system-error` "Lỗi hệ thống",
   tổng cộng 6 danh mục active).
+- `GET /api/categories/:id/articles` (W5-08): `{data:[{id,slug,title,summary,url}]}` — bài Wiki.js gợi ý
+  theo bảng tham chiếu `category_articles` (migration 012), sắp theo `sort_order`. `url` ghép từ
+  `WIKI_PUBLIC_URL` của API với đường dẫn bài; `null` khi chưa cấu hình Wiki.js. 404 nếu danh mục không tồn tại/không active.
+- `POST /api/self-service` (W5-08): `{category_id:uuid,article_id:uuid}` → 201 `{id,category_id,article_id,created_at}`.
+  Ghi đúng một lượt "Đã tự xử lý được", **không** tạo ticket. Chủ thể lấy từ JWT; gửi `user_id` bị 400.
+  Bài không thuộc gợi ý của danh mục → 422. RLS: mỗi người chỉ đọc lượt của mình, kể cả Agent/Manager;
+  số đếm theo tuần (không định danh) ở view `reporting.self_service_weekly` cho Metabase (W5-06, vai trò `reporting_reader`).
 - `GET /api/tickets?limit=25&offset=0`: `{data:Ticket[],limit,offset,total}`.
 - `GET /api/tickets/:id`: một Ticket, 404 nếu không tồn tại hoặc không có quyền
   (RLS ẩn bản ghi của người khác với Employee).

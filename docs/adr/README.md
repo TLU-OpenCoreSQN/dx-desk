@@ -12,7 +12,8 @@ Mỗi quyết định hoặc biên bản thử nghiệm ghi thành một tệp `
 | [0006](0006-n8n-import.md) | n8n, import workflow và credentials | W2-04 | TV1 | Có quy trình, chờ runtime |
 | [0007](0007-vi-tri-quet-clamav.md) | TN-03: vị trí quét ClamAV cho tệp đính kèm | W3-06, TN-03, QĐ-3 | TV1 | Đã chốt (QĐ-3), chờ EICAR trên Docker/CI |
 | [0008](0008-sso-keycloak-cho-ung-dung-co-san.md) | TN-04: SSO cho Wiki.js, Mattermost TE, Metabase OSS | W3-08, TN-04, QĐ-2 | TV1 | QĐ-2 chốt; Mattermost TE đã chạy runtime trong CI (03/11) |
-
 | [0009](0009-gateway-jwt-va-url-tai-tep.md) | JWT tại gateway và capability tải tệp | W3-06/07 | Đợt hoàn thiện tuần 3 | Đã triển khai, có kiểm gateway thật |
 
-Các số từ 0010 dự kiến dành cho TN-05 vòng 2/QĐ-5 và QĐ-7.
+| [0010](0010-noi-chay-ban-internet.md) | Nơi chạy bản Internet (VPS, máy trường, đường hầm) | QĐ-7 | TV1 | Đề xuất, chờ chốt trước 14/11 |
+
+Các số từ 0011 dự kiến dành cho TN-05 vòng 2/QĐ-5.

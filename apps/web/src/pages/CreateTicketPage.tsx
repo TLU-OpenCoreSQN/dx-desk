@@ -21,6 +21,7 @@ import { Category, RequirementField, TicketPriority } from '../types/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Alert } from '../components/common/Alert';
 import { ErrorMessage } from '../components/common/ErrorMessage';
+import { KnowledgeSuggestions } from '../components/common/KnowledgeSuggestions';
 
 const PRIORITY_ORDER: TicketPriority[] = ['low', 'normal', 'high', 'critical'];
 
@@ -410,6 +411,11 @@ export const CreateTicketPage: React.FC = () => {
                   </select>
                   {showBaseError('categoryId') && (
                     <FieldError id="ticket-category-error">{baseErrors.categoryId}</FieldError>
+                  )}
+                  {categoryId && (
+                    <div className="mt-3">
+                      <KnowledgeSuggestions categoryId={categoryId} />
+                    </div>
                   )}
                 </fieldset>
 
