@@ -7,7 +7,7 @@ còn dòng "Chưa xong" ở phạm vi cam kết, hoặc dòng đó đã được
 ## Bảng mốc M4
 
 Trạng thái: **Đạt** (đã gộp `main`, CI xanh), **Đang review** (có PR), **Chưa xong**, **Có rủi ro**.
-Cập nhật ngày 04/11/2026; người cập nhật ghi ngày mới khi sửa bảng.
+Cập nhật ngày 07/11/2026; người cập nhật ghi ngày mới khi sửa bảng.
 
 | Mã | Việc | Người | Trạng thái | Bằng chứng |
 |---|---|---|---|---|
@@ -18,8 +18,8 @@ Cập nhật ngày 04/11/2026; người cập nhật ghi ngày mới khi sửa b
 | W5-05 | Dữ liệu giả lập 6–8 tuần | Séc | Chưa xong | #30 |
 | W5-06 | Dashboard Metabase | Séc | Chưa xong — có sẵn view `reporting.self_service_weekly` và vai trò `reporting_reader` từ W5-08 | #31 |
 | W5-07 | Danh mục dữ liệu JSON-LD/DCAT | Séc | Chưa xong | #32 |
-| W5-08 | Wiki.js SSO, 6 bài, gợi ý, lượt tự phục vụ | Nguyên | Đang review | PR #37; nghiệm thu máy dev và cài sạch ở mục dưới |
-| W5-09 | Notices, docs, đo RAM, phát hành | Nguyên | Đang làm — phần Wiki.js trong PR #37 | #34 |
+| W5-08 | Wiki.js SSO, 6 bài, gợi ý, lượt tự phục vụ | Nguyên | Đạt | PR #37 gộp `main` 04/11, CI run [41863352656](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/41863352656) xanh; nghiệm thu máy dev và cài sạch ở mục dưới; còn đóng issue #33 |
+| W5-09 | Notices, docs, đo RAM, phát hành | Nguyên | Đang làm — phần Wiki.js đã gộp qua PR #37; checklist phát hành bên dưới chưa tick mục nào | #34 |
 | W5-10 | View chỉ số tự động hóa H-P-D-I | Quyền | Chưa xong | #35 |
 | QĐ-7 | Nơi chạy bản Internet | Nguyên | Có rủi ro nếu chưa chốt trước 14/11 — ADR 0010 *Đề xuất* | #36, PR #37 |
 
