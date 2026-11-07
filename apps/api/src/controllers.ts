@@ -86,7 +86,7 @@ export class DeskController {
   tickets(@Req() request: AuthRequest, @Query() query: TicketListQuery) {
     const staff = request.claims.realm_access.roles.some(role => ['Agent', 'Manager'].includes(role));
     if (query.queue && query.queue !== 'my_open' && !staff) {
-      throw new ForbiddenException('Hàng chờ này chỉ dành cho nhân viên xử lý.');
+      throw new ForbiddenException('Hàng chờ này chỉ dành cho kỹ thuật viên và quản lý.');
     }
     if (query.assignee && query.assignee_id || query.queue === 'team_unassigned' && (query.assignee || query.assignee_id)
       || query.queue === 'pending_approval' && query.status && query.status !== 'pending_approval'

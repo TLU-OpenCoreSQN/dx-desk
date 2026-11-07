@@ -15,7 +15,7 @@ Dùng cho demo nội bộ 07/11/2026 và làm khung cho demo giám khảo. Kiể
 
 1. Mở `http://localhost:9080`, đăng nhập `employee.a` qua Keycloak (realm `dxdesk`).
 2. Wiki.js (từ tuần 5, W5-08): ở **Tạo phiếu**, chọn danh mục *Kết nối VPN* — khung "Thử tự xử lý
-   trước khi gửi phiếu" hiện bài *Kết nối VPN của trường từ xa*. Bấm tiêu đề bài: Wiki.js mở ở tab mới,
+   trước khi gửi phiếu" hiện bài *Kết nối VPN từ xa vào mạng nội bộ*. Bấm tiêu đề bài: Wiki.js mở ở tab mới,
    bấm **Đăng nhập** một lần, Keycloak không hỏi lại mật khẩu và quay về đúng bài. Quay lại DX-Desk,
    bấm **Đã tự xử lý được**: hệ thống ghi một lượt tự phục vụ, không tạo phiếu.
 3. **Không** đăng nhập Mattermost bằng Keycloak. Mattermost Team Edition không có SSO

@@ -334,7 +334,7 @@ describe('CreateTicketPage — trường động theo requirement_fields (W3-04)
 
 describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
   const vpnArticle = {
-    id: 'art-vpn', slug: 'vpn', title: 'Kết nối VPN của trường từ xa',
+    id: 'art-vpn', slug: 'vpn', title: 'Kết nối VPN từ xa vào mạng nội bộ',
     summary: 'Cài OpenVPN và xử lý lỗi xác thực.', url: 'http://localhost:18030/ho-tro/vpn',
   };
   const passwordArticle = {
@@ -357,7 +357,7 @@ describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
     expect(screen.queryByRole('link', { name: /Đổi và khôi phục mật khẩu/ })).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/Danh mục sự cố/), { target: { value: 'cat-2222-uuid' } });
-    const link = await screen.findByRole('link', { name: /Kết nối VPN của trường từ xa/ });
+    const link = await screen.findByRole('link', { name: /Kết nối VPN từ xa vào mạng nội bộ/ });
     expect(link).toHaveAttribute('href', 'http://localhost:18030/ho-tro/vpn');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
