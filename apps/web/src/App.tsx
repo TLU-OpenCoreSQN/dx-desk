@@ -14,6 +14,7 @@ import { DeviceRequestPage } from './pages/DeviceRequestPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { WorkQueuePage } from './pages/WorkQueuePage';
 import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
+import { ManagerAnalyticsPage } from './pages/ManagerAnalyticsPage';
 import { DataCatalogPage } from './pages/DataCatalogPage';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { LogIn, ShieldAlert } from 'lucide-react';
@@ -83,6 +84,7 @@ export const App: React.FC = () => {
                 path="approvals"
                 element={<ProtectedRoute><ManagerApprovalsPage /></ProtectedRoute>}
               />
+              <Route path="bao-cao" element={<ProtectedRoute><ManagerAnalyticsPage /></ProtectedRoute>} />
               <Route
                 path="tickets"
                 element={
