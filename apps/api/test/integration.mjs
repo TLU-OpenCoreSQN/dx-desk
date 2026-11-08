@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Pool } from 'pg';
-import { generateKeyPair, exportJWK, SignJWT } from 'jose';
+import { generateKeyPair, exportJWK, SignJWT, jwtVerify } from 'jose';
 import { createApp } from '../dist/app.js';
 import { Database } from '../dist/database.js';
 import { downloadSignature } from '../dist/downloads.js';
@@ -973,4 +973,33 @@ test('W5-05 imports deterministic VPN lifecycle, self-service and devices once, 
   });
   assert.equal((await admin.query(`SELECT count(*)::int AS n FROM public.ticket_events e
     JOIN private.outbox o ON o.event_id = e.id WHERE e.ticket_id = $1`, [regular.id])).rows[0].n, 1);
+});
+
+test('W5-06 issues a short-lived dashboard token only to Manager', async () => {
+  const values = { METABASE_PROFILES: 'full', METABASE_DASHBOARD_ID: '42', METABASE_EMBED_SECRET: 'ba'.repeat(32),
+    METABASE_PUBLIC_URL: 'https://reports.example.test' };
+  const previous = Object.fromEntries(Object.keys(values).map(key => [key, process.env[key]]));
+  Object.assign(process.env, values);
+  try {
+    const path = '/api/analytics/embed';
+    assert.equal((await call(apiUrl, path, null)).status, 401);
+    assert.equal((await call(apiUrl, path, 'a')).status, 403);
+    assert.equal((await call(apiUrl, path, 'agent')).status, 403);
+    const manager = await fetch(apiUrl + path, { headers: { Authorization: `Bearer ${tokens.manager}` } });
+    assert.equal(manager.status, 200);
+    assert.equal(manager.headers.get('cache-control'), 'no-store');
+    const url = new URL((await manager.json()).url);
+    assert.equal(url.origin, values.METABASE_PUBLIC_URL);
+    const token = url.pathname.split('/').at(-1);
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(values.METABASE_EMBED_SECRET), { algorithms: ['HS256'] });
+    assert.deepEqual(payload.resource, { dashboard: 42 });
+    assert.equal(payload.exp - payload.iat, 300);
+    process.env.METABASE_PROFILES = 'demo-light';
+    assert.equal((await call(apiUrl, path, 'manager')).status, 503);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });

@@ -10,6 +10,7 @@ import { renderGateway } from './render-gateway.mjs';
 import { demoSeedIdentities, prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
 import { seedMain } from './seed-synthetic.mjs';
 import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled } from './setup-wiki.mjs';
+import { configureMetabaseReader, metabaseEnabled, prepareMetabase, setupMetabase } from './setup-metabase.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
@@ -71,11 +72,13 @@ async function syncKeys() {
 if (action === 'up') {
   await prepareAutomation(root, env);
   await prepareWiki(root, env);
+  await prepareMetabase(root, env);
   await initialize();
   compose('up', '-d', '--wait', 'postgres', 'keycloak');
   await setupIdentity(env);
   await setupWikiClient(env);
   migrate();
+  if (metabaseEnabled(env)) configureMetabaseReader(base, root);
   await syncKeys();
   compose('up', '-d', '--build', '--wait');
   // PostgREST may still hold the old signing keys when the realm was recreated.
@@ -98,8 +101,14 @@ if (action === 'up') {
     compose('up', '-d', '--wait', 'apisix');
   }
   await setupWiki(root, env);
+  if (metabaseEnabled(env) && await setupMetabase(root, env)) {
+    compose('up', '-d', '--wait', 'api');
+    compose('restart', 'apisix');
+    compose('up', '-d', '--wait', 'apisix');
+  }
   console.log(`DX-Desk: http://localhost:${env.APISIX_PORT}`);
   if (wikiEnabled(env)) console.log(`Wiki.js: ${env.WIKI_PUBLIC_URL}`);
+  if (metabaseEnabled(env)) console.log(`Metabase: ${env.METABASE_PUBLIC_URL}`);
 } else if (action === 'migrate') {
   migrate();
 } else if (action === 'verify') {

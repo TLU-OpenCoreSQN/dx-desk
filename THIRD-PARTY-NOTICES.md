@@ -22,7 +22,7 @@ Dockerfile. PoC được chạy tách biệt; profile benchmark không tự tả
 |---|---|---|
 | `ghcr.io/requarks/wiki:2.5.315` | [AGPL-3.0](https://github.com/requarks/wiki/blob/v2.5.315/LICENSE) | Wiki.js tri thức, hồ sơ `full`/`demo-light` (W5-08); chạy image chính thức không sửa, giao tiếp qua GraphQL |
 | `mattermost/mattermost-team-edition:12.0.1` | [Giấy phép binary do Mattermost phát hành và các điều khoản nguồn](https://github.com/mattermost/mattermost/blob/v12.0.1/LICENSE.txt) | Team Edition, không thay bằng Enterprise |
-| `metabase/metabase:v0.64.3` | [AGPL cho binary OSS; Enterprise có giấy phép khác](https://github.com/metabase/metabase/blob/v0.64.3/LICENSE.txt) | PoC tài khoản nội bộ |
+| `metabase/metabase:v0.64.3` | [AGPL cho binary OSS; Enterprise có giấy phép khác](https://github.com/metabase/metabase/blob/v0.64.3/LICENSE.txt) | Dashboard hồ sơ `full`, tài khoản nội bộ và static embedding |
 | `ollama/ollama:0.12.6` | [MIT](https://github.com/ollama/ollama/blob/v0.12.6/LICENSE) | Công cụ benchmark tùy chọn; mô hình có giấy phép riêng |
 | `node:22.22.0-alpine` | Node.js MIT và notices thành phần đi kèm | Build web và runtime API |
 | `nginx:1.28.0-alpine` | Nginx BSD-2-Clause và notices thành phần đi kèm | Phục vụ static web |

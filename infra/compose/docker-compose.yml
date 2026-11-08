@@ -24,6 +24,7 @@ services:
       N8N_DB_PASSWORD: ${N8N_DB_PASSWORD}
       AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
       API_DB_PASSWORD: ${API_DB_PASSWORD}
+      METABASE_REPORTING_PASSWORD: ${METABASE_REPORTING_PASSWORD:-}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ../postgres/init:/docker-entrypoint-initdb.d:ro
@@ -159,6 +160,10 @@ services:
       MATTERMOST_TEAM_CHANNELS: ${MATTERMOST_TEAM_CHANNELS:-}
       # W5-08: gốc Wiki.js mà trình duyệt mở khi gợi ý bài; trống thì chỉ hiện tiêu đề bài.
       WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-}
+      METABASE_PUBLIC_URL: ${METABASE_PUBLIC_URL:-http://localhost:18031}
+      METABASE_EMBED_SECRET: ${METABASE_EMBED_SECRET:-}
+      METABASE_DASHBOARD_ID: ${METABASE_DASHBOARD_ID:-}
+      METABASE_PROFILES: ${COMPOSE_PROFILES:-}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
@@ -368,6 +373,51 @@ services:
       retries: 30
       start_period: 30s
 
+  metabase-db:
+    image: postgres:${POSTGRES_VERSION}
+    profiles: ["full"]
+    <<: *restart
+    environment:
+      POSTGRES_DB: metabase
+      POSTGRES_USER: metabase
+      POSTGRES_PASSWORD: ${METABASE_DB_PASSWORD:-}
+    volumes:
+      - metabase-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "metabase", "-d", "metabase"]
+      interval: 5s
+      retries: 30
+
+  metabase:
+    image: metabase/metabase:${METABASE_VERSION:-v0.64.3}
+    profiles: ["full"]
+    <<: *restart
+    depends_on:
+      metabase-db:
+        condition: service_healthy
+    environment:
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx1024m
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: metabase-db
+      MB_DB_PORT: "5432"
+      MB_DB_DBNAME: metabase
+      MB_DB_USER: metabase
+      MB_DB_PASS: ${METABASE_DB_PASSWORD:-}
+      MB_SITE_URL: ${METABASE_PUBLIC_URL:-http://localhost:18031}
+      MB_ANON_TRACKING_ENABLED: "false"
+      MB_ENABLE_PUBLIC_SHARING: "false"
+      MB_ENABLE_EMBEDDING_STATIC: "true"
+      MB_EMBEDDING_SECRET_KEY: ${METABASE_EMBED_SECRET:-}
+      MB_REPORT_TIMEZONE: Asia/Ho_Chi_Minh
+    ports:
+      - "127.0.0.1:${METABASE_PORT:-18031}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 45
+      start_period: 45s
+
 volumes:
   postgres-data:
   clamav-db:
@@ -376,3 +426,4 @@ volumes:
   mattermost-db-data:
   mattermost-data:
   wiki-db-data:
+  metabase-db-data:
