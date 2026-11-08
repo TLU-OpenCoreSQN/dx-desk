@@ -13,6 +13,7 @@ import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 import { createApp } from '../dist/app.js';
 import { Database } from '../dist/database.js';
 import { downloadSignature } from '../dist/downloads.js';
+import { applyDataset, generate } from '../../../scripts/seed-synthetic.mjs';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
 if (!adminUrl || !new URL(adminUrl).pathname.startsWith('/dxdesk_test')) {
@@ -941,4 +942,35 @@ test('W5-08 category suggestions, single self-service record and owner-only read
   assert.ok(weekly.n >= 2 && weekly.u >= 2);
   const reporting = await call(restUrl, '/self_service_weekly', 'manager');
   assert.notEqual(reporting.status, 200, 'Reporting schema is not exposed through PostgREST');
+});
+
+test('W5-05 imports deterministic VPN lifecycle, self-service and devices once, without live outbox work', async () => {
+  const teams = (await admin.query('SELECT id, name FROM public.teams ORDER BY name')).rows
+    .map(team => ({ ...team, members: [users.agent.sub] }));
+  const dataset = generate('db-week5', '2026-11-02T00:00:00Z', {
+    users: Object.values(users), teams, system: automationClaims.sub,
+  }, 500, { scenario: 'vpn-4.2' });
+  const settings = { apply: true, confirmDemo: true };
+  const first = await applyDataset(dataset, adminUrl, settings);
+  assert.equal(first.inserted, 500);
+  assert.deepEqual(first.scenario_summary, dataset.manifest.scenario_summary);
+  assert.equal((await applyDataset(dataset, adminUrl, settings)).inserted, 0);
+  const ids = dataset.tickets.map(row => row.id);
+  const events = await admin.query(`SELECT count(*)::int AS events,
+    count(*) FILTER (WHERE e.event_type = 'created')::int AS created, count(o.event_id)::int AS outbox
+    FROM public.ticket_events e LEFT JOIN private.outbox o ON o.event_id = e.id WHERE e.ticket_id = ANY($1::uuid[])`, [ids]);
+  assert.deepEqual(events.rows[0], { events: dataset.events.length, created: 500, outbox: 0 });
+  for (const [table, fixtures] of [['self_service_resolutions', dataset.self_service], ['device_requests', dataset.device_requests]]) {
+    assert.equal((await admin.query(`SELECT count(*)::int AS n FROM public.${table} WHERE id = ANY($1::uuid[])`,
+      [fixtures.map(row => row.id)])).rows[0].n, fixtures.length);
+  }
+  // A transaction-local spoof from an app role cannot skip audit/outbox.
+  const regular = await db.asUser(claims('a'), async client => {
+    await client.query("SELECT set_config('app.demo_history', 'on', true)");
+    return (await client.query(`INSERT INTO public.tickets (category_id,title,description,request_fields)
+      VALUES ($1,'Regular audited ticket','This ticket still creates live audit and outbox.', '{"client_version":"4.2","error_message":"Fixture"}')
+      RETURNING id`, [category])).rows[0];
+  });
+  assert.equal((await admin.query(`SELECT count(*)::int AS n FROM public.ticket_events e
+    JOIN private.outbox o ON o.event_id = e.id WHERE e.ticket_id = $1`, [regular.id])).rows[0].n, 1);
 });

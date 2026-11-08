@@ -69,11 +69,11 @@ export async function demoSeedIdentities(env) {
     if (!roles.some(item => item.name === role)) throw new Error(`Tài khoản demo ${username} thiếu vai trò ${role}.`);
     return { sub: user.id, roles: [role] };
   }));
-  // Same demo roster provisioned by setupChannelsAndRoster. The loader checks real team IDs.
-  const members = users.filter(user => !user.roles.includes('Employee')).map(user => user.sub);
+  const staff = new Set(users.filter(user => !user.roles.includes('Employee')).map(user => user.sub));
   const teams = result.data.filter(team => team.active && ['Network Team', 'Identity Team', 'IT Support'].includes(team.name))
-    .map(team => ({ id: team.id, name: team.name, members }));
-  return { users, teams };
+    .map(team => ({ id: team.id, name: team.name, members: team.members.filter(subject => staff.has(subject)) }));
+  const system = JSON.parse(Buffer.from(service.access_token.split('.')[1], 'base64url')).sub;
+  return { users, teams, system };
 }
 export async function setupIdentity(env) {
   if (env.AUTOMATION_ENABLED !== 'true') return;
