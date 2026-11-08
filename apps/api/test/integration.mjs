@@ -170,6 +170,7 @@ before(async () => {
     CLAMD_ADDR: `127.0.0.1:${clamdServer.address().port}`, CLAMD_TIMEOUT_MS: '2000',
     SEAWEEDFS_ENDPOINT: `http://127.0.0.1:${seaweedServer.address().port}`,
     ATTACHMENT_SIGNING_KEY: 'integration-only-signing-secret-at-least-32-bytes',
+    WIKI_PUBLIC_URL: 'http://wiki.test:18030/',
   });
   app = await createApp(); await app.listen(0, '127.0.0.1');
   apiUrl = await app.getUrl(); db = app.get(Database);
@@ -214,10 +215,11 @@ after(async () => {
   await admin.end();
 });
 
-test('TN-02: real database has eight protected domain tables and reference data', async () => {
+test('TN-02: real database has eleven protected domain tables and reference data', async () => {
   const result = await admin.query(`SELECT relname, relrowsecurity, relforcerowsecurity
     FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'`);
-  assert.equal(result.rowCount, 8);
+  // W5-08 (migration 012): +knowledge_articles, category_articles, self_service_resolutions.
+  assert.equal(result.rowCount, 11);
   assert.ok(result.rows.every(row => row.relrowsecurity && row.relforcerowsecurity));
   // Hợp đồng tuần 3 (migration 003): thêm danh mục access + system-error -> 6 loại active.
   assert.equal((await call(apiUrl, '/api/categories')).body.data.length, 6);
@@ -900,4 +902,43 @@ test('W4 SLA clock boundaries, pause exclusion, persisted breach and superseded 
   const count=(await admin.query('SELECT count(*)::int n FROM private.sla_notices WHERE ticket_id=$1',[ticket.id])).rows[0].n;
   await evaluate('2030-01-01T00:00:00Z');
   assert.equal((await admin.query('SELECT count(*)::int n FROM private.sla_notices WHERE ticket_id=$1',[ticket.id])).rows[0].n,count);
+});
+
+test('W5-08 category suggestions, single self-service record and owner-only reads on API and REST', async () => {
+  const vpnArticle = '20000000-0000-4000-8000-000000000001';
+  const suggestions = await call(apiUrl, `/api/categories/${category}/articles`);
+  assert.equal(suggestions.status, 200);
+  assert.deepEqual(suggestions.body.data.map(article => article.slug), ['vpn', 'wifi']);
+  assert.equal(suggestions.body.data[0].url, 'http://wiki.test:18030/ho-tro/vpn');
+  assert.equal((await call(apiUrl, '/api/categories/10000000-0000-4000-8000-0000000000ff/articles')).status, 404);
+  assert.equal((await admin.query('SELECT count(*)::int n FROM public.knowledge_articles')).rows[0].n, 6);
+
+  const ticketsBefore = (await admin.query('SELECT count(*)::int n FROM public.tickets')).rows[0].n;
+  const recorded = await call(apiUrl, '/api/self-service', 'a', { category_id: category, article_id: vpnArticle });
+  assert.equal(recorded.status, 201, JSON.stringify(recorded.body));
+  const rows = (await admin.query('SELECT user_id, category_id, article_id FROM public.self_service_resolutions WHERE id=$1', [recorded.body.id])).rows;
+  assert.deepEqual(rows, [{ user_id: users.a.sub, category_id: category, article_id: vpnArticle }]);
+  assert.equal((await admin.query('SELECT count(*)::int n FROM public.tickets')).rows[0].n, ticketsBefore, 'Self-service must not create a ticket');
+
+  // Bài không thuộc gợi ý của danh mục, user_id giả và ghi tay qua REST đều bị chặn.
+  const passwordArticle = '20000000-0000-4000-8000-000000000005';
+  assert.equal((await call(apiUrl, '/api/self-service', 'a', { category_id: category, article_id: passwordArticle })).status, 422);
+  assert.equal((await call(apiUrl, '/api/self-service', 'a', { category_id: category, article_id: vpnArticle, user_id: users.b.sub })).status, 400);
+  assert.notEqual((await call(restUrl, '/self_service_resolutions', 'a', { category_id: category, article_id: vpnArticle, user_id: users.b.sub })).status, 201);
+  assert.notEqual((await call(restUrl, '/self_service_resolutions', 'a', { category_id: category, article_id: passwordArticle })).status, 201);
+  const viaRest = await call(restUrl, '/self_service_resolutions', 'b', { category_id: category, article_id: vpnArticle });
+  assert.equal(viaRest.status, 201, JSON.stringify(viaRest.body));
+  assert.equal(viaRest.body[0].user_id, users.b.sub);
+
+  const ownA = await call(restUrl, '/self_service_resolutions?select=user_id', 'a');
+  assert.ok(ownA.body.length >= 1 && ownA.body.every(row => row.user_id === users.a.sub));
+  const managerView = await call(restUrl, '/self_service_resolutions?select=user_id', 'manager');
+  assert.equal(managerView.body.length, 0, 'Raw records stay private even for staff');
+  assert.notEqual((await patch(restUrl, `/self_service_resolutions?id=eq.${recorded.body.id}`, 'a', { article_id: passwordArticle })).status, 200);
+
+  const weekly = (await admin.query(`SELECT sum(resolutions)::int n, max(distinct_users)::int u FROM reporting.self_service_weekly
+    WHERE category_code='vpn' AND article_slug='vpn'`)).rows[0];
+  assert.ok(weekly.n >= 2 && weekly.u >= 2);
+  const reporting = await call(restUrl, '/self_service_weekly', 'manager');
+  assert.notEqual(reporting.status, 200, 'Reporting schema is not exposed through PostgREST');
 });

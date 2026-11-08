@@ -15,6 +15,7 @@ import { AttachmentLinksController, AttachmentContentController } from './downlo
 import { AttachmentsController, DeskController, HealthController, workflowExceptionForCode } from './controllers';
 import { AutomationGuard } from './service-auth';
 import { AutomationController, WorkQueueController } from './week4';
+import { KnowledgeController } from './knowledge';
 import { OutboxDispatcher } from './outbox-dispatcher';
 
 @Catch()
@@ -46,7 +47,7 @@ class Errors implements ExceptionFilter {
 
 @Module({
   controllers: [HealthController, DeskController, AttachmentsController, AttachmentLinksController, AttachmentContentController,
-    WorkQueueController, AutomationController],
+    WorkQueueController, AutomationController, KnowledgeController],
   providers: [Database, JwtGuard, AutomationGuard, OutboxDispatcher],
 })
 export class AppModule {}

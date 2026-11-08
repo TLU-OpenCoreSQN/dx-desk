@@ -20,7 +20,7 @@ Dockerfile. PoC được chạy tách biệt; profile benchmark không tự tả
 
 | Image / phiên bản | Metadata giấy phép upstream | Phạm vi |
 |---|---|---|
-| `ghcr.io/requarks/wiki:2.5.315` | [AGPL-3.0](https://github.com/requarks/wiki/blob/v2.5.315/LICENSE) | PoC Wiki.js |
+| `ghcr.io/requarks/wiki:2.5.315` | [AGPL-3.0](https://github.com/requarks/wiki/blob/v2.5.315/LICENSE) | Wiki.js tri thức, hồ sơ `full`/`demo-light` (W5-08); chạy image chính thức không sửa, giao tiếp qua GraphQL |
 | `mattermost/mattermost-team-edition:12.0.1` | [Giấy phép binary do Mattermost phát hành và các điều khoản nguồn](https://github.com/mattermost/mattermost/blob/v12.0.1/LICENSE.txt) | Team Edition, không thay bằng Enterprise |
 | `metabase/metabase:v0.64.3` | [AGPL cho binary OSS; Enterprise có giấy phép khác](https://github.com/metabase/metabase/blob/v0.64.3/LICENSE.txt) | PoC tài khoản nội bộ |
 | `ollama/ollama:0.12.6` | [MIT](https://github.com/ollama/ollama/blob/v0.12.6/LICENSE) | Công cụ benchmark tùy chọn; mô hình có giấy phép riêng |

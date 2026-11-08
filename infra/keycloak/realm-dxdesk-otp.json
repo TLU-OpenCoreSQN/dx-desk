@@ -99,6 +99,32 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "wikijs",
+      "name": "Wiki.js tri thức DX-Desk",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:18030/login/keycloak/callback"],
+      "webOrigins": ["http://localhost:18030"],
+      "attributes": { "post.logout.redirect.uris": "http://localhost:18030/*" },
+      "protocolMappers": [
+        {
+          "name": "dxdesk-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "dxdesk_roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "access.token.claim": "false"
+          }
+        }
+      ]
     }
   ],
   "users": [

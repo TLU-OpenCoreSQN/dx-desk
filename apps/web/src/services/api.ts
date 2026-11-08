@@ -8,7 +8,9 @@ import {
   CreateTicketPayload,
   DeviceRequest,
   HealthResponse,
+  KnowledgeArticle,
   PaginatedResponse,
+  SelfServiceRecord,
   Ticket,
   TicketEvent,
   TicketFilters,
@@ -128,6 +130,19 @@ export async function getMe(): Promise<UserProfile> {
  */
 export async function getCategories(): Promise<{ data: Category[] }> {
   return request<{ data: Category[] }>('/categories', { method: 'GET' });
+}
+
+/** W5-08: bài Wiki gợi ý cho danh mục. GET /api/categories/:id/articles */
+export async function getCategoryArticles(categoryId: string): Promise<{ data: KnowledgeArticle[] }> {
+  return request<{ data: KnowledgeArticle[] }>(`/categories/${encodeURIComponent(categoryId)}/articles`, { method: 'GET' });
+}
+
+/** W5-08: ghi một lượt "Đã tự xử lý được" (không tạo ticket). POST /api/self-service */
+export async function recordSelfService(categoryId: string, articleId: string): Promise<SelfServiceRecord> {
+  return request<SelfServiceRecord>('/self-service', {
+    method: 'POST',
+    body: JSON.stringify({ category_id: categoryId, article_id: articleId }),
+  });
 }
 
 /**

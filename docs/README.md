@@ -6,11 +6,11 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 |---|---|---|
 | [adr/](adr/README.md) | Vì sao hệ thống được thiết kế như vậy, thử nghiệm nào đã làm và kết quả ra sao | Đang viết |
 | `kien-truc.md` | Ba tầng DX-OS, ánh xạ H-P-D-I, Zero-Trust (Keycloak, APISIX, RLS), luồng một ticket | Tuần 5–7 |
-| [du-lieu.md](du-lieu.md) | Schema/RLS tuần 2; JSON-LD/DCAT ở mốc sau | Đã có bản tuần 2 |
-| [cai-dat.md](cai-dat.md) | Cài đặt/kiểm thử tuần 2, Windows/Linux, xử lý sự cố | Đã có bản tuần 2 |
+| [du-lieu.md](du-lieu.md) | Schema/RLS tuần 2; JSON-LD/DCAT ở mốc sau | Bản tuần 2; migration 003–011 ghi trong CHANGELOG |
+| [cai-dat.md](cai-dat.md) | Cài đặt/kiểm thử, Windows/Linux, xử lý sự cố | Cập nhật tuần 4 |
 | `van-hanh.md` | Khởi động, dừng, đặt lại; nạp lại workflow n8n và realm Keycloak; log; sao lưu | Tuần 5 |
 | `huong-dan-su-dung.md` | Thao tác theo vai trò Employee, Agent, Manager | Tuần 7 |
-| [api/](api/contract.md) | Contract và OpenAPI cho các endpoint tuần 2 | Đã có bản tuần 2 |
+| [api/](api/contract.md) | Contract và OpenAPI cho các endpoint | Cập nhật tuần 4 |
 
 ## Tài liệu tuần 2
 
@@ -21,7 +21,6 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 - [Kịch bản demo/nghiệm thu](demo-tuan-2.md).
 - [Báo cáo kiểm thử và bàn giao](bao-cao-kiem-thu-tuan-2.md).
 - [Danh sách Issue chuẩn bị cho GitHub](github-issues-tuan-2.md).
-- [Chuẩn bị phát hành và việc cần người phụ trách](phat-hanh-tuan-2.md).
 
 ## Tài liệu tuần 3
 
@@ -29,6 +28,26 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 - [Hoàn thiện tuần 3: ánh xạ W3-01…W3-09, lệnh kiểm thử, phần cần người nghiệm thu](hoan-thien-tuan-3.md).
 - [Các bản sửa sau review source](sec-dev-fixes.md).
 - ADR tuần 3: [0007 vị trí quét ClamAV](adr/0007-vi-tri-quet-clamav.md), [0008 SSO cho ứng dụng có sẵn](adr/0008-sso-keycloak-cho-ung-dung-co-san.md), [0009 JWT tại gateway và URL tải tệp](adr/0009-gateway-jwt-va-url-tai-tep.md).
+
+## Tài liệu tuần 5
+
+- Wiki.js tri thức với SSO Keycloak, bài gợi ý theo danh mục và lượt tự phục vụ: [cài đặt](cai-dat.md#wikijs-tri-thức-w5-08), [bài nguồn](wiki/), [ADR 0008](adr/0008-sso-keycloak-cho-ung-dung-co-san.md) (W5-08).
+- [ADR 0010 — nơi chạy bản Internet](adr/0010-noi-chay-ban-internet.md) (QĐ-7, đề xuất).
+- [Chuẩn bị phát hành v0.5.0 và bảng mốc M4](phat-hanh-v0.5.0.md) (W5-09).
+
+## Tài liệu tuần 4
+
+- Lệnh tự động hóa, replay outbox, seed và đo tài nguyên: [README – Tự động hóa và hàng đợi](../README.md#tự-động-hóa-và-hàng-đợi).
+- Endpoint queue, claim, phê duyệt và `/system/*`: [hợp đồng API](api/contract.md) và [OpenAPI](api/openapi.yaml).
+- [Kịch bản demo tuần 4 — luồng VPN](demo-tuan-4.md).
+- [RAM theo dịch vụ cho hồ sơ `full` và `demo-light`](tai-nguyen.md) (W4-09, số đo tạm).
+- [Khảo sát Trung tâm CNTT: câu hỏi, tham số giả định cho bộ sinh dữ liệu](khao-sat-trung-tam-cntt.md) (W4-10).
+- ADR 0008 cập nhật trạng thái runtime Mattermost và giấy phép image 12.0.1 (W4-04).
+
+## Phát hành
+
+- [Nhật ký thay đổi](../CHANGELOG.md).
+- [Phát hành v0.1.0: release notes, checklist và việc cần người phụ trách](phat-hanh-v0.1.0.md).
 
 ## Quy ước
 

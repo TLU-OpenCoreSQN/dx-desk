@@ -17,3 +17,18 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
 SPDX-License-Identifier = "Apache-2.0"
+
+# W5-08: bài tri thức nạp vào Wiki.js, phát hành theo CC BY 4.0 (khối sau ghi đè khối trên).
+[[annotations]]
+path = [
+  "docs/wiki/vpn.md",
+  "docs/wiki/email.md",
+  "docs/wiki/wifi.md",
+  "docs/wiki/lms.md",
+  "docs/wiki/mat-khau.md",
+  "docs/wiki/phan-mem-ban-quyen.md",
+  "docs/wiki/home.md",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
+SPDX-License-Identifier = "CC-BY-4.0"
