@@ -61,6 +61,23 @@ try {
     await page.getByRole('dialog').waitFor({ state: 'detached' });
     await page.setViewportSize({ width: 390, height: 844 });
   });
+  await check('W5-07: guest opens public catalog and inspects JSON-LD on mobile', async () => {
+    await page.goto(origin + '/du-lieu');
+    await page.getByRole('heading', { name: 'Danh mục dữ liệu DX-Desk' }).waitFor();
+    const catalog = await page.request.get(origin + '/ld/catalog');
+    assert.match(catalog.headers()['content-type'], /^application\/ld\+json/);
+    assert.equal((await catalog.json())['dcat:dataset'].length, 3);
+    const download = await page.request.get(origin + '/data/synthetic/tickets.json');
+    const sample = await download.json();
+    assert.equal(sample.synthetic, true);
+    assert.ok(sample.data.every(ticket => !Object.hasOwn(ticket, 'requester_id')));
+    await page.getByRole('region', { name: 'Dịch vụ', exact: true }).getByRole('button', { name: 'Kết nối VPN' }).click();
+    const resource = page.getByRole('region', { name: 'JSON-LD Kết nối VPN' });
+    await resource.getByText(/"schema:identifier": "vpn"/).waitFor();
+    assert.equal(await resource.getByRole('textbox', { name: 'URI tài nguyên' }).inputValue(), origin + '/ld/services/vpn');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: resolve(reportDir, 'web-mobile-data-catalog.png'), fullPage: true });
+  });
 
   // Replace only the development module at the browser boundary; no fixture ships in the app.
   await page.route('**/src/services/keycloak.ts*', route => route.fulfill({ contentType: 'text/javascript', body: `
@@ -109,7 +126,7 @@ try {
   });
   await check('Employee ticket form: Poka-yoke theo danh mục, no Critical, exact create payload', async () => {
     await page.goto(origin + '/tickets/new');
-    await page.getByLabel(/Danh mục/).selectOption(category.id);
+    await page.getByRole('combobox', { name: 'Danh mục sự cố' }).selectOption(category.id);
     const submit = page.getByRole('button', { name: /Gửi phiếu/ });
     // Trường động theo danh mục phải nằm trong fieldset có legend (nhóm có tên cho trình đọc màn hình).
     const categoryFields = page.getByRole('group', { name: 'Thông tin bổ sung theo danh mục' });

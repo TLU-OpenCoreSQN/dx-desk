@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ClipboardList,
   ShieldCheck,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -79,6 +80,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const links = [
     { to: '/', label: 'Trang chủ', icon: Home },
+    { to: '/du-lieu', label: 'Danh mục dữ liệu', icon: Database },
     ...(isAuthenticated
       ? [
           { to: '/tickets', label: 'Danh sách phiếu', icon: Ticket },

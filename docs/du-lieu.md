@@ -32,8 +32,16 @@ Mỗi lần mượn connection phải thiết lập claims mới và kết thúc
 
 Các trạng thái được dự trù trong schema, nhưng quy tắc chuyển trạng thái,
 Poka-yoke theo loại yêu cầu, SLA, routing và upload thuộc tuần 3–4.
-JSON-LD/DCAT thuộc tuần 5–7. Không đánh dấu những chức năng này hoàn thành chỉ vì
-đã có cột hoặc bảng.
+## Danh mục dữ liệu công khai (W5-07)
+
+Trang `/du-lieu` đọc `/ld/catalog` và hiển thị ba bộ dữ liệu DCAT với giấy phép CC0 1.0,
+ngày cập nhật và liên kết tải. Các tài nguyên sử dụng URI `/ld/services/{code}`,
+`/ld/request-types/{code}` và `/ld/device-types/{code}`, có JSON-LD để kiểm tra trên Playground.
+Khi W5-04 chưa cấu hình route API, web phục vụ JSON-LD mẫu cùng lược đồ URI và bản tải
+có gắn nhãn giả lập. Các bản tải công khai nằm trong bundle web, tách khỏi DB nghiệp vụ.
+
+Cảnh 3 demo có thể mở trực tiếp `/du-lieu` trong cửa sổ ẩn danh, tải một mẫu, rồi
+chọn **Dịch vụ → Kết nối VPN** để xem JSON-LD, sao chép URI hoặc mở Playground.
 
 ## Tri thức và tự phục vụ (migration 012, W5-08)
 
