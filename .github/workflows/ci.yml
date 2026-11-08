@@ -95,6 +95,7 @@ jobs:
       - run: npm ci --prefix apps/api
       - run: npm run build --prefix apps/api
       - run: node --test tests/seed-synthetic.test.mjs tests/setup-wiki.test.mjs
+      - run: node scripts/export-demo-samples.mjs --check
       - run: npm ci --prefix tools/testing
       - run: npm run integration --prefix tools/testing
       - name: Kiểm tra migration runner, checksum và rollback

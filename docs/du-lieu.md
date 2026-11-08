@@ -53,3 +53,4 @@ là thuộc tính giả lập của phiếu. Các hồ sơ dùng chung những t
 Các tham số `--weeks`, `--users`, `--weights=vpn:25,account:35` và `--scenario` điều chỉnh dữ liệu.
 Phân bố mặc định theo [giả định của đội trong W4-10](khao-sat-trung-tam-cntt.md#tham-số-cho-bộ-sinh-dữ-liệu-giả-định-của-đội).
 Dùng `--offline` để sinh thử khi stack chưa chạy. File xuất mặc định nằm trong `.local/reports`.
+Xem [thẻ dữ liệu giả lập](data/README.md) cho kịch bản VPN, giấy phép và cách nạp DB demo.
