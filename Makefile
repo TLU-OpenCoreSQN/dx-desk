@@ -5,7 +5,7 @@
 ROOT    := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 COMPOSE := docker compose --env-file $(ROOT).env -f $(ROOT)infra/compose/docker-compose.yml
 
-.PHONY: help up down reset ps logs config release migrate test test-stack n8n-reload
+.PHONY: help up down reset ps logs config release migrate seed test test-stack n8n-reload
 
 help:
 	@echo "make up       - dựng Tầng 1 và web/API (cần .env)"
@@ -15,6 +15,7 @@ help:
 	@echo "make logs     - xem nhật ký (SERVICE=tên-dịch-vụ để lọc)"
 	@echo "make release VERSION=x.y.z - tạo gói .tar.gz bằng git archive"
 	@echo "make migrate  - áp dụng migration mới, giữ dữ liệu"
+	@echo "make seed     - sinh dữ liệu demo (dry-run; dùng SEED_ARGS để thêm tham số)"
 	@echo "make test     - build và kiểm thử API/web"
 	@echo "make test-stack - kiểm chứng Keycloak/APISIX/API/PostgREST/n8n thật"
 
@@ -26,6 +27,9 @@ up: $(ROOT).env
 
 migrate: $(ROOT).env
 	$(COMPOSE) exec -T postgres sh /docker-entrypoint-initdb.d/02-migrations.sh
+
+seed:
+	node "$(ROOT)scripts/dxdesk.mjs" seed $(SEED_ARGS)
 
 test:
 	npm --prefix $(ROOT)apps/api ci
