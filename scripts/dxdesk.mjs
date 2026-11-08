@@ -7,13 +7,26 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import { renderGateway } from './render-gateway.mjs';
-import { prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
+import { demoSeedIdentities, prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
+import { seedMain } from './seed-synthetic.mjs';
 import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled } from './setup-wiki.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
-const help = 'node scripts/dxdesk.mjs <up|down|ps|config|migrate|verify|n8n-reload|credentials-import>';
+const help = 'node scripts/dxdesk.mjs <up|down|ps|config|migrate|verify|seed|n8n-reload|credentials-import>';
 if (action === 'help') { console.log(help); process.exit(0); }
+if (action === 'seed') {
+  try {
+    await seedMain(process.argv.slice(3), process.env, async () => {
+      const local = parseEnv(await readFile(resolve(root, '.env'), 'utf8'));
+      return demoSeedIdentities(local);
+    });
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+  process.exit(process.exitCode ?? 0);
+}
 const allowed = ['up', 'down', 'ps', 'config', 'migrate', 'verify', 'n8n-reload', 'credentials-import'];
 if (!allowed.includes(action)) throw new Error(help);
 let env;
