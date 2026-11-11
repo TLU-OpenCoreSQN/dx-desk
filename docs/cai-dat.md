@@ -211,6 +211,20 @@ exec ... kcadm.sh` **chờ Docker/CI kiểm chứng**; cú pháp theo tài liệ
   API và PostgREST cũng tự kiểm chữ ký. `/api/health` có route công khai riêng.
   Không coi cấu hình rate limit là nghiệm thu runtime 429.
 
+## Báo cáo Metabase (W5-06)
+
+Đặt `COMPOSE_PROFILES=full` trong `.env` rồi chạy `make up` (hoặc `node scripts/dxdesk.mjs up`).
+Runner tạo tài khoản nội bộ Metabase, cấu hình nguồn PostgreSQL chỉ đọc và nạp
+dashboard cùng các câu hỏi từ `infra/metabase/dashboard.mjs`. Metabase có CSDL riêng cho
+cấu hình, chạy ở `http://localhost:18031`. Các mật khẩu và khóa ký nằm trong `.env`.
+Dashboard dành cho Manager ở `/bao-cao`. Bản OSS dùng URL nhúng ký có hạn 5 phút theo
+[ADR 0008](adr/0008-sso-keycloak-cho-ung-dung-co-san.md).
+
+Báo cáo tổng hợp theo múi giờ Việt Nam. Tỷ lệ thủ công tạm tính bằng số sự kiện
+`status_changed` do người thực hiện chia tổng số sự kiện chuyển trạng thái của tuần.
+Lượt tự phục vụ lấy từ view W5-08. Hàng KPI VPN chỉ hiện khi đã nạp kịch bản vào
+DB demo theo [thẻ dữ liệu](data/README.md).
+
 ## Migration và cập nhật
 
 Migration có checksum và ledger `migration_meta.applied`, áp dụng nguyên tử mỗi file.

@@ -1,0 +1,208 @@
+{
+  "synthetic": true,
+  "sample": true,
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "reference_time": "2026-11-02T00:00:00Z",
+  "data": [
+    {
+      "ticket_id": "sample-1",
+      "type": "created",
+      "actor_type": "user",
+      "created_at": "2026-10-19T11:45:00.000Z"
+    },
+    {
+      "ticket_id": "sample-1",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-19T11:51:36.000Z",
+      "from": "new",
+      "to": "triaged"
+    },
+    {
+      "ticket_id": "sample-1",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-19T11:58:12.000Z",
+      "from": "triaged",
+      "to": "assigned"
+    },
+    {
+      "ticket_id": "sample-1",
+      "type": "assignment_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-19T11:59:31.200Z"
+    },
+    {
+      "ticket_id": "sample-1",
+      "type": "assignment_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-19T12:11:24.000Z"
+    },
+    {
+      "ticket_id": "sample-1",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-19T12:12:43.200Z",
+      "from": "assigned",
+      "to": "in_progress"
+    },
+    {
+      "ticket_id": "sample-1",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-19T13:57:00.000Z",
+      "from": "in_progress",
+      "to": "resolved"
+    },
+    {
+      "ticket_id": "sample-2",
+      "type": "created",
+      "actor_type": "user",
+      "created_at": "2026-10-19T06:34:00.000Z"
+    },
+    {
+      "ticket_id": "sample-2",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-19T06:41:48.000Z",
+      "from": "new",
+      "to": "triaged"
+    },
+    {
+      "ticket_id": "sample-2",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-19T06:49:36.000Z",
+      "from": "triaged",
+      "to": "assigned"
+    },
+    {
+      "ticket_id": "sample-2",
+      "type": "assignment_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-19T06:51:09.600Z"
+    },
+    {
+      "ticket_id": "sample-2",
+      "type": "assignment_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-19T07:05:12.000Z"
+    },
+    {
+      "ticket_id": "sample-2",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-19T07:06:45.600Z",
+      "from": "assigned",
+      "to": "in_progress"
+    },
+    {
+      "ticket_id": "sample-2",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-19T09:10:00.000Z",
+      "from": "in_progress",
+      "to": "resolved"
+    },
+    {
+      "ticket_id": "sample-3",
+      "type": "created",
+      "actor_type": "user",
+      "created_at": "2026-10-26T12:51:00.000Z"
+    },
+    {
+      "ticket_id": "sample-3",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-26T13:02:42.000Z",
+      "from": "new",
+      "to": "triaged"
+    },
+    {
+      "ticket_id": "sample-3",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-26T13:14:24.000Z",
+      "from": "triaged",
+      "to": "assigned"
+    },
+    {
+      "ticket_id": "sample-3",
+      "type": "assignment_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-26T13:16:44.400Z"
+    },
+    {
+      "ticket_id": "sample-3",
+      "type": "assignment_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-26T13:37:48.000Z"
+    },
+    {
+      "ticket_id": "sample-3",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-26T13:40:08.400Z",
+      "from": "assigned",
+      "to": "in_progress"
+    },
+    {
+      "ticket_id": "sample-3",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-26T16:45:00.000Z",
+      "from": "in_progress",
+      "to": "resolved"
+    },
+    {
+      "ticket_id": "sample-4",
+      "type": "created",
+      "actor_type": "user",
+      "created_at": "2026-10-26T05:14:00.000Z"
+    },
+    {
+      "ticket_id": "sample-4",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-26T05:26:54.000Z",
+      "from": "new",
+      "to": "triaged"
+    },
+    {
+      "ticket_id": "sample-4",
+      "type": "status_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-26T05:39:48.000Z",
+      "from": "triaged",
+      "to": "assigned"
+    },
+    {
+      "ticket_id": "sample-4",
+      "type": "assignment_changed",
+      "actor_type": "system",
+      "created_at": "2026-10-26T05:42:22.800Z"
+    },
+    {
+      "ticket_id": "sample-4",
+      "type": "assignment_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-26T06:05:36.000Z"
+    },
+    {
+      "ticket_id": "sample-4",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-26T06:08:10.800Z",
+      "from": "assigned",
+      "to": "in_progress"
+    },
+    {
+      "ticket_id": "sample-4",
+      "type": "status_changed",
+      "actor_type": "user",
+      "created_at": "2026-10-26T09:32:00.000Z",
+      "from": "in_progress",
+      "to": "resolved"
+    }
+  ]
+}

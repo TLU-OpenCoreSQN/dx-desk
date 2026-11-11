@@ -14,6 +14,8 @@ import {
   ChevronRight,
   ClipboardList,
   ShieldCheck,
+  ChartNoAxesCombined,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -79,6 +81,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const links = [
     { to: '/', label: 'Trang chủ', icon: Home },
+    { to: '/du-lieu', label: 'Danh mục dữ liệu', icon: Database },
     ...(isAuthenticated
       ? [
           { to: '/tickets', label: 'Danh sách phiếu', icon: Ticket },
@@ -89,6 +92,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           ] : []),
           ...(roles.includes('Manager') ? [
             { to: '/approvals', label: 'Phê duyệt phiếu hỗ trợ', icon: ShieldCheck },
+            { to: '/bao-cao', label: 'Báo cáo vận hành', icon: ChartNoAxesCombined },
           ] : []),
         ]
       : []),

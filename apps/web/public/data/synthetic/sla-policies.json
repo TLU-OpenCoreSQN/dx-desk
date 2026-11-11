@@ -1,0 +1,28 @@
+{
+  "synthetic": true,
+  "sample": true,
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "reference_time": "2026-11-02T00:00:00Z",
+  "data": [
+    {
+      "priority": "low",
+      "response_minutes": 480,
+      "resolution_minutes": 2880
+    },
+    {
+      "priority": "normal",
+      "response_minutes": 240,
+      "resolution_minutes": 1440
+    },
+    {
+      "priority": "high",
+      "response_minutes": 60,
+      "resolution_minutes": 480
+    },
+    {
+      "priority": "critical",
+      "response_minutes": 15,
+      "resolution_minutes": 120
+    }
+  ]
+}

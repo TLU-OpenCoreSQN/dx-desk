@@ -38,6 +38,43 @@ async function json(url, options = {}) {
   const text=await response.text();
   return text ? JSON.parse(text) : null;
 }
+
+export async function demoSeedIdentities(env) {
+  localDemo(env);
+  if (env.AUTOMATION_ENABLED !== 'true' || !env.AUTOMATION_CLIENT_SECRET) {
+    throw new Error('Chạy stack demo với automation trước, hoặc dùng --offline cho dry-run.');
+  }
+  const base = env.KEYCLOAK_PUBLIC_URL.replace(/\/+$/, '');
+  const issuer = base + '/realms/' + env.KEYCLOAK_REALM;
+  const tokenUrl = '/protocol/openid-connect/token';
+  const [service, administrator] = await Promise.all([
+    json(issuer + tokenUrl, { method: 'POST', body: new URLSearchParams({
+      grant_type: 'client_credentials', client_id: env.AUTOMATION_CLIENT_ID, client_secret: env.AUTOMATION_CLIENT_SECRET,
+    }) }),
+    json(base + '/realms/master' + tokenUrl, { method: 'POST', body: new URLSearchParams({
+      grant_type: 'password', client_id: 'admin-cli', username: env.KEYCLOAK_ADMIN, password: env.KEYCLOAK_ADMIN_PASSWORD,
+    }) }),
+  ]);
+  const admin = path => json(base + '/admin/realms/' + env.KEYCLOAK_REALM + path, {
+    headers: { Authorization: 'Bearer ' + administrator.access_token },
+  });
+  const result = await json('http://localhost:' + env.APISIX_PORT + '/api/system/teams', {
+    headers: { Authorization: 'Bearer ' + service.access_token },
+  });
+  const expected = { 'employee.a': 'Employee', 'employee.b': 'Employee', 'agent.1': 'Agent', 'agent.2': 'Agent', 'manager.1': 'Manager' };
+  const users = await Promise.all(Object.entries(expected).map(async ([username, role]) => {
+    const [user] = await admin('/users?exact=true&username=' + encodeURIComponent(username));
+    if (!user?.enabled) throw new Error(`Thiếu tài khoản demo hoạt động ${username}.`);
+    const roles = await admin('/users/' + user.id + '/role-mappings/realm/composite');
+    if (!roles.some(item => item.name === role)) throw new Error(`Tài khoản demo ${username} thiếu vai trò ${role}.`);
+    return { sub: user.id, roles: [role] };
+  }));
+  const staff = new Set(users.filter(user => !user.roles.includes('Employee')).map(user => user.sub));
+  const teams = result.data.filter(team => team.active && ['Network Team', 'Identity Team', 'IT Support'].includes(team.name))
+    .map(team => ({ id: team.id, name: team.name, members: team.members.filter(subject => staff.has(subject)) }));
+  const system = JSON.parse(Buffer.from(service.access_token.split('.')[1], 'base64url')).sub;
+  return { users, teams, system };
+}
 export async function setupIdentity(env) {
   if (env.AUTOMATION_ENABLED !== 'true') return;
   localDemo(env);

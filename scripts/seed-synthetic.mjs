@@ -1,20 +1,48 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
-// W4 synthetic snapshots. Dry-run by default; never creates Keycloak identities or scanned files.
+// Dry-run by default; never creates Keycloak identities or scanned files.
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { planVpnScenario, scenarioHistory, scenarioSummary } from './seed-scenario.mjs';
+import { importDemoHistory } from './import-demo-history.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ROLES = ['Employee', 'Agent', 'Manager'];
 const STATUSES = ['new', 'triaged', 'assigned', 'in_progress', 'waiting_user', 'resolved', 'closed', 'cancelled', 'pending_approval'];
-const CATEGORIES = ['vpn', 'account', 'hardware', 'software', 'system-error'];
+const WEIGHTS = { account: 35, vpn: 25, hardware: 20, software: 12, access: 5, 'system-error': 3 };
+const MINUTE = 60_000;
+const WEEK = 7 * 24 * 60 * MINUTE;
 const TEAM_NAMES = { vpn: 'Network Team', account: 'Identity Team', access: 'Identity Team', hardware: 'IT Support', software: 'IT Support', 'system-error': 'IT Support' };
-const TITLES = { vpn: 'Không kết nối được VPN client 4.2', account: 'Cần hỗ trợ tài khoản thử nghiệm', hardware: 'Màn hình thiết bị thử nghiệm bị nháy', software: 'Phần mềm mô phỏng cần cài đặt lại', access: 'Đề nghị quyền truy cập hệ thống giả lập', 'system-error': 'Hệ thống thử nghiệm phản hồi chậm' };
+const TITLES = { vpn: 'Không kết nối được VPN', account: 'Cần hỗ trợ tài khoản thử nghiệm', hardware: 'Màn hình thiết bị thử nghiệm bị nháy', software: 'Phần mềm mô phỏng cần cài đặt lại', access: 'Đề nghị quyền truy cập hệ thống giả lập', 'system-error': 'Hệ thống thử nghiệm phản hồi chậm' };
 const digest = value => createHash('sha256').update(value).digest('hex');
+const sample = key => Number.parseInt(digest(key).slice(0, 8), 16) / 2 ** 32;
+
+function weighted(values, position) {
+  let remaining = position * values.reduce((sum, [, weight]) => sum + weight, 0);
+  for (const [value, weight] of values) {
+    remaining -= weight;
+    if (remaining < 0) return value;
+  }
+  throw new Error('Phân bố trọng số không hợp lệ.');
+}
+
+function seedParameters(options) {
+  const { weeks = 6, users = 100, scenario = 'baseline', weights = {} } = options;
+  if (!Number.isInteger(weeks) || weeks < 1 || weeks > 52) throw new Error('weeks phải là số nguyên 1..52.');
+  if (!Number.isInteger(users) || users < 1 || users > 10000) throw new Error('users phải là số nguyên 1..10000.');
+  if (!['baseline', 'vpn-4.2'].includes(scenario)) throw new Error('scenario chỉ nhận baseline hoặc vpn-4.2.');
+  if (Object.entries(weights).some(([key, value]) =>
+    !Object.hasOwn(WEIGHTS, key) || !Number.isFinite(value) || value < 0 || value > 100)) {
+    throw new Error('Trọng số danh mục phải nằm trong 0..100 và dùng mã danh mục hiện có.');
+  }
+  const categories = Object.entries({ ...WEIGHTS, ...weights });
+  if (!categories.some(([, weight]) => weight > 0)) throw new Error('Cần ít nhất một trọng số dương.');
+  return { weeks, users, scenario, categories };
+}
 
 function stableId(value) {
   const hex = digest(value).slice(0, 32).split('');
@@ -43,39 +71,59 @@ function normalizeIdentities(identityMap = {}) {
     seenTeams.add(team.name);
     return { id: team.id.toLowerCase(), name: team.name, members: [...new Set(team.members.map(sub => sub.toLowerCase()))].sort() };
   }).sort((a, b) => a.name.localeCompare(b.name));
-  return { users: normalizedUsers, teams: normalizedTeams };
+  const system = identityMap.system ?? null;
+  if (system !== null && (!UUID.test(system) || known.has(system.toLowerCase()))) throw new Error('System cần sub UUID riêng của service account.');
+  return { users: normalizedUsers, teams: normalizedTeams, system: system?.toLowerCase() ?? null };
 }
 
 /** Same seed/time/verified identity map => same rows and manifest, including their hash. */
-export function generate(seed = 'dxdesk-w4', now = '2026-11-02T00:00:00.000Z', identityMap = {}, count = 500) {
+export function generate(seed = 'dxdesk-w4', now = '2026-11-02T00:00:00.000Z', identityMap = {}, count = 500, options = {}) {
   if (typeof seed !== 'string' || !seed.trim() || seed.length > 128) throw new Error('seed cần chuỗi 1..128 ký tự.');
   if (!Number.isInteger(count) || count < 500 || count > 50000) throw new Error('count phải là số nguyên 500..50000.');
   if (typeof now !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(now) || !Number.isFinite(Date.parse(now))) throw new Error('--now phải là timestamp UTC ISO-8601 cố định.');
   const referenceTime = new Date(now).toISOString();
   if (referenceTime.slice(0, 19) !== now.slice(0, 19)) throw new Error('--now có ngày/giờ không hợp lệ.');
   const referenceMs = Date.parse(referenceTime);
+  const { weeks, users, scenario, categories } = seedParameters(options);
   const identities = normalizeIdentities(identityMap);
   const employees = identities.users.filter(user => user.roles.includes('Employee'));
   const managers = identities.users.filter(user => user.roles.includes('Manager'));
   const agents = identities.users.filter(user => user.roles.includes('Agent'));
   const identityHash = digest(JSON.stringify(identities));
-  const namespace = stableId(`dxdesk-synthetic:v1:${seed}:${referenceTime}:${identityHash}`);
+  const parameters = { weeks, users, scenario, weights: Object.fromEntries(categories) };
+  const vpnPlan = scenario === 'vpn-4.2' ? planVpnScenario({ weeks, categories, referenceMs, sample: key => sample(seed + ':' + key) }) : null;
+  const schemaVersion = vpnPlan ? 3 : 2;
+  const namespace = stableId(`dxdesk-synthetic:v${schemaVersion}:${seed}:${referenceTime}:${identityHash}:${JSON.stringify(parameters)}:${vpnPlan ? count : ''}`);
+  const profiles = Array.from({ length: users }, (_, index) => {
+    const audience = weighted([['Sinh viên', 70], ['Giảng viên', 20], ['Cán bộ', 10]], (index + 0.5) / users);
+    const units = audience === 'Cán bộ' ? ['Phòng đào tạo', 'Phòng hành chính', 'Trung tâm CNTT'] : ['Khoa Kỹ thuật', 'Khoa Kinh tế', 'Khoa Công nghệ'];
+    return { code: `SYNTH-${String(index + 1).padStart(4, '0')}`, audience, unit: units[index % units.length] };
+  });
+  const weekWeights = Array.from({ length: weeks }, (_, index) => [index, index < 2 ? 2.5 : 1]);
   const tickets = Array.from({ length: count }, (_, index) => {
-    const status = STATUSES[index % STATUSES.length];
-    const category = status === 'pending_approval' ? 'access' : CATEGORIES[index % CATEGORIES.length];
+    const key = `${seed}:${index}`;
+    const cohort = vpnPlan?.(index);
+    const week = weighted(weekWeights, sample(key + ':week'));
+    const weekCategories = vpnPlan && week >= weeks - 2 ? categories.filter(([code]) => code !== 'vpn') : categories;
+    const category = cohort ? 'vpn' : weighted(weekCategories, sample(key + ':category'));
+    const proposedStatus = STATUSES[index % STATUSES.length];
+    let status = cohort ? 'resolved' : proposedStatus === 'pending_approval' && category !== 'access' ? 'new' : proposedStatus;
+    if (vpnPlan && category === 'access' && ['new', 'triaged', 'cancelled'].includes(status)) status = 'pending_approval';
     const critical = managers.length > 0 && index % 17 === 0 && status !== 'pending_approval';
     const requesters = critical ? managers : employees;
-    const requester = requesters.length ? requesters[index % requesters.length] : null;
+    const profileIndex = index % profiles.length;
+    const profile = profiles[profileIndex];
+    const requester = requesters.length ? requesters[profileIndex % requesters.length] : null;
     const teamName = TEAM_NAMES[category];
     const team = identities.teams.find(item => item.name === teamName);
     const teamAgents = agents.filter(agent => team?.members.includes(agent.sub));
     const assigned = ['assigned', 'in_progress', 'waiting_user', 'resolved', 'closed'].includes(status);
     const claimed = ['in_progress', 'waiting_user', 'resolved', 'closed'].includes(status);
     const assignee = claimed && teamAgents.length ? teamAgents[index % teamAgents.length].sub : null;
-    const ageMs = (1 + Number.parseInt(digest(`${seed}:${index}`).slice(0, 8), 16) % (42 * 24 * 60)) * 60000;
-    const createdAt = new Date(referenceMs - ageMs).toISOString();
+    const createdAt = cohort?.createdAt ?? new Date(referenceMs - (weeks - week) * WEEK + Math.floor(sample(key + ':minute') * (WEEK / MINUTE - 1)) * MINUTE).toISOString();
+    const clientVersion = cohort?.clientVersion ?? '4.1';
     const requestFields = {
-      vpn: { client_version: '4.2', error_message: '[SYNTHETIC] Kết nối thử nghiệm hết thời gian', device_os: 'Windows thử nghiệm' },
+      vpn: { client_version: clientVersion, error_message: '[SYNTHETIC] Kết nối thử nghiệm hết thời gian', device_os: 'Windows thử nghiệm' },
       account: { account_name: `synthetic.user.${index % 25 + 1}`, issue_type: '[SYNTHETIC] Không đăng nhập được' },
       hardware: { device_code: `SYNTH-${String(index + 1).padStart(5, '0')}`, location: '[SYNTHETIC] Phòng thử nghiệm' },
       software: { software_name: '[SYNTHETIC] Ứng dụng văn phòng', error_message: 'Lỗi mô phỏng để kiểm thử' },
@@ -85,28 +133,35 @@ export function generate(seed = 'dxdesk-w4', now = '2026-11-02T00:00:00.000Z', i
     return {
       id: stableId(`${namespace}:ticket:${index}`), requester_id: requester?.sub ?? null,
       category_code: category, title: `[SYNTHETIC] ${TITLES[category]} #${index + 1}`,
-      description: `[SYNTHETIC] Dữ liệu giả lập DX-Desk, phiếu ${index + 1}. Không phải sự cố hoặc số liệu vận hành thực tế. Nhóm/phòng ban mô phỏng ${index % 6 + 1}.`,
+      description: `[SYNTHETIC] Phiếu ${index + 1}. ${profile.code} · ${profile.audience} · ${profile.unit} (mô phỏng).`,
+      profile_code: profile.code,
       priority: critical ? 'critical' : ['low', 'normal', 'high'][index % 3], status,
       assigned_team_id: assigned ? team?.id ?? null : null, team_name: assigned ? teamName : null,
       assigned_to: assignee, request_fields: requestFields, created_at: createdAt, updated_at: createdAt,
       waiting_since: status === 'waiting_user' ? createdAt : null, sla_paused_ms: 0,
       resolution_note: ['resolved', 'closed'].includes(status) ? '[SYNTHETIC] Đã khắc phục bằng quy trình thử nghiệm và xác minh dữ liệu giả lập.' : null,
+      ...(cohort && { scenario_phase: cohort.phase, resolution_minutes: cohort.minutes }),
     };
   });
   const counts = field => Object.fromEntries([...new Set(tickets.map(row => row[field]))].sort().map(value => [value, tickets.filter(row => row[field] === value).length]));
-  const mappingRequired = tickets.some(row => !row.requester_id || (row.team_name && !row.assigned_team_id) || (['in_progress', 'waiting_user', 'resolved', 'closed'].includes(row.status) && !row.assigned_to));
+  const mappingRequired = Boolean(vpnPlan && !identities.system) || tickets.some(row => !row.requester_id || (row.team_name && !row.assigned_team_id) || (['in_progress', 'waiting_user', 'resolved', 'closed'].includes(row.status) && !row.assigned_to));
   const roster = identities.teams.flatMap(team => team.members.map((sub, index) => ({
     team_id: team.id, team_name: team.name, user_id: sub,
     display_name: `[SYNTHETIC] Kỹ thuật viên thử nghiệm ${index + 1}`, active: true,
   })));
+  const history = vpnPlan ? scenarioHistory(tickets, identities.system, stableId, referenceMs) : null;
   const manifest = {
-    schema_version: 1, synthetic: true, seed, namespace, reference_time: referenceTime, timezone: 'UTC',
+    schema_version: schemaVersion, synthetic: true, seed, namespace, reference_time: referenceTime, timezone: 'UTC',
+    parameters, assumptions: 'W4-10: giả định của đội, chưa phải số liệu Trung tâm CNTT.',
     ticket_count: count, role_counts: Object.fromEntries(ROLES.map(role => [role, identities.users.filter(user => user.roles.includes(role)).length])),
     status_counts: counts('status'), category_counts: counts('category_code'),
-    roster_count: roster.length, identity_mapping_sha256: identityHash, dataset_sha256: digest(JSON.stringify(tickets)),
+    roster_count: roster.length, identity_mapping_sha256: identityHash, dataset_sha256: digest(JSON.stringify(history ? { tickets, profiles, ...history } : tickets)),
     mapping_required: mappingRequired, evidence_scope: 'Synthetic snapshots only; not operational KPI, lifecycle audit, antivirus or M3 E2E evidence.',
+    ...(history && { scenario_summary: scenarioSummary(tickets, history.events), event_count: history.events.length,
+      self_service_count: history.self_service.length, device_request_count: history.device_requests.length,
+      evidence_scope: 'Synthetic lifecycle fixtures only; not real operational data or E2E evidence.' }),
   };
-  return { manifest, tickets, roster };
+  return { manifest, tickets, roster, profiles, ...history };
 }
 
 export function assertDemoTarget(databaseUrl, { apply = false, confirmDemo = false } = {}) {
@@ -142,9 +197,16 @@ export async function applyDataset(dataset, databaseUrl, options = {}) {
       await client.query(`INSERT INTO private.team_members(team_id,user_id,display_name,active)
         VALUES($1,$2,$3,true) ON CONFLICT(team_id,user_id) DO NOTHING`, [member.team_id, member.user_id, member.display_name]);
     }
-    for (const ticket of dataset.tickets.filter(row => row.assigned_to)) {
-      const member = await client.query('SELECT 1 FROM private.team_members WHERE team_id=$1 AND user_id=$2 AND active', [ticket.assigned_team_id, ticket.assigned_to]);
+    const assignments = new Map(dataset.tickets.filter(row => row.assigned_to)
+      .map(row => [`${row.assigned_team_id}:${row.assigned_to}`, [row.assigned_team_id, row.assigned_to]]));
+    for (const assignment of assignments.values()) {
+      const member = await client.query('SELECT 1 FROM private.team_members WHERE team_id=$1 AND user_id=$2 AND active', assignment);
       if (!member.rowCount) throw new Error('Assignee phải thuộc roster active của team demo.');
+    }
+    if (dataset.events) {
+      const result = await importDemoHistory(client, dataset);
+      await client.query('COMMIT'); started = false;
+      return { ...result, already_present: dataset.tickets.length - result.inserted, database: expectedDatabase };
     }
     const categories = await client.query('SELECT id,code FROM public.categories WHERE active');
     const ids = new Map(categories.rows.map(row => [row.code, row.id]));
@@ -173,27 +235,42 @@ export async function applyDataset(dataset, databaseUrl, options = {}) {
   } finally { await client.end().catch(() => {}); }
 }
 
-async function main() {
-  const options = Object.fromEntries(process.argv.slice(2).map(arg => {
+export async function seedMain(args = process.argv.slice(2), env = process.env, getIdentities) {
+  const options = Object.fromEntries(args.map(arg => {
     if (!arg.startsWith('--')) throw new Error('Dùng --seed=... --now=... --count=500 --identities=<file> [--apply --confirm-demo].');
     const at = arg.indexOf('='); return at === -1 ? [arg.slice(2), true] : [arg.slice(2, at), arg.slice(at + 1)];
   }));
-  const allowed = ['seed', 'now', 'count', 'identities', 'output', 'apply', 'confirm-demo', 'help'];
+  const allowed = ['seed', 'now', 'count', 'weeks', 'users', 'weights', 'scenario', 'identities', 'offline', 'output', 'apply', 'confirm-demo', 'help'];
   if (Object.keys(options).some(key => !allowed.includes(key))) throw new Error('Tham số không được hỗ trợ.');
-  if (options.help) { console.log('node scripts/seed-synthetic.mjs --seed=dxdesk-w4 --now=2026-11-02T00:00:00Z --count=500 --identities=<verified-map.json> [--apply --confirm-demo]\nMặc định dry-run; DATABASE_URL chỉ dùng khi --apply. Map: {users:[{sub,roles:[Employee|Agent|Manager]}],teams:[{id,name,members:[sub]}]}.'); return; }
-  if (options.apply !== undefined && options.apply !== true || options['confirm-demo'] !== undefined && options['confirm-demo'] !== true) throw new Error('--apply/--confirm-demo là cờ, không nhận giá trị.');
-  const identityMap = options.identities ? JSON.parse(await readFile(resolve(String(options.identities)), 'utf8')) : {};
-  const dataset = generate(options.seed ?? 'dxdesk-w4', options.now ?? '2026-11-02T00:00:00.000Z', identityMap, options.count === undefined ? 500 : Number(options.count));
+  if (options.help) { console.log('node scripts/dxdesk.mjs seed [--seed=...] [--now=<UTC ISO-8601>] [--weeks=6] [--users=100] [--weights=vpn:25,account:35] [--scenario=baseline|vpn-4.2] [--count=900] [--offline|--identities=<map.json>] [--apply --confirm-demo]\nMặc định dry-run; DATABASE_URL chỉ dùng khi --apply.'); return; }
+  for (const key of ['apply', 'confirm-demo', 'offline']) {
+    if (options[key] !== undefined && options[key] !== true) throw new Error(`--${key} là cờ, không nhận giá trị.`);
+  }
+  if (options.offline && options.identities) throw new Error('Chọn --offline hoặc --identities.');
+  if (options.apply) assertDemoTarget(env.DATABASE_URL, { apply: true, confirmDemo: options['confirm-demo'] });
+  const weights = Object.fromEntries(String(options.weights ?? '').split(',').filter(Boolean).map(entry => {
+    const [key, value, extra] = entry.split(':');
+    if (extra !== undefined || !value?.trim()) throw new Error('Dùng --weights=vpn:25,account:35.');
+    return [key, Number(value)];
+  }));
+  const weeks = Number(options.weeks ?? 6);
+  const count = Number(options.count ?? (getIdentities || options.weeks !== undefined ? Math.max(500, weeks * 150) : 500));
+  const identityMap = options.identities ? JSON.parse(await readFile(resolve(String(options.identities)), 'utf8'))
+    : options.offline || !getIdentities ? {} : await getIdentities();
+  const dataset = generate(options.seed ?? 'dxdesk-w4', options.now ?? '2026-11-02T00:00:00.000Z', identityMap, count,
+    { weeks, users: Number(options.users ?? 100), scenario: options.scenario ?? 'baseline', weights });
   let application = { mode: 'dry-run', applied: false };
-  if (options.apply) application = { mode: 'apply', applied: true, ...await applyDataset(dataset, process.env.DATABASE_URL, { apply: true, confirmDemo: options['confirm-demo'] === true }) };
+  if (options.apply) application = { mode: 'apply', applied: true, ...await applyDataset(dataset, env.DATABASE_URL, { apply: true, confirmDemo: options['confirm-demo'] === true }) };
   const directory = resolve(options.output ?? resolve(root, '.local/reports'));
   await mkdir(directory, { recursive: true });
   const stem = `synthetic-${dataset.manifest.namespace}`;
   await writeFile(resolve(directory, `${stem}.json`), JSON.stringify(dataset, null, 2) + '\n');
   await writeFile(resolve(directory, `${stem}.manifest.json`), JSON.stringify({ ...dataset.manifest, application }, null, 2) + '\n');
-  console.log(JSON.stringify({ ...application, manifest: resolve(directory, `${stem}.manifest.json`), ticket_count: dataset.manifest.ticket_count, mapping_required: dataset.manifest.mapping_required }));
+  console.log(JSON.stringify({ ...application, manifest: resolve(directory, `${stem}.manifest.json`), ticket_count: dataset.manifest.ticket_count,
+    dataset_sha256: dataset.manifest.dataset_sha256, mapping_required: dataset.manifest.mapping_required,
+    scenario_summary: dataset.manifest.scenario_summary }));
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  main().catch(error => { console.error(error.message); process.exitCode = 1; });
+  seedMain().catch(error => { console.error(error.message); process.exitCode = 1; });
 }

@@ -71,6 +71,45 @@ test('unmapped dry-run invents no identities and clearly blocks application', ()
   assert.ok(planned.tickets.every(row => row.requester_id === null && row.assigned_to === null));
 });
 
+test('campus profiles, weeks and category weights are reproducible', () => {
+  const options = { weeks: 8, users: 10, weights: { vpn: 100, account: 0, hardware: 0, software: 0, access: 0, 'system-error': 0 } };
+  const dataset = generate('campus', now, identityMap, 500, options);
+  assert.deepEqual(dataset, generate('campus', now, identityMap, 500, options));
+  assert.equal(dataset.profiles.length, 10);
+  assert.equal(dataset.profiles.filter(profile => profile.audience === 'Sinh viên').length, 7);
+  assert.equal(dataset.profiles.filter(profile => profile.audience === 'Giảng viên').length, 2);
+  assert.equal(dataset.profiles.filter(profile => profile.audience === 'Cán bộ').length, 1);
+  assert.deepEqual(dataset.manifest.category_counts, { vpn: 500 });
+  assert.ok(dataset.tickets.every(row => row.request_fields.client_version === '4.1' && row.description.includes(row.profile_code)));
+  assert.ok(dataset.tickets.some(row => Date.parse(row.created_at) < Date.parse(now) - 42 * 86_400_000));
+  for (const invalid of [{ weeks: 0 }, { users: 10_001 }, { scenario: 'unknown' }, { weights: { vpn: -1 } }]) {
+    assert.throws(() => generate('campus', now, identityMap, 500, invalid));
+  }
+});
+
+test('VPN rollout has two complete cohorts with the published rates and historical events', () => {
+  const verified = { ...identityMap, system: '00000000-0000-4000-8000-000000000004' };
+  for (const weeks of [6, 7, 8]) {
+    const dataset = generate('vpn-check', now, verified, 900, { weeks, scenario: 'vpn-4.2' });
+    assert.equal(dataset.manifest.mapping_required, false);
+    assert.deepEqual(dataset.manifest.scenario_summary, {
+      before: { tickets: 100, average_hours: 2.4, client_4_2: 0 },
+      after: { tickets: 137, average_hours: 4.1, client_4_2: 99 },
+      vpn_increase_percent: 37, client_4_2_after_percent: 72,
+    });
+    const events = dataset.events.filter(event => event.ticket_id === dataset.tickets[0].id);
+    assert.deepEqual(events.map(event => event.payload.to ?? event.event_type),
+      ['created', 'triaged', 'assigned', 'assignment_changed', 'assignment_changed', 'in_progress', 'resolved']);
+    assert.ok(events.slice(1, 4).every(event => event.actor_type === 'system' && event.actor_id === verified.system));
+    assert.ok(events.slice(4).every(event => event.actor_type === 'user' && event.actor_id === agent));
+    assert.ok(events.every((event, index) => index === 0 || event.created_at > events[index - 1].created_at));
+    assert.equal(dataset.self_service.length, 75);
+    assert.equal(dataset.device_requests.length, 20);
+    assert.deepEqual(dataset, generate('vpn-check', now, verified, 900, { weeks, scenario: 'vpn-4.2' }));
+  }
+  assert.throws(() => generate('vpn-check', now, verified, 900, { weeks: 5, scenario: 'vpn-4.2' }), /6\.\.8/);
+});
+
 test('invalid size, clock, duplicate subjects, roles and foreign roster members are rejected', () => {
   for (const size of [0, 499, 50001, 500.5, NaN]) assert.throws(() => generate('w4', now, identityMap, size));
   assert.throws(() => generate('', now, identityMap));

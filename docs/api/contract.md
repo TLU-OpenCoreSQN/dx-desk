@@ -248,3 +248,10 @@ JSON/base64 là hợp đồng đã chọn, không phải giới hạn của lock
 tệp trong RAM. Unit/integration dùng clamd/Filer giả để thử lỗi; stack CI quét EICAR
 68 byte bằng ClamAV thật và đối chiếu bytes SeaweedFS, sau đó browser kiểm upload/
 download trên cùng stack. Đọc kết quả artifact của đúng SHA, không suy từ số unit test.
+
+## Báo cáo Metabase (W5-06)
+
+`GET /api/analytics/embed` yêu cầu JWT có vai trò `Manager`. Trả `{"url":"…"}`
+với chữ ký cho một dashboard, hạn 5 phút, và `Cache-Control: no-store`.
+Tài khoản chưa đăng nhập nhận 401, Employee và Agent nhận 403. API trả 503 khi
+Metabase chưa được cấu hình trong hồ sơ `full`.
