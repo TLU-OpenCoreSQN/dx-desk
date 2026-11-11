@@ -151,7 +151,7 @@ try {
   });
   await check('Browser creates ticket and reads the database audit through real API', async () => {
     await page.getByRole('link', { name: 'Tạo phiếu hỗ trợ', exact: true }).click();
-    await page.getByLabel(/Danh mục/).selectOption('10000000-0000-4000-8000-000000000001');
+    await page.getByRole('combobox', { name: 'Danh mục sự cố' }).selectOption('10000000-0000-4000-8000-000000000001');
     await page.getByLabel(/Tiêu đề/).fill('Kiểm thử SSO thật: VPN mất kết nối');
     await page.getByLabel(/Mô tả/).fill('Yêu cầu được gửi từ Chromium qua Keycloak và NestJS vào PostgreSQL kiểm thử.');
     await page.getByLabel(/Phiên bản client VPN/).fill('OpenVPN 4.2');

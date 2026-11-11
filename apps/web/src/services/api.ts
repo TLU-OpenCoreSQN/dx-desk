@@ -36,6 +36,10 @@ export class ApiClientError extends Error {
   }
 }
 
+export function getAnalyticsEmbed(signal: AbortSignal) {
+  return request<{ url: string }>('/analytics/embed', { signal });
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},

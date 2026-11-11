@@ -32,8 +32,16 @@ Mỗi lần mượn connection phải thiết lập claims mới và kết thúc
 
 Các trạng thái được dự trù trong schema, nhưng quy tắc chuyển trạng thái,
 Poka-yoke theo loại yêu cầu, SLA, routing và upload thuộc tuần 3–4.
-JSON-LD/DCAT thuộc tuần 5–7. Không đánh dấu những chức năng này hoàn thành chỉ vì
-đã có cột hoặc bảng.
+## Danh mục dữ liệu công khai (W5-07)
+
+Trang `/du-lieu` đọc `/ld/catalog` và hiển thị ba bộ dữ liệu DCAT với giấy phép CC0 1.0,
+ngày cập nhật và liên kết tải. Các tài nguyên sử dụng URI `/ld/services/{code}`,
+`/ld/request-types/{code}` và `/ld/device-types/{code}`, có JSON-LD để kiểm tra trên Playground.
+Khi W5-04 chưa cấu hình route API, web phục vụ JSON-LD mẫu cùng lược đồ URI và bản tải
+có gắn nhãn giả lập. Các bản tải công khai nằm trong bundle web, tách khỏi DB nghiệp vụ.
+
+Cảnh 3 demo có thể mở trực tiếp `/du-lieu` trong cửa sổ ẩn danh, tải một mẫu, rồi
+chọn **Dịch vụ → Kết nối VPN** để xem JSON-LD, sao chép URI hoặc mở Playground.
 
 ## Tri thức và tự phục vụ (migration 012, W5-08)
 
@@ -44,3 +52,13 @@ JSON-LD/DCAT thuộc tuần 5–7. Không đánh dấu những chức năng này
   gợi ý của danh mục.
 - `reporting.self_service_weekly`: số lượt và số người theo tuần/danh mục/bài, không có định danh;
   chỉ cấp cho vai trò `reporting_reader` (Metabase, W5-06), không lộ qua PostgREST.
+
+## Bộ sinh demo trong bối cảnh trường (W4-07)
+
+`make seed` hoặc `node scripts/dxdesk.mjs seed` đọc team từ `/api/system/teams` và kiểm tra
+các tài khoản mẫu trong Keycloak cục bộ. Hồ sơ giảng viên, sinh viên, cán bộ và đơn vị
+là thuộc tính giả lập của phiếu. Các hồ sơ dùng chung những tài khoản demo có sẵn trong realm.
+Các tham số `--weeks`, `--users`, `--weights=vpn:25,account:35` và `--scenario` điều chỉnh dữ liệu.
+Phân bố mặc định theo [giả định của đội trong W4-10](khao-sat-trung-tam-cntt.md#tham-số-cho-bộ-sinh-dữ-liệu-giả-định-của-đội).
+Dùng `--offline` để sinh thử khi stack chưa chạy. File xuất mặc định nằm trong `.local/reports`.
+Xem [thẻ dữ liệu giả lập](data/README.md) cho kịch bản VPN, giấy phép và cách nạp DB demo.

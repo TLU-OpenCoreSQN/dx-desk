@@ -95,6 +95,7 @@ jobs:
       - run: npm ci --prefix apps/api
       - run: npm run build --prefix apps/api
       - run: node --test tests/seed-synthetic.test.mjs tests/setup-wiki.test.mjs
+      - run: node scripts/export-demo-samples.mjs --check
       - run: npm ci --prefix tools/testing
       - run: npm run integration --prefix tools/testing
       - name: Kiểm tra migration runner, checksum và rollback
@@ -166,6 +167,10 @@ jobs:
         run: node tools/testing/week4-browser.mjs
       - name: Wiki.js SSO, bài gợi ý và lượt tự phục vụ (W5-08)
         run: node tools/testing/week5-wiki.mjs
+      - name: Bộ sinh dùng tài khoản Keycloak và roster thật (W4-07, W5-05)
+        run: |
+          node scripts/dxdesk.mjs seed --scenario=vpn-4.2 --weeks=6 --output=.local/reports/week5
+          node --input-type=module -e "import { readdirSync, readFileSync } from 'node:fs'; const dir='.local/reports/week5/'; const file=readdirSync(dir).find(name=>name.endsWith('.manifest.json')); const report=JSON.parse(readFileSync(dir+file,'utf8')); if(report.mapping_required || report.scenario_summary.vpn_increase_percent !== 37) process.exit(1)"
       - name: Nhật ký khi lỗi
         if: failure()
         run: docker compose --env-file .env -f infra/compose/docker-compose.yml logs --tail=100
@@ -178,6 +183,18 @@ jobs:
       - name: Dừng stack CI
         if: always()
         run: docker compose --env-file .env -f infra/compose/docker-compose.yml down -v
+
+  week5-metabase:
+    name: Metabase và KPI demo tuần 5
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix apps/api
+      - run: node tools/testing/week5-metabase.mjs
 
   tn04-runtime:
     name: TN-04 runtime (${{ matrix.app }})

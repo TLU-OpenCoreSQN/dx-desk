@@ -32,3 +32,9 @@ path = [
 precedence = "override"
 SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
 SPDX-License-Identifier = "CC-BY-4.0"
+
+[[annotations]]
+path = ["apps/web/public/data/synthetic/*.json"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
+SPDX-License-Identifier = "CC0-1.0"
