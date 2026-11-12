@@ -8,15 +8,21 @@
 - W5-08: Wiki.js 2.5.315 trong hồ sơ `full`/`demo-light`, đăng nhập bằng Keycloak (client `wikijs`, OIDC, nhóm theo vai trò), cấu hình tự động bằng `scripts/setup-wiki.mjs`; 6 bài tri thức CC BY 4.0 và trang chủ mục lục (`docs/wiki/home.md`, tránh màn "Welcome to your wiki" khi vào `/`) trong `docs/wiki/`.
 - W5-08: migration 012 — bài tri thức, ánh xạ danh mục → bài, lượt "Đã tự xử lý được" (RLS chỉ chủ sở hữu đọc) và view `reporting.self_service_weekly` cho Metabase; endpoint `GET /api/categories/:id/articles`, `POST /api/self-service`; biểu mẫu tạo phiếu hiện bài gợi ý theo danh mục.
 - Kiểm thử: integration W5-08 (API + PostgREST thật), `tests/setup-wiki.test.mjs`, nghiệm thu stack `tools/testing/week5-wiki.mjs`.
+- W5-05/06/07 (#38): bộ sinh dữ liệu giả lập 6–8 tuần có kịch bản VPN và tự đối chiếu KPI (dữ liệu CC0-1.0, migration 013); Metabase OSS v0.64.3 trong hồ sơ `full` với dashboard Manager nhúng ký tại `/bao-cao`; trang danh mục dữ liệu công khai hiển thị JSON-LD và DCAT; nghiệm thu `tools/testing/week5-metabase.mjs`.
+
+### Thay đổi
+- W5-11 (#39): 6 bài tri thức Wiki.js và tài liệu thống nhất theo bối cảnh doanh nghiệp (bài LMS đổi thành "Phần mềm nghiệp vụ nội bộ"), migration 016.
 
 ### Tài liệu (tuần 5)
-- QĐ-7: ADR 0010 đề xuất nơi chạy bản Internet (VPS 8 GB, dự phòng Cloudflare Tunnel), chờ đội và thầy chốt trước 14/11.
+- QĐ-7: ADR 0010 chốt ngày 12/11 nơi chạy bản Internet — thuê VPS 4 vCPU/8 GB, dự phòng Cloudflare Tunnel; tên miền chọn sau khi thuê VPS.
+- W4-10 hủy (12/11): DX-Desk chỉ phục vụ doanh nghiệp, không khảo sát Trung tâm CNTT của trường. Tài liệu khảo sát đổi thành `docs/tham-so-du-lieu-gia-lap.md`, giữ tham số giả định của đội.
+- `THIRD-PARTY-NOTICES.md`: Wiki.js, Mattermost Team Edition, Metabase OSS chuyển từ mục PoC sang thành phần sản phẩm.
 - ADR 0008, `cai-dat.md`, `tai-nguyen.md`, hợp đồng API/OpenAPI và kịch bản demo cảnh 1 cập nhật theo W5-08.
 
 ### Tài liệu
 - W4-09: bảng RAM theo dịch vụ cho hồ sơ `demo-light` và `full` trên máy dev 16 GB (số đo tạm), đầu vào TN-05 vòng 2 (`docs/tai-nguyen.md`).
 - W4-04: ADR 0008 ghi Mattermost Team Edition 12.0.1 đã chạy runtime trong CI và kết quả kiểm giấy phép image; kịch bản demo tuần 4 (`docs/demo-tuan-4.md`).
-- W4-10: câu hỏi khảo sát Trung tâm CNTT và tham số giả định của đội cho bộ sinh dữ liệu (`docs/khao-sat-trung-tam-cntt.md`).
+- W4-10: tham số giả định của đội cho bộ sinh dữ liệu (nay ở `docs/tham-so-du-lieu-gia-lap.md`).
 
 ## [0.1.0] - 2026-11-02
 
