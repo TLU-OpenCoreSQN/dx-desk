@@ -62,6 +62,13 @@ export class AutomationController {
     return this.db.asAutomation(request.claims, async client =>
       (await client.query('SELECT private.process_event($1) AS result', [id])).rows[0].result);
   }
+  // W5-02: n8n xác nhận sự kiện đề nghị thiết bị; ACK chỉ có loại thông báo và ID.
+  @Post('device-events/:id/process')
+  @HttpCode(200)
+  processDevice(@Req() request: AutomationRequest, @Param('id', ParseUUIDPipe) id: string, @Body() _body: ProcessEvent) {
+    return this.db.asAutomation(request.claims, async client =>
+      (await client.query('SELECT private.process_device_event($1) AS result', [id])).rows[0].result);
+  }
   @Post('sla/evaluate')
   @HttpCode(200)
   evaluate(@Req() request: AutomationRequest, @Body() _body: EmptyBody) {

@@ -72,6 +72,24 @@ test('ACK type is tied to the delivery destination and only obsolete SLA may ski
   assert.equal(validAck(item,ack),false);assert.equal(validAck(item,{...ack,result:'skipped'}),false);
   assert.equal(validAck({...item,envelope:{...item.envelope,event_type:'ticket.sla_warning'}},{...ack,result:'skipped'}),true);
 });
+test('W5-02 device request deliveries need a matching request ACK and post identifiers only',()=>{
+  const request='99999999-0000-4000-8000-000000000001';
+  const item={event_id:event,destination:'device_request',envelope:{event_id:event,request_id:request,event_type:'device_request.approved',
+    payload:{status:'approved',department:'phong-hanh-chinh'}}};
+  const ack={event_id:event,request_id:request,result:'notification',notification:{kind:'approved',audience:'it',team_id:null}};
+  assert.equal(validAck(item,ack),true);
+  assert.equal(validAck(item,{...ack,request_id:ticket}),false);
+  assert.equal(validAck(item,{...ack,notification:{kind:'approved',audience:'manager'}}),false);
+  assert.equal(validAck(item,{...ack,notification:{kind:'created',audience:'it'}}),false);
+  assert.equal(validAck(item,{...ack,result:'skipped'}),false);
+  assert.equal(validAck({...item,envelope:{...item.envelope,event_type:'device_request.preparing'}},ack),false);
+  // ACK của phiếu không được dùng cho đề nghị thiết bị và ngược lại.
+  assert.equal(validAck(item,{event_id:event,ticket_id:ticket,result:'notification',notification:{kind:'status'}}),false);
+  assert.equal(validAck({...item,destination:'notification'},ack),false);
+  const text=notificationText(item.envelope);
+  assert.ok(text.includes(request)&&text.includes(event));
+  assert.equal(text.includes('phong-hanh-chinh'),false);
+});
 test('worker validates service identity and only acknowledges after durable consumer success',async t=>{
   const f=await fixture(t);await f.worker.runOnce();
   assert.ok(f.calls.some(call=>call.sql.includes('evaluate_sla')));

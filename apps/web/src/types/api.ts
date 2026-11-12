@@ -134,6 +134,13 @@ export interface DeviceRequest {
   quantity: number;
   status: string;
   created_at: string;
+  // W5-02 (migration 018): đơn vị lấy từ JWT và dấu vết từng bước duyệt.
+  department?: string;
+  decided_by?: string | null;
+  decided_at?: string | null;
+  decision_note?: string | null;
+  prepared_at?: string | null;
+  handed_over_at?: string | null;
 }
 
 export interface CreateDeviceRequestPayload {

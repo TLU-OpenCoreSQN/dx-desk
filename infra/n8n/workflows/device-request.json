@@ -1,0 +1,223 @@
+{
+  "id": "dxdeskDeviceRequests001",
+  "name": "DX-Desk device requests",
+  "active": true,
+  "nodes": [
+    {
+      "id": "Events",
+      "name": "Events",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dxdesk-device-requests",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "f4000000-0000-4000-8000-000000000003"
+    },
+    {
+      "id": "Verify-internal-key",
+      "name": "Verify internal key",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "key",
+              "leftValue": "={{ $json.headers['x-dxdesk-webhook-key'] }}",
+              "rightValue": "={{ $env.DXDESK_WEBHOOK_KEY }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "configured",
+              "leftValue": "={{ ($env.DXDESK_WEBHOOK_KEY || \"\").length >= 32 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "typeVersion": 2.2,
+      "position": [
+        210,
+        0
+      ]
+    },
+    {
+      "id": "Service-token",
+      "name": "Service token",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DXDESK_TOKEN_URL }}",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "client_credentials"
+            },
+            {
+              "name": "client_id",
+              "value": "={{ $env.DXDESK_CLIENT_ID }}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{ $env.DXDESK_CLIENT_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        0
+      ]
+    },
+    {
+      "id": "Apply-durable-event",
+      "name": "Apply durable event",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DXDESK_API_URL + '/api/system/device-events/' + $('Events').item.json.body.event_id + '/process' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $json.access_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"schema_version\": 1 }",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "typeVersion": 4.2,
+      "position": [
+        630,
+        0
+      ]
+    },
+    {
+      "id": "Durable-ACK",
+      "name": "Durable ACK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "typeVersion": 1.1,
+      "position": [
+        840,
+        0
+      ]
+    },
+    {
+      "id": "Denied",
+      "name": "Denied",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"statusCode\": 403, \"message\": \"Internal webhook authentication required\" }",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "typeVersion": 1.1,
+      "position": [
+        420,
+        210
+      ]
+    }
+  ],
+  "connections": {
+    "Events": {
+      "main": [
+        [
+          {
+            "node": "Verify internal key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify internal key": {
+      "main": [
+        [
+          {
+            "node": "Service token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Denied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Service token": {
+      "main": [
+        [
+          {
+            "node": "Apply durable event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply durable event": {
+      "main": [
+        [
+          {
+            "node": "Durable ACK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false,
+    "executionTimeout": 30
+  }
+}

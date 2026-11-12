@@ -40,6 +40,23 @@ for (const clientId of ['dxdesk-web', 'appsmith']) {
   assert.ok(client.protocolMappers.some(mapper => mapper.config['included.client.audience'] === 'dxdesk-api'));
   assert.ok(client.protocolMappers.some(mapper => mapper.config['claim.value'] === 'authenticated'));
 }
+// W5-02: đơn vị (department) đi trong access token của ứng dụng người dùng; chỉ quản trị viên sửa được.
+for (const realmPath of ['infra/keycloak/realm-dxdesk.json', 'infra/keycloak/realm-dxdesk-otp.json']) {
+  const document = JSON.parse(await read(realmPath));
+  const web = document.clients.find(client => client.clientId === 'dxdesk-web');
+  const mapper = web.protocolMappers.find(item => item.config['claim.name'] === 'department');
+  assert.ok(mapper && mapper.protocolMapper === 'oidc-usermodel-attribute-mapper' && mapper.config['access.token.claim'] === 'true'
+    && mapper.config.multivalued === 'false', `${realmPath}: dxdesk-web must carry a single-valued department claim`);
+  const profile = JSON.parse(document.components['org.keycloak.userprofile.UserProfileProvider'][0].config['kc.user.profile.config'][0]);
+  assert.deepEqual(profile.attributes.find(attribute => attribute.name === 'department').permissions.edit, ['admin'],
+    `${realmPath}: users must not edit their own department`);
+  for (const user of document.users) {
+    assert.match(user.attributes?.department?.[0] ?? '', /^[a-z0-9]+(-[a-z0-9]+)*$/, `${realmPath}: ${user.username} needs a department`);
+  }
+  const unit = name => document.users.find(user => user.username === name).attributes.department[0];
+  assert.equal(unit('manager.1'), unit('employee.a'), `${realmPath}: demo manager approves employee.a`);
+  assert.notEqual(unit('manager.1'), unit('employee.b'), `${realmPath}: employee.b shows the manager scope`);
+}
 // W5-08: Wiki.js chỉ dùng client riêng, không mang audience API, có claim vai trò cho mapGroups.
 for (const realmPath of ['infra/keycloak/realm-dxdesk.json', 'infra/keycloak/realm-dxdesk-otp.json']) {
   const wiki = JSON.parse(await read(realmPath)).clients.find(client => client.clientId === 'wikijs');
