@@ -913,7 +913,7 @@ test('W5-08 category suggestions, single self-service record and owner-only read
   assert.equal(suggestions.body.data[0].url, 'http://wiki.test:18030/ho-tro/vpn');
   assert.equal((await call(apiUrl, '/api/categories/10000000-0000-4000-8000-0000000000ff/articles')).status, 404);
   assert.equal((await admin.query('SELECT count(*)::int n FROM public.knowledge_articles')).rows[0].n, 6);
-  // Migration 013: bài tri thức theo bối cảnh doanh nghiệp, không còn bài LMS / "của trường".
+  // Migration 016: bài tri thức theo bối cảnh doanh nghiệp, không còn bài LMS / "của trường".
   assert.equal(suggestions.body.data[0].title, 'Kết nối VPN từ xa vào mạng nội bộ');
   assert.deepEqual((await admin.query(
     `SELECT slug, wiki_path FROM public.knowledge_articles WHERE id='20000000-0000-4000-8000-000000000004'`)).rows,

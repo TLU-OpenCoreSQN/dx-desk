@@ -5,7 +5,7 @@
 - Trạng thái: **chưa trao đổi.** Tham số dữ liệu dưới đây là **giả định của đội**.
   Buổi trao đổi lùi sang tuần 5 và chỉ dùng để chỉnh tham số, không đổi cấu trúc bộ sinh dữ liệu.
 - Phạm vi (07/11): DX-Desk thống nhất theo bối cảnh **doanh nghiệp / tổ chức** (danh mục, nhóm xử lý,
-  vai trò Employee/Agent/Manager, bài tri thức — migration 013). Trung tâm CNTT của trường là
+  vai trò Employee/Agent/Manager, bài tri thức — migration 016). Trung tâm CNTT của trường là
   **đơn vị tham chiếu**: một bộ phận CNTT nội bộ phục vụ người dùng trong tổ chức. Chỉ hỏi phần
   vận hành helpdesk dùng chung được cho doanh nghiệp, tập trung vào nhóm cán bộ, nhân viên
   (tương ứng vai trò Employee); không hỏi phần riêng của đào tạo (LMS, phòng máy, sinh viên, mùa thi).

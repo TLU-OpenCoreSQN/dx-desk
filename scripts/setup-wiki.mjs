@@ -15,7 +15,7 @@ const SECRET_KEYS = ['WIKI_DB_PASSWORD', 'WIKI_ADMIN_PASSWORD', 'WIKI_CLIENT_SEC
 const READ = ['read:pages', 'read:assets', 'read:comments', 'write:comments'];
 const EDIT = [...READ, 'write:pages', 'manage:pages', 'delete:pages', 'read:source', 'read:history', 'write:assets'];
 export const WIKI_GROUPS = { Employee: READ, Agent: EDIT, Manager: EDIT };
-// Bài đã bỏ (migration 013 đổi LMS sang phần mềm nghiệp vụ): xoá khỏi Wiki.js của stack cũ.
+// Bài đã bỏ (migration 016 đổi LMS sang phần mềm nghiệp vụ): xoá khỏi Wiki.js của stack cũ.
 export const RETIRED_PATHS = ['ho-tro/lms'];
 const ATTRIBUTION = '\n\n---\n\n*Nội dung theo giấy phép [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.vi) — TLU-OpenCoreSQN, DX-Desk.*\n';
 

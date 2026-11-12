@@ -9,7 +9,7 @@ import { loadArticles, parseArticle, RETIRED_PATHS, wikiClient, wikiEnabled, WIK
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('W5-08 six CC BY 4.0 articles match the wiki paths seeded in migration 012 and renamed in 013', async () => {
+test('W5-08 six CC BY 4.0 articles match the wiki paths seeded in migration 012 and renamed in 016', async () => {
   const all = await loadArticles(root);
   // Trang chủ (path home) là trang mục lục của Wiki.js, không phải bài gợi ý theo danh mục.
   assert.equal(all.filter(article => article.path === 'home').length, 1, 'Wiki.js has a home page for /');
@@ -17,7 +17,7 @@ test('W5-08 six CC BY 4.0 articles match the wiki paths seeded in migration 012 
   assert.equal(articles.length, 6);
   const migration = await readFile(resolve(root, 'db/migrations/012_knowledge_self_service.sql'), 'utf8');
   let seeded = [...migration.matchAll(/'(ho-tro\/[a-z-]+)'\)/g)].map(match => match[1]);
-  const renames = await readFile(resolve(root, 'db/migrations/013_knowledge_enterprise_wording.sql'), 'utf8');
+  const renames = await readFile(resolve(root, 'db/migrations/016_knowledge_enterprise_wording.sql'), 'utf8');
   for (const [, to, from] of renames.matchAll(/wiki_path = '(ho-tro\/[a-z-]+)' WHERE wiki_path = '(ho-tro\/[a-z-]+)'/g)) {
     assert.ok(RETIRED_PATHS.includes(from), `${from} is removed from existing Wiki.js installs`);
     seeded = seeded.map(path => path === from ? to : path);
