@@ -36,6 +36,15 @@ export async function verifyDashboard(url, databaseUrl, env, { reportingLoginRea
     teams: teams.map(team => ({ ...team, members: [agent] })), system,
   }, 500, { scenario: 'vpn-4.2' });
   assert.equal((await applyDataset(dataset, databaseUrl, { apply: true, confirmDemo: true })).inserted, 500);
+  const owner = new Client({ connectionString: databaseUrl });
+  await owner.connect();
+  let handCount;
+  try {
+    handCount = (await owner.query(`SELECT count(*)::int AS steps, count(*) FILTER (WHERE actor_type = 'user')::int AS human,
+      count(*) FILTER (WHERE actor_type = 'system')::int AS system, count(*) FILTER (WHERE actor_type = 'ai')::int AS ai
+      FROM public.ticket_events WHERE event_type = 'status_changed'`)).rows[0];
+  } finally { await owner.end(); }
+  assert.ok(handCount.human > 0 && handCount.system > 0, 'Dữ liệu giả lập có cả bước của người và hệ thống');
   const readerUrl = new URL(databaseUrl);
   readerUrl.username = 'dxdesk_metabase';
   readerUrl.password = env.METABASE_REPORTING_PASSWORD;
@@ -46,6 +55,9 @@ export async function verifyDashboard(url, databaseUrl, env, { reportingLoginRea
     await assert.rejects(reader.query('SELECT actor_id FROM public.ticket_events LIMIT 1'), { code: '42501' });
     const weekly = await reader.query('SELECT manual_percent FROM reporting.ticket_operations_weekly');
     assert.ok(weekly.rows.length >= 6 && weekly.rows.every(row => Number(row.manual_percent) > 0));
+    // W5-10: view H-P-D-I khớp số đếm tay của vai trò chủ sở hữu và không lộ bảng gốc.
+    const automation = await reader.query('SELECT sum(steps)::int AS steps, sum(human_steps)::int AS human, sum(system_steps)::int AS system, sum(ai_steps)::int AS ai FROM reporting.automation_weekly');
+    assert.deepEqual(automation.rows[0], handCount);
   } finally { await reader.end(); }
 
   const id = await provisionMetabase(url, env);

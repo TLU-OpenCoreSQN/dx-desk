@@ -869,6 +869,7 @@ components:
           enum:
             - user
             - system
+            - ai
         actor_name:
           type: string
     Team:
