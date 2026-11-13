@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+# SPDX-License-Identifier: Apache-2.0
+
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+*.log

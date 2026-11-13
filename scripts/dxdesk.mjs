@@ -9,7 +9,7 @@ import { parseEnv } from 'node:util';
 import { renderGateway } from './render-gateway.mjs';
 import { demoSeedIdentities, prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
 import { seedMain } from './seed-synthetic.mjs';
-import { setupDepartments } from './setup-directory.mjs';
+import { setupDepartments, setupDeviceClient } from './setup-directory.mjs';
 import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled } from './setup-wiki.mjs';
 import { configureMetabaseReader, metabaseEnabled, prepareMetabase, setupMetabase } from './setup-metabase.mjs';
 
@@ -78,6 +78,7 @@ if (action === 'up') {
   compose('up', '-d', '--wait', 'postgres', 'keycloak');
   await setupIdentity(env);
   // W5-02: realm có sẵn volume không nhập lại JSON, nên gán thuộc tính đơn vị qua Admin API.
+  await setupDeviceClient(env);
   await setupDepartments(env);
   await setupWikiClient(env);
   migrate();

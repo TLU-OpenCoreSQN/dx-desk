@@ -57,6 +57,8 @@ Metadata kiểm tại dependency đã cài ngày 21/10/2026:
 - lucide-react 0.453.0: ISC.
 - NestJS 11.2.7, pg 8.16.3, jose 6.1.0: MIT.
 - RxJS 7.8.2: Apache-2.0.
+- Ứng dụng 2 (`apps/device-request`, W5-01) chỉ dùng React/React DOM 18.3.1 và keycloak-js 26.2.4 cùng phiên bản
+  với web; không thêm thư viện runtime mới. Build cũng tạo `dist/THIRD-PARTY-LICENSES.txt`.
 
 Build web tạo `dist/THIRD-PARTY-LICENSES.txt` từ LICENSE/NOTICE của toàn bộ cây
 runtime dependency đã cài và đóng gói cùng static assets. Docker API giữ LICENSE
