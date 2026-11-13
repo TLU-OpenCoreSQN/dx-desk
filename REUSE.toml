@@ -33,6 +33,13 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
 SPDX-License-Identifier = "CC-BY-4.0"
 
+# W5-03: phông Noto Sans nhúng vào biên bản bàn giao PDF.
+[[annotations]]
+path = ["apps/api/assets/fonts/*"]
+precedence = "override"
+SPDX-FileCopyrightText = "2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)"
+SPDX-License-Identifier = "OFL-1.1"
+
 [[annotations]]
 path = ["apps/web/public/data/synthetic/*.json"]
 precedence = "override"

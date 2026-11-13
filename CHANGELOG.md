@@ -9,6 +9,7 @@
 - W5-08: migration 012 — bài tri thức, ánh xạ danh mục → bài, lượt "Đã tự xử lý được" (RLS chỉ chủ sở hữu đọc) và view `reporting.self_service_weekly` cho Metabase; endpoint `GET /api/categories/:id/articles`, `POST /api/self-service`; biểu mẫu tạo phiếu hiện bài gợi ý theo danh mục.
 - W5-02: migration 018 + policy 003 — luồng duyệt đề nghị thiết bị `pending → approved → preparing → handed_over` (hoặc `rejected`) qua RPC `transition_device_request`; quản lý trực tiếp là Manager cùng đơn vị (thuộc tính Keycloak `department` trong JWT, `scripts/setup-directory.mjs`); RLS theo người đề nghị / đơn vị / IT; lịch sử `device_request_events`; outbox + workflow n8n `device-request` báo Mattermost chỉ bằng ID.
 - W5-01: ứng dụng 2 "Xin cấp thiết bị" (`apps/device-request`, React) tại `/thiet-bi/` — biểu mẫu đề nghị, màn duyệt của quản lý, hàng chờ IT, lịch sử; gọi PostgREST qua APISIX bằng token người dùng, client Keycloak `dxdesk-device` (PKCE), dùng chung phiên với DX-Desk; gỡ client thử nghiệm `appsmith`.
+- W5-03: migration 019 — biên bản bàn giao thiết bị PDF (PDFKit, phông Noto Sans nhúng) sinh khi bàn giao, lưu SeaweedFS, tải bằng URL ký 120 giây qua `POST /api/device-requests/:id/handover-url`; nút "Tải biên bản (PDF)" trong ứng dụng 2.
 - Kiểm thử: integration W5-08 (API + PostgREST thật), `tests/setup-wiki.test.mjs`, nghiệm thu stack `tools/testing/week5-wiki.mjs`.
 
 ### Tài liệu (tuần 5)

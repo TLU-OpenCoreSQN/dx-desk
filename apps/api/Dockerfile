@@ -13,6 +13,8 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/package*.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+# W5-03: phông Noto Sans (OFL-1.1) nhúng vào biên bản PDF, kèm giấy phép.
+COPY --chown=node:node assets ./assets
 USER node
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

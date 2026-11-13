@@ -4,6 +4,7 @@ import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Req, UseGu
 import { AuthRequest, JwtGuard } from './auth';
 import { Database } from './database';
 import { EmptyBody, ProcessEvent, SyncRoster } from './dto-week4';
+import { ensureHandover } from './handover';
 import { AutomationGuard, AutomationRequest } from './service-auth';
 
 // Public projection is intentional: future private columns do not silently change the API.
@@ -65,9 +66,15 @@ export class AutomationController {
   // W5-02: n8n xác nhận sự kiện đề nghị thiết bị; ACK chỉ có loại thông báo và ID.
   @Post('device-events/:id/process')
   @HttpCode(200)
-  processDevice(@Req() request: AutomationRequest, @Param('id', ParseUUIDPipe) id: string, @Body() _body: ProcessEvent) {
-    return this.db.asAutomation(request.claims, async client =>
+  async processDevice(@Req() request: AutomationRequest, @Param('id', ParseUUIDPipe) id: string, @Body() _body: ProcessEvent) {
+    const result = await this.db.asAutomation(request.claims, async client =>
       (await client.query('SELECT private.process_device_event($1) AS result', [id])).rows[0].result);
+    // W5-03: sự kiện bàn giao kéo theo biên bản PDF. Lỗi kho tệp trả 503 để outbox thử lại; ACK đã ghi
+    // inbox nên lần gọi sau trả cùng kết quả và chỉ làm nốt phần biên bản.
+    if (result.notification?.kind === 'handed_over') {
+      await ensureHandover(operation => this.db.asAutomation(request.claims, operation), result.request_id);
+    }
+    return result;
   }
   @Post('sla/evaluate')
   @HttpCode(200)

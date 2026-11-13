@@ -53,6 +53,18 @@ routes:
       type: roundrobin
       nodes:
         "api:3000": 1
+  # W5-03: tải biên bản bàn giao bằng URL ký ngắn hạn (cùng cơ chế với tệp đính kèm, ADR 0009).
+  - id: handover-content
+    uri: /api/device-handovers/*
+    priority: 40
+    vars:
+      - ["uri", "~~", "^/api/device-handovers/[0-9a-fA-F-]{36}/content$"]
+    plugins:
+      limit-req: *request-limit
+    upstream:
+      type: roundrobin
+      nodes:
+        "api:3000": 1
   - id: n8n-webhook
     # Only the non-sensitive hello PoC is public. Business callbacks need their
     # own authenticated route after the week-4 contract gate.

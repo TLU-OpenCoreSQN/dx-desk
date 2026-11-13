@@ -3,9 +3,10 @@
 // Ứng dụng 2 không có backend riêng: mọi lời gọi đi thẳng PostgREST qua APISIX (/rest/*) bằng
 // token của chính người dùng, nên RLS trong PostgreSQL quyết định ai thấy và làm được gì.
 import { accessToken } from './keycloak';
-import { errorMessage, type DeviceRequest, type DeviceRequestEvent, type DeviceStatus, type NewRequest } from './workflow';
+import { errorMessage, HANDOVER_UNAVAILABLE, type DeviceRequest, type DeviceRequestEvent, type DeviceStatus, type NewRequest } from './workflow';
 
 const base = import.meta.env.VITE_REST_BASE_URL || '/rest';
+const api = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export class RestError extends Error {
   constructor(readonly status: number, readonly code?: string) {
@@ -13,10 +14,10 @@ export class RestError extends Error {
   }
 }
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
+async function request<T>(path: string, body?: unknown, root = base): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(base + path, {
+    response = await fetch(root + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: {
         Authorization: `Bearer ${await accessToken()}`,
@@ -48,6 +49,18 @@ export async function createRequest(input: NewRequest): Promise<DeviceRequest> {
 }
 export function transition(id: string, to: DeviceStatus, note?: string): Promise<DeviceRequest> {
   return request('/rpc/transition_device_request', { p_id: id, p_to: to, ...(note?.trim() ? { p_note: note.trim() } : {}) });
+}
+/**
+ * W5-03: biên bản bàn giao là tệp PDF do Service Desk API sinh và lưu ở SeaweedFS. API kiểm quyền bằng
+ * RLS rồi trả URL ký hạn 2 phút; trình duyệt tải bằng URL đó, không đặt token vào đường dẫn.
+ */
+export async function handoverUrl(id: string): Promise<string> {
+  try {
+    return (await request<{ url: string }>(`/device-requests/${encodeURIComponent(id)}/handover-url`, {}, api)).url;
+  } catch (error) {
+    if (error instanceof RestError && [409, 503].includes(error.status)) throw new Error(HANDOVER_UNAVAILABLE);
+    throw error;
+  }
 }
 export function listEvents(id: string): Promise<DeviceRequestEvent[]> {
   return request(`/device_request_events?request_id=eq.${encodeURIComponent(id)}&select=*&order=created_at,id`);

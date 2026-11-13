@@ -295,3 +295,25 @@ bằng token dịch vụ và nhận ACK `{event_id,result:"notification",request
 chỉ gồm loại sự kiện, mã đề nghị và mã sự kiện: tin cho IT vào kênh nhóm IT Support, tin cho quản lý và
 người đề nghị vào kênh vận hành chung (bản demo chưa có tài khoản Mattermost cho nhân viên; người đề
 nghị theo dõi trạng thái trong ứng dụng). Bước "IT chuẩn bị" không phát thông báo.
+
+## Biên bản bàn giao thiết bị (W5-03, migration 019)
+
+Khi đề nghị sang `handed_over`, API sinh một tệp PDF A4 (PDFKit, phông Noto Sans nhúng) và lưu SeaweedFS tại
+`device-handover/<id>.pdf`; `device_requests` có thêm `handover_key`, `handover_size_bytes`,
+`handover_generated_at`. Nội dung: mã đề nghị, đơn vị, người nhận, loại và số lượng thiết bị, người duyệt,
+người bàn giao, thời điểm duyệt và bàn giao (giờ Việt Nam). Tên người lấy từ `device_request_events`;
+biên bản **không** chứa lý do đề nghị hay ghi chú duyệt.
+
+- Sinh tự động: workflow n8n `device-request` gọi `POST /api/system/device-events/:id/process`; với sự kiện
+  bàn giao API tạo biên bản trước khi trả ACK. Kho tệp lỗi → 503, outbox thử lại; gọi lặp không sinh lại.
+- Khi tự động hóa tắt: lần lấy liên kết đầu tiên của người có quyền sẽ tạo biên bản.
+- `POST /api/device-requests/:id/handover-url` (JWT): người đề nghị, Manager của đơn vị và IT nhận
+  `{url, expires_at}`; không đọc được đề nghị → 404; chưa bàn giao → 409; kho tệp lỗi → 503.
+- `GET /api/device-handovers/:id/content?expires=&signature=`: không cần JWT, chữ ký HMAC hạn 120 giây
+  (khóa `ATTACHMENT_SIGNING_KEY`, tiền tố riêng nên không dùng lẫn với tệp đính kèm); trả
+  `application/pdf`, `Content-Disposition: attachment`, `Cache-Control: private, no-store`.
+- Khóa tệp chỉ ghi được qua hàm `private.set_device_handover` (một lần, đúng mẫu khóa, đề nghị đã bàn giao);
+  schema `private` không lộ qua PostgREST nên trình duyệt không tự đặt được.
+
+Hạn chế đã biết: chữ trong PDF hiển thị và in đúng tiếng Việt, nhưng sao chép/tìm kiếm văn bản trong tệp
+có thể sai dấu ở một số trình đọc (bảng ToUnicode của phông tập con).

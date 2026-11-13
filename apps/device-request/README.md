@@ -9,6 +9,8 @@ riêng**, chỉ dùng Keycloak + APISIX + PostgREST + RLS sẵn có.
 - Dữ liệu: `GET/POST /rest/device_requests`, `POST /rest/rpc/transition_device_request`,
   `GET /rest/device_request_events` bằng token người dùng. Ai thấy và làm được gì do PostgreSQL quyết định
   (migration 018, policy 003); `src/workflow.ts` chỉ chọn nút nào nên hiện.
+- Biên bản bàn giao (W5-03): nút "Tải biên bản (PDF)" gọi `POST /api/device-requests/:id/handover-url` của Service
+  Desk API dùng chung để lấy URL ký; đây là lời gọi `/api` duy nhất của ứng dụng.
 
 | Vai trò | Màn hình |
 |---|---|
