@@ -88,6 +88,16 @@ try {
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
   });
+  await check('W5-04 /ld/* is public read-only JSON-LD reaching the API, rate limited', async () => {
+    const catalog = await call('/ld/catalog');
+    assert.equal(catalog.status, 200, '/ld/catalog must not require a JWT');
+    assert.deepEqual(await catalog.json(), { upstream: true });
+    assert.equal((await call('/ld/services/vpn', jwt({ aud: 'wrong' }))).status, 200, 'JWT is ignored on public JSON-LD');
+    const statuses = await Promise.all(Array.from({ length: 70 }, async () => (await call('/ld/catalog')).status));
+    assert.ok(statuses.includes(200) && statuses.includes(429), '/ld/* must throttle an anonymous burst');
+    assert.ok(statuses.every(status => [200, 429].includes(status)));
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  });
   await check('gateway accepts 14 MiB JSON envelope and rejects bodies over 20 MiB', async () => {
     for (const [size, expected] of [[14,200], [21,413]]) {
       const result = await call('/api/probe', jwt(), { method: 'POST', body: 'x'.repeat(size*1024*1024) });

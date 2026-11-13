@@ -37,8 +37,33 @@ Poka-yoke theo loại yêu cầu, SLA, routing và upload thuộc tuần 3–4.
 Trang `/du-lieu` đọc `/ld/catalog` và hiển thị ba bộ dữ liệu DCAT với giấy phép CC0 1.0,
 ngày cập nhật và liên kết tải. Các tài nguyên sử dụng URI `/ld/services/{code}`,
 `/ld/request-types/{code}` và `/ld/device-types/{code}`, có JSON-LD để kiểm tra trên Playground.
-Khi W5-04 chưa cấu hình route API, web phục vụ JSON-LD mẫu cùng lược đồ URI và bản tải
-có gắn nhãn giả lập. Các bản tải công khai nằm trong bundle web, tách khỏi DB nghiệp vụ.
+Các bản tải công khai nằm trong bundle web, tách khỏi DB nghiệp vụ.
+
+### JSON-LD/DCAT từ Service Desk API (W5-04, migration 020)
+
+APISIX chuyển `GET`/`HEAD /ld/*` tới API, không cần JWT, giới hạn tần suất như các route
+công khai khác. API trả `Content-Type: application/ld+json` và sinh nội dung từ dữ liệu
+tham chiếu trong PostgreSQL, không viết tay từng tệp:
+
+| URI | Kiểu | Nguồn |
+|---|---|---|
+| `/ld/services/{code}` | `schema:Service` | `categories` đang dùng (`active`) |
+| `/ld/request-types/{code}` | `schema:DefinedTerm` | `categories` đang dùng |
+| `/ld/device-types/{code}` | `schema:Product` | `private.device_types` (khóa ngoại từ `device_requests.device_type`) |
+| `/ld/catalog` | `dcat:Catalog` gồm 3 `dcat:Dataset` | `private.linked_datasets` + số mức của `sla_policies` |
+
+Người ẩn danh không có claims nên không đi qua RLS của `authenticated`. API đọc qua hai
+hàm `SECURITY DEFINER` `private.linked_resource(kind, code)` và `private.linked_catalog()`,
+chỉ cấp cho `api_login`, chỉ trả cột công khai (mã, tên, mô tả, giấy phép, ngày cập nhật).
+Không có phiếu, người dùng hay sự kiện thật trong JSON-LD. Mã sai định dạng, nhóm lạ,
+danh mục ngừng dùng hoặc phương thức khác đều nhận 404 với thông báo cố định.
+
+Mẫu tĩnh `apps/web/catalog-fixtures.ts` vẫn là dự phòng khi không có stack: Vite dev thử
+gateway trước rồi mới dùng mẫu, còn nginx của container web chỉ trả mẫu khi được gọi trực
+tiếp không qua APISIX. Chỉ mẫu mới có header `X-DXDesk-Catalog: sample`, và trang
+`/du-lieu` dựa vào header này để ghi "Đang hiển thị danh mục mẫu". Ngày cập nhật của bộ
+dữ liệu là ngày xuất mẫu bằng `scripts/export-demo-samples.mjs`; khi xuất lại, thêm một
+migration cập nhật `private.linked_datasets.modified`.
 
 Cảnh 3 demo có thể mở trực tiếp `/du-lieu` trong cửa sổ ẩn danh, tải một mẫu, rồi
 chọn **Dịch vụ → Kết nối VPN** để xem JSON-LD, sao chép URI hoặc mở Playground.

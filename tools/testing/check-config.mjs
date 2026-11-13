@@ -25,6 +25,15 @@ assert.equal(routes.routes.find(route => route.id === 'n8n-webhook').uri, '/webh
   'Only the hello fixture may be exposed anonymously to n8n');
 assert.ok(routes.routes.find(route => route.id === 'api-health').plugins['limit-req'],
   'The public database probe must be rate limited');
+// W5-04: JSON-LD công khai chỉ đọc, có giới hạn tần suất, đi tới API trước route web.
+const linkedData = routes.routes.find(route => route.id === 'linked-data');
+assert.ok(linkedData, 'Missing /ld/* route');
+assert.equal(linkedData.uri, '/ld/*');
+assert.deepEqual(linkedData.methods, ['GET', 'HEAD'], '/ld/* must be read-only');
+assert.ok(linkedData.plugins['limit-req'], '/ld/* must be rate limited');
+assert.ok(!linkedData.plugins['openid-connect'], '/ld/* is public');
+assert.deepEqual(Object.keys(linkedData.upstream.nodes), ['api:3000']);
+assert.ok(linkedData.priority > (routes.routes.find(route => route.id === 'web').priority ?? 0));
 const filerPort = compose.services.seaweedfs.command.find(arg => arg.startsWith('-filer.port='));
 assert.ok(filerPort, 'Declare the Filer listener explicitly');
 assert.equal(new URL(compose.services.api.environment.SEAWEEDFS_ENDPOINT).port, filerPort.split('=')[1],

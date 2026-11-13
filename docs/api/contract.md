@@ -249,6 +249,23 @@ tệp trong RAM. Unit/integration dùng clamd/Filer giả để thử lỗi; sta
 68 byte bằng ClamAV thật và đối chiếu bytes SeaweedFS, sau đó browser kiểm upload/
 download trên cùng stack. Đọc kết quả artifact của đúng SHA, không suy từ số unit test.
 
+## Dữ liệu liên kết JSON-LD/DCAT (W5-04)
+
+Ngoài tiền tố `/api`, công khai, chỉ `GET`/`HEAD`, không cần `Authorization`:
+
+- `GET /ld/catalog`: `dcat:Catalog` có `dct:title`, `dct:modified` và đúng ba `dcat:Dataset`
+  (`#tickets`, `#ticket-events`, `#sla-policies`), mỗi bộ có `dct:license` (CC0 1.0),
+  `dct:modified` (`xsd:date`), `dcat:keyword: "Dữ liệu giả lập"` và `dcat:distribution`
+  trỏ `/data/synthetic/{code}.json`.
+- `GET /ld/services/{code}` (`schema:Service`), `GET /ld/request-types/{code}`
+  (`schema:DefinedTerm`), `GET /ld/device-types/{code}` (`schema:Product`): `@id`,
+  `schema:name`, `schema:identifier`, thêm `schema:description` khi có.
+- `@context` nhúng sẵn (`dcat`, `dct`, `schema`, `xsd`), `@id` là IRI tương đối theo origin.
+  `Content-Type: application/ld+json; charset=utf-8`, `Cache-Control: public, max-age=300`.
+- Mã không khớp `^[a-z][a-z0-9_-]{1,39}$`, mã không tồn tại/ngừng dùng, nhóm hay đường
+  dẫn khác dưới `/ld/` trả `404 {"message":"Không tìm thấy tài nguyên dữ liệu liên kết."}`.
+  Gateway chỉ nhận `GET`/`HEAD`; phương thức khác không tới API.
+
 ## Báo cáo Metabase (W5-06)
 
 `GET /api/analytics/embed` yêu cầu JWT có vai trò `Manager`. Trả `{"url":"…"}`

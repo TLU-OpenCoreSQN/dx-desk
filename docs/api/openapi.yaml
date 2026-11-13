@@ -5,7 +5,7 @@ info:
   title: DX-Desk Service Desk API
   version: 0.4.0
   description: >-
-    API tuần 4–5: luồng ticket, queue/team/claim, automation tách khỏi người dùng, outbox, SLA; tuần 5 thêm gợi ý bài Wiki và lượt tự phục vụ. RLS vẫn bảo vệ dữ liệu.
+    API tuần 4–5: luồng ticket, queue/team/claim, automation tách khỏi người dùng, outbox, SLA; tuần 5 thêm gợi ý bài Wiki, lượt tự phục vụ và JSON-LD/DCAT công khai tại /ld/* (ngoài tiền tố /api). RLS vẫn bảo vệ dữ liệu.
 servers:
   - url: http://localhost:9080/api
 security:
@@ -27,6 +27,44 @@ paths:
                   service: { type: string }
                   version: { type: string }
         "503": { $ref: "#/components/responses/Error" }
+  /ld/catalog:
+    servers:
+      - url: http://localhost:9080
+    get:
+      operationId: linkedDataCatalog
+      summary: Danh mục DCAT công khai (W5-04)
+      security: []
+      responses:
+        "200":
+          description: dcat:Catalog gồm ba dcat:Dataset dữ liệu giả lập
+          headers:
+            Cache-Control: { schema: { type: string, example: "public, max-age=300" } }
+          content:
+            application/ld+json:
+              schema: { $ref: "#/components/schemas/LinkedDataCatalog" }
+  /ld/{kind}/{code}:
+    servers:
+      - url: http://localhost:9080
+    get:
+      operationId: linkedDataResource
+      summary: Dịch vụ, loại yêu cầu hoặc loại thiết bị dạng JSON-LD (W5-04)
+      security: []
+      parameters:
+        - in: path
+          name: kind
+          required: true
+          schema: { type: string, enum: [ services, request-types, device-types ] }
+        - in: path
+          name: code
+          required: true
+          schema: { type: string, pattern: "^[a-z][a-z0-9_-]{1,39}$", example: vpn }
+      responses:
+        "200":
+          description: schema:Service, schema:DefinedTerm hoặc schema:Product
+          content:
+            application/ld+json:
+              schema: { $ref: "#/components/schemas/LinkedDataResource" }
+        "404": { $ref: "#/components/responses/Error" }
   /me:
     get:
       operationId: me
@@ -759,6 +797,41 @@ components:
                   - { type: string }
                   - { type: array, items: { type: string } }
   schemas:
+    LinkedDataResource:
+      type: object
+      required: ["@context", "@id", "@type", "schema:name", "schema:identifier"]
+      properties:
+        "@context": { type: object }
+        "@id": { type: string, example: /ld/services/vpn }
+        "@type": { type: string, enum: [ "schema:Service", "schema:DefinedTerm", "schema:Product" ] }
+        "schema:name": { type: string }
+        "schema:identifier": { type: string }
+        "schema:description": { type: string }
+    LinkedDataCatalog:
+      type: object
+      required: ["@context", "@id", "@type", "dct:title", "dcat:dataset"]
+      properties:
+        "@context": { type: object }
+        "@id": { type: string, enum: [ /ld/catalog ] }
+        "@type": { type: string, enum: [ "dcat:Catalog" ] }
+        "dct:title": { type: string }
+        "dct:modified": { type: object }
+        "dcat:dataset":
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: object
+            required: ["@id", "@type", "dct:title", "dct:description", "dct:license", "dct:modified", "dcat:distribution"]
+            properties:
+              "@id": { type: string, example: "/ld/catalog#tickets" }
+              "@type": { type: string, enum: [ "dcat:Dataset" ] }
+              "dct:title": { type: string }
+              "dct:description": { type: string }
+              "dct:license": { type: object }
+              "dct:modified": { type: object }
+              "dcat:keyword": { type: string }
+              "dcat:distribution": { type: object }
     Ticket:
       type: object
       properties:
