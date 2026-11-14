@@ -13,6 +13,7 @@ import { JwtGuard } from './auth';
 import { Database } from './database';
 import { AttachmentLinksController, AttachmentContentController } from './downloads';
 import { AttachmentsController, DeskController, HealthController, workflowExceptionForCode } from './controllers';
+import { DeviceHandoverContentController, DeviceHandoverController } from './handover';
 import { AutomationGuard } from './service-auth';
 import { AutomationController, WorkQueueController } from './week4';
 import { KnowledgeController } from './knowledge';
@@ -48,7 +49,8 @@ class Errors implements ExceptionFilter {
 
 @Module({
   controllers: [HealthController, DeskController, AttachmentsController, AttachmentLinksController, AttachmentContentController,
-    WorkQueueController, AutomationController, KnowledgeController, AnalyticsController],
+    WorkQueueController, AutomationController, KnowledgeController, AnalyticsController,
+    DeviceHandoverController, DeviceHandoverContentController],
   providers: [Database, JwtGuard, AutomationGuard, OutboxDispatcher],
 })
 export class AppModule {}

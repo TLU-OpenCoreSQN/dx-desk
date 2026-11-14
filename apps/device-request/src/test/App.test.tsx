@@ -5,7 +5,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { CurrentUser, DeviceRequest } from '../workflow';
 
-const rest = vi.hoisted(() => ({ listRequests: vi.fn(), createRequest: vi.fn(), transition: vi.fn(), listEvents: vi.fn() }));
+const rest = vi.hoisted(() => ({ listRequests: vi.fn(), createRequest: vi.fn(), transition: vi.fn(), listEvents: vi.fn(), handoverUrl: vi.fn() }));
 vi.mock('../rest', () => ({ ...rest, REQUEST_PAGE_SIZE: 25 }));
 vi.mock('../keycloak', () => ({ initKeycloak: vi.fn(), currentUser: vi.fn(), logout: vi.fn() }));
 import { Workspace } from '../App';
@@ -138,5 +138,37 @@ describe('IT', () => {
     expect(within(history).getAllByRole('listitem')).toHaveLength(2);
     expect(history).toHaveTextContent('Gửi đề nghị — employee.a');
     expect(history).toHaveTextContent('Đã duyệt, chờ IT — manager.1');
+  });
+});
+
+describe('handover document (W5-03)', () => {
+  it('does not offer the PDF to a department manager who did not approve it', async () => {
+    rest.listRequests.mockImplementation(async (_user, queue) => queue === 'followed'
+      ? [row({ status: 'handed_over', decided_by: 'another-manager' })] : []);
+    render(<Workspace user={manager} />);
+    const done = await screen.findByRole('article', { name: 'Đề nghị 11111111' });
+    expect(within(done).queryByRole('button', { name: 'Tải biên bản (PDF)' })).toBeNull();
+  });
+
+  it('offers the PDF only for handed-over requests and follows the signed URL', async () => {
+    rest.listRequests.mockResolvedValue([row({ status: 'handed_over' }), row({ id: '55555555-0000-4000-8000-000000000005', status: 'approved' })]);
+    rest.handoverUrl.mockResolvedValueOnce('/api/device-handovers/x/content?expires=1&signature=s')
+      .mockRejectedValueOnce(new Error('Chưa tạo được biên bản bàn giao. Vui lòng thử lại sau ít phút.'));
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+    try {
+      render(<Workspace user={employee} />);
+      const done = await screen.findByRole('article', { name: 'Đề nghị 11111111' });
+      const open = screen.getByRole('article', { name: 'Đề nghị 55555555' });
+      expect(within(open).queryByRole('button', { name: 'Tải biên bản (PDF)' })).toBeNull();
+      await userEvent.click(within(done).getByRole('button', { name: 'Tải biên bản (PDF)' }));
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/api/device-handovers/x/content?expires=1&signature=s'));
+      expect(rest.handoverUrl).toHaveBeenCalledWith('11111111-0000-4000-8000-000000000001');
+      await userEvent.click(within(done).getByRole('button', { name: 'Tải biên bản (PDF)' }));
+      expect(await within(done).findByRole('alert')).toHaveTextContent(/Chưa tạo được biên bản/);
+      expect(assign).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

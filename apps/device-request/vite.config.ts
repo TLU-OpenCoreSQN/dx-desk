@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5174,
       host: true,
-      proxy: { '/rest': { target: env.VITE_PROXY_TARGET || 'http://localhost:9080', changeOrigin: true } },
+      proxy: Object.fromEntries(['/rest', '/api'].map(path =>
+        [path, { target: env.VITE_PROXY_TARGET || 'http://localhost:9080', changeOrigin: true }])),
     },
   };
 });

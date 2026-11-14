@@ -141,6 +141,30 @@ try {
     assert.deepEqual(history.map(row => row.to_status), ['pending', 'approved', 'preparing', 'handed_over']);
     assert.ok(history.every(row => row.actor_type === 'user'));
   });
+  await check('Hand-over produces a Vietnamese PDF in SeaweedFS, downloadable by parties through a signed URL', async () => {
+    const issue = identity => fetch(base + '/api/device-requests/' + id + '/handover-url', { method: 'POST',
+      headers: { Authorization: 'Bearer ' + identity, 'Content-Type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(20000) });
+    // n8n xử lý sự kiện bàn giao rồi API mới ghi khóa tệp.
+    await until(async () => (await call('/rest/device_requests?id=eq.' + id + '&select=handover_key', employee)).data[0].handover_key, 'handover key');
+    assert.equal((await issue(other)).status, 404);
+    assert.equal((await fetch(base + '/api/device-requests/' + id + '/handover-url', { method: 'POST' })).status, 401);
+    for (const identity of [employee, manager, agent]) {
+      const issued = await issue(identity);
+      assert.equal(issued.status, 200);
+      const { url } = await issued.json();
+      // Đường dẫn nội dung không cần JWT (chữ ký là quyền tải), đi qua APISIX.
+      const file = await fetch(base + url, { signal: AbortSignal.timeout(20000) });
+      assert.equal(file.status, 200);
+      assert.equal(file.headers.get('content-type'), 'application/pdf');
+      const bytes = Buffer.from(await file.arrayBuffer());
+      assert.equal(bytes.subarray(0, 5).toString(), '%PDF-');
+      assert.match(bytes.toString('latin1'), /\+NotoSans-Regular/);
+      report.handover_bytes = bytes.length;
+      const tampered = await fetch(base + url.replace(/signature=[a-f0-9]{64}/, 'signature=' + 'a'.repeat(64)), { signal: AbortSignal.timeout(20000) });
+      assert.equal(tampered.status, 403);
+    }
+    assert.equal((await fetch(base + '/api/device-handovers/' + id + '/content')).status, 403);
+  });
   await check('Device deliveries drain without quarantined events', async () => {
     await until(async () => {
       const status = (await call('/api/system/outbox', service)).data;

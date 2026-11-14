@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
-import { listEvents, transition } from './rest';
+import { handoverUrl, listEvents, transition } from './rest';
 import { actionsFor, DEVICE_LABELS, formatTime, shortId, STATUS_LABELS, STEPS, validateNote,
   type Action, type CurrentUser, type DeviceRequest, type DeviceRequestEvent, type DeviceStatus } from './workflow';
 
@@ -44,6 +44,17 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
     const problem = validateNote(note);
     setNoteError(problem);
     if (!problem) void run(action, note);
+  }
+  async function download() {
+    setBusy(true);
+    setFailure(null);
+    try {
+      window.location.assign(await handoverUrl(request.id));
+    } catch (error) {
+      setFailure((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   async function toggleHistory() {
     if (events) return setEvents(null);
@@ -100,6 +111,12 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
         {rejecting && (
           <button type="button" onClick={() => { setRejecting(false); setNoteError(null); }}
             className="rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-surface-warm">Hủy</button>
+        )}
+        {request.status === 'handed_over' && (request.requester_id === user.id || request.decided_by === user.id || user.roles.includes('Agent')) && (
+          <button type="button" disabled={busy} onClick={() => void download()}
+            className="rounded-md border border-primary-edge bg-primary-tint px-3 py-1.5 text-sm font-semibold text-primary-text hover:bg-surface disabled:opacity-60">
+            Tải biên bản (PDF)
+          </button>
         )}
         <button type="button" onClick={() => void toggleHistory()} aria-expanded={!!events}
           className="rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-surface-warm">
