@@ -76,7 +76,7 @@ async function adminApi(env) {
     { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 
-/** Tạo/cập nhật client ứng dụng 2 và gỡ client thử nghiệm Appsmith (ADR 0004 chọn React). */
+/** Tạo/cập nhật client ứng dụng 2. Realm mới không cài client Appsmith. */
 export async function setupDeviceClient(env) {
   const admin = await adminApi(env);
   const client = deviceClient(env);
@@ -92,9 +92,7 @@ export async function setupDeviceClient(env) {
       else await admin('/clients/' + existing.id + '/protocol-mappers/models', 'POST', mapper);
     }
   }
-  const [appsmith] = await admin('/clients?clientId=appsmith');
-  if (appsmith) await admin('/clients/' + appsmith.id, 'DELETE');
-  console.log(`Keycloak client ${DEVICE_CLIENT_ID} ${existing ? 'updated' : 'created'}${appsmith ? '; client thử nghiệm appsmith đã gỡ' : ''}.`);
+  console.log(`Keycloak client ${DEVICE_CLIENT_ID} ${existing ? 'updated' : 'created'}.`);
 }
 
 export async function setupDepartments(env, clients = DEPARTMENT_CLIENTS) {

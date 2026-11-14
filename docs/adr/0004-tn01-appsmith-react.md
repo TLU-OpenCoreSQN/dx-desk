@@ -1,6 +1,6 @@
 # 0004. TN-01 / QĐ-1 — Ứng dụng xin cấp thiết bị dùng React
 
-- Trạng thái: Đề xuất chấp nhận. React đã hiện thực thành ứng dụng 2 riêng ở W5-01 (13/11/2026); đội xác nhận khi duyệt PR W5-01.
+- Trạng thái: Đã chấp nhận qua review W5-01. React đã hiện thực thành ứng dụng 2 riêng.
 - Ngày: 21/10/2026.
 - Người phụ trách theo kế hoạch: Séc (TV3), Quyền hỗ trợ.
 - Mã: W2-09, TN-01, QĐ-1.
@@ -53,7 +53,7 @@ tảng dùng chung, đúng tiêu chí ban đầu của TN-01:
 - **Client OIDC riêng** `dxdesk-device` (công khai, PKCE S256, redirect chỉ dưới `/thiet-bi/`), cùng realm.
   Vì dùng chung phiên Keycloak, người đã đăng nhập DX-Desk mở ứng dụng 2 không phải đăng nhập lại.
 - **Cùng origin** `http://localhost:9080/thiet-bi/` sau APISIX: không mở cổng mới, không cần CORS.
-- Client thử nghiệm `appsmith` (secret dev cố định) bị gỡ khỏi realm; `setup-directory.mjs` gỡ nó ở realm đang chạy.
+- Realm cài mới bỏ client thử nghiệm `appsmith`. Với realm đã chạy, quản trị viên xác nhận client không còn được dùng trước khi gỡ.
 - Trang `/device-requests` trong `apps/web` và `/api/device-requests` giữ lại để tương thích; thanh bên
   DX-Desk có thêm liên kết sang ứng dụng 2.
 

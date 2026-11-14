@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import type { CurrentUser, DeviceRequest } from '../workflow';
 
 const rest = vi.hoisted(() => ({ listRequests: vi.fn(), createRequest: vi.fn(), transition: vi.fn(), listEvents: vi.fn() }));
-vi.mock('../rest', () => rest);
+vi.mock('../rest', () => ({ ...rest, REQUEST_PAGE_SIZE: 25 }));
 vi.mock('../keycloak', () => ({ initKeycloak: vi.fn(), currentUser: vi.fn(), logout: vi.fn() }));
 import { Workspace } from '../App';
 
@@ -27,7 +27,10 @@ beforeEach(() => {
 describe('employee', () => {
   it('validates locally, then sends only device type, reason and quantity', async () => {
     const created = row({ id: '22222222-0000-4000-8000-000000000002', quantity: 2 });
-    rest.createRequest.mockResolvedValue(created);
+    rest.createRequest.mockImplementation(async () => {
+      rest.listRequests.mockResolvedValue([created]);
+      return created;
+    });
     render(<Workspace user={employee} />);
     await screen.findByText('Bạn chưa gửi đề nghị nào.');
     expect(screen.queryByRole('heading', { name: /Chờ bạn/ })).toBeNull();
@@ -44,7 +47,7 @@ describe('employee', () => {
     await screen.findByText('Đã gửi đề nghị, chờ quản lý duyệt.');
     expect(rest.createRequest).toHaveBeenCalledWith({ device_type: 'monitor', reason: 'Màn hình bị sọc ngang', quantity: 2 });
     const mine = screen.getByRole('region', { name: /Đề nghị của tôi/ });
-    expect(within(mine).getByText('Màn hình × 2')).toBeInTheDocument();
+    expect(await within(mine).findByText('Màn hình × 2')).toBeInTheDocument();
     expect(within(mine).queryByRole('button', { name: 'Duyệt' })).toBeNull();
   });
 
@@ -67,9 +70,14 @@ describe('employee', () => {
 describe('manager', () => {
   it('approves a pending request of the unit and needs a reason to reject', async () => {
     const second = row({ id: '33333333-0000-4000-8000-000000000003', device_type: 'mouse', reason: 'Chuột hỏng nút trái' });
-    rest.listRequests.mockResolvedValue([row({}), second, row({ id: '44444444-0000-4000-8000-000000000004', requester_id: 'manager-1' })]);
-    rest.transition.mockImplementation(async (id: string, to: string, note?: string) =>
-      ({ ...(id === second.id ? second : row({})), status: to, decision_note: note ?? null }));
+    let requests = [row({}), second];
+    rest.listRequests.mockImplementation(async (_user, queue) => queue === 'mine' ? [] :
+      requests.filter(request => (request.status === 'pending') === (queue === 'waiting')));
+    rest.transition.mockImplementation(async (id: string, to: string, note?: string) => {
+      const changed = { ...requests.find(request => request.id === id)!, status: to as DeviceRequest['status'], decision_note: note ?? null };
+      requests = requests.map(request => request.id === id ? changed : request);
+      return changed;
+    });
     render(<Workspace user={manager} />);
     const waiting = await screen.findByRole('region', { name: /Chờ bạn duyệt · đơn vị phong-hanh-chinh/ });
     await waitFor(() => expect(within(waiting).getAllByRole('article')).toHaveLength(2));
@@ -91,15 +99,27 @@ describe('manager', () => {
     await waitFor(() => expect(rest.transition).toHaveBeenCalledWith('11111111-0000-4000-8000-000000000001', 'approved', undefined));
     // Sau khi xử lý, cả hai rời hàng chờ và hiện ở mục theo dõi của đơn vị.
     const followed = await screen.findByRole('region', { name: /Đề nghị khác của đơn vị/ });
-    expect(within(followed).getByText('Đã duyệt, chờ IT')).toBeInTheDocument();
+    expect(await within(followed).findByText('Đã duyệt, chờ IT')).toBeInTheDocument();
     expect(within(followed).getByText('Lý do từ chối: Kho đơn vị còn chuột dự phòng')).toBeInTheDocument();
+  });
+
+  it('paginates actionable requests independently of history', async () => {
+    const rows = Array.from({ length: 26 }, (_, i) => row({ id: `${i}-0000-4000-8000-000000000001`, reason: `Yêu cầu số ${i}` }));
+    rest.listRequests.mockImplementation(async (_user, queue, page) => queue !== 'waiting' ? [] : page === 0 ? rows : rows.slice(25));
+    render(<Workspace user={manager} />);
+    const waiting = screen.getByRole('region', { name: /Chờ bạn duyệt/ });
+    await userEvent.click(await within(waiting).findByRole('button', { name: 'Trang sau' }));
+    expect(await within(waiting).findByText('Yêu cầu số 25')).toBeInTheDocument();
+    expect(rest.listRequests).toHaveBeenCalledWith(manager, 'waiting', 1);
+    expect(rest.listRequests).toHaveBeenCalledWith(manager, 'followed', 0);
   });
 });
 
 describe('IT', () => {
   it('prepares, hands over and shows the server message when a step was already taken', async () => {
-    rest.listRequests.mockResolvedValue([row({ status: 'approved' })]);
-    rest.transition.mockResolvedValueOnce(row({ status: 'preparing' }))
+    let current = row({ status: 'approved' });
+    rest.listRequests.mockImplementation(async (_user, queue) => queue === 'waiting' ? [current] : []);
+    rest.transition.mockImplementationOnce(async () => current = row({ status: 'preparing' }))
       .mockRejectedValueOnce(new Error('Đề nghị đã chuyển sang bước khác. Tải lại danh sách để xem trạng thái mới.'));
     rest.listEvents.mockResolvedValue([
       { id: 'e1', request_id: 'r', actor_id: 'employee-a', actor_type: 'user', actor_name: 'employee.a', from_status: null, to_status: 'pending', note: null, created_at: '2026-11-12T02:00:00Z' },

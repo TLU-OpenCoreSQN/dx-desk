@@ -3,7 +3,7 @@
 // Ứng dụng 2 không có backend riêng: mọi lời gọi đi thẳng PostgREST qua APISIX (/rest/*) bằng
 // token của chính người dùng, nên RLS trong PostgreSQL quyết định ai thấy và làm được gì.
 import { accessToken } from './keycloak';
-import { errorMessage, type DeviceRequest, type DeviceRequestEvent, type DeviceStatus, type NewRequest } from './workflow';
+import { errorMessage, type DeviceRequest, type DeviceRequestEvent, type DeviceStatus, type NewRequest, type CurrentUser } from './workflow';
 
 const base = import.meta.env.VITE_REST_BASE_URL || '/rest';
 
@@ -36,9 +36,19 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   return data as T;
 }
 
-/** RLS trả đúng phần người dùng được xem: của mình, của đơn vị (Manager) hoặc đã duyệt (IT). */
-export function listRequests(): Promise<DeviceRequest[]> {
-  return request('/device_requests?select=*&order=created_at.desc,id.desc&limit=200');
+export const REQUEST_PAGE_SIZE = 25;
+export type RequestQueue = 'mine' | 'waiting' | 'followed';
+
+/** RLS quyết định quyền đọc; mỗi danh sách có bộ lọc và phân trang riêng. */
+export function listRequests(user: CurrentUser, queue: RequestQueue, page: number): Promise<DeviceRequest[]> {
+  const params = new URLSearchParams({ select: '*', order: 'created_at.desc,id.desc', limit: String(REQUEST_PAGE_SIZE + 1),
+    offset: String(page * REQUEST_PAGE_SIZE), requester_id: `${queue === 'mine' ? 'eq' : 'neq'}.${user.id}` });
+  const actionable: string[] = [];
+  if (user.roles.includes('Manager') && user.department) actionable.push(`and(status.eq.pending,department.eq.${user.department})`);
+  if (user.roles.includes('Agent')) actionable.push('status.in.(approved,preparing)');
+  if (queue === 'waiting' && actionable.length === 0) return Promise.resolve([]);
+  if (queue !== 'mine' && actionable.length) params.set(queue === 'waiting' ? 'or' : 'not.or', `(${actionable.join(',')})`);
+  return request('/device_requests?' + params);
 }
 export async function createRequest(input: NewRequest): Promise<DeviceRequest> {
   // Chỉ ba trường này: người đề nghị, đơn vị và trạng thái do PostgreSQL đặt từ JWT.
