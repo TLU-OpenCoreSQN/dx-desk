@@ -37,6 +37,9 @@ test:
 	npm --prefix $(ROOT)apps/web ci
 	npm --prefix $(ROOT)apps/web run build
 	npm --prefix $(ROOT)apps/web test
+	npm --prefix $(ROOT)apps/device-request ci
+	npm --prefix $(ROOT)apps/device-request run build
+	npm --prefix $(ROOT)apps/device-request test
 
 test-stack: $(ROOT).env
 	node $(ROOT)scripts/stack-test.mjs

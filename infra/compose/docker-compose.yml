@@ -105,6 +105,8 @@ services:
         condition: service_healthy
       web:
         condition: service_healthy
+      device-request:
+        condition: service_healthy
     volumes:
       - ../apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ../apisix/runtime.yaml:/usr/local/apisix/conf/apisix.yaml:ro
@@ -179,6 +181,21 @@ services:
         VITE_KEYCLOAK_URL: ${WEB_KEYCLOAK_URL}
         VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM}
         VITE_KEYCLOAK_CLIENT_ID: ${WEB_KEYCLOAK_CLIENT_ID}
+    <<: *restart
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # W5-01: ứng dụng 2 "Xin cấp thiết bị" — chỉ là SPA tĩnh, không có backend riêng. Trình duyệt gọi
+  # PostgREST qua APISIX (/rest/*) bằng token người dùng; không công bố cổng ra host.
+  device-request:
+    build:
+      context: ../../apps/device-request
+      args:
+        VITE_KEYCLOAK_URL: ${WEB_KEYCLOAK_URL}
+        VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM}
     <<: *restart
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]

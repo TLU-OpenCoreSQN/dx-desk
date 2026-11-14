@@ -85,6 +85,16 @@ try {
   const managerChannel = channels['device-manager:' + claimsOf(manager).department];
   const requesterChannel = channels['device-requester:' + claimsOf(employee).sub];
   const failedBefore = Number((await call('/api/system/outbox', service)).data.failed);
+  await check('Gateway serves app 2 under /thiet-bi/ on the same origin, without its own port', async () => {
+    const page = await fetch(base + '/thiet-bi/', { signal: AbortSignal.timeout(15000) });
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /<title>Xin cấp thiết bị/);
+    const bare = await fetch(base + '/thiet-bi', { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+    assert.equal(bare.status, 302);
+    assert.equal(new URL(bare.headers.get('location'), base).pathname, '/thiet-bi/');
+    const deep = await fetch(base + '/thiet-bi/bat-ky', { signal: AbortSignal.timeout(15000) });
+    assert.equal(deep.status, 200, 'SPA fallback');
+  });
   let id;
   await check('Employee creates a request through PostgREST; unit comes from the token', async () => {
     const created = await call('/rest/device_requests', employee, body);

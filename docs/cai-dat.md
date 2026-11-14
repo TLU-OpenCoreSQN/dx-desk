@@ -44,6 +44,17 @@ Người dùng phải đăng nhập lại để token mới mang claim. Một đ
 `Manager` cùng mã thì đề nghị mới có người duyệt. Nghiệm thu trên stack có `AUTOMATION_ENABLED=true`:
 `node tools/testing/week5-device.mjs` (báo cáo ở `.local/reports/week5-device.json`).
 
+### Ứng dụng 2 "Xin cấp thiết bị" (W5-01)
+
+`make up` dựng thêm container `device-request` (Nginx phục vụ SPA, không công bố cổng) và route APISIX
+`/thiet-bi/*`. Mở **http://localhost:9080/thiet-bi/** hoặc bấm "Xin cấp thiết bị (ứng dụng 2)" ở thanh bên
+DX-Desk; đã đăng nhập DX-Desk thì không phải đăng nhập lại. Client Keycloak `dxdesk-device` do realm JSON
+(cài mới) hoặc `scripts/setup-directory.mjs` (realm có sẵn) tạo.
+
+Thử luồng: `employee.a` gửi đề nghị → `manager.1` duyệt → `agent.1` chuẩn bị rồi bàn giao.
+Phát triển riêng: `npm ci --prefix apps/device-request && npm run dev --prefix apps/device-request`
+(cổng 5174, đường dẫn `/thiet-bi/`, proxy `/rest` tới stack đang chạy ở cổng 9080).
+
 ### Wiki.js tri thức (W5-08)
 
 Hồ sơ `demo-light` và `full` có Wiki.js 2.5.315 tại `http://localhost:18030` (đổi bằng `WIKI_PORT`,

@@ -1,0 +1,33 @@
+/*
+ * SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+@import "tailwindcss";
+
+/* Cùng bảng màu với DX-Desk (apps/web/src/index.css) để hai ứng dụng nhìn như một nền tảng. */
+@theme {
+  --color-primary: #0a78be;
+  --color-primary-hover: #08639e;
+  --color-primary-tint: #deeef8;
+  --color-primary-edge: #9dc9e5;
+  --color-primary-text: #064e7b;
+  --color-surface: #ffffff;
+  --color-surface-warm: #f7f6f3;
+  --color-content: #211f1b;
+  --color-muted: #5f5e5a;
+  --color-edge: #d6d5d2;
+  --color-danger: #b3261e;
+  --color-danger-tint: #fbe4e4;
+  --color-danger-edge: #f6c3c1;
+  --color-warning: #8a5a00;
+  --color-warning-tint: #fbf3db;
+  --color-warning-edge: #ecd9a0;
+  --color-success: #2f6b4a;
+  --color-success-tint: #edf3ec;
+  --color-success-edge: #b8dcce;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
