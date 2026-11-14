@@ -14,6 +14,7 @@ import { createApp } from '../dist/app.js';
 import { Database } from '../dist/database.js';
 import { downloadSignature } from '../dist/downloads.js';
 import { applyDataset, generate } from '../../../scripts/seed-synthetic.mjs';
+import { loadArticles } from '../../../scripts/setup-wiki.mjs';
 import jsonld from 'jsonld';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
@@ -924,6 +925,12 @@ test('W5-08 category suggestions, single self-service record and owner-only read
   [{ slug: 'phan-mem-nghiep-vu', wiki_path: 'ho-tro/phan-mem-nghiep-vu' }]);
   assert.equal((await admin.query(
     `SELECT count(*)::int n FROM public.knowledge_articles WHERE title ~ 'trường|LMS' OR summary ~ 'trường|LMS'`)).rows[0].n, 0);
+  // Bài gợi ý trong DB phải khớp đúng bài Wiki.js nạp từ docs/wiki (đường dẫn, tiêu đề, tóm tắt = description).
+  const wikiArticles = (await loadArticles(resolve('../..'))).filter(article => article.path !== 'home')
+    .map(({ path, title, description }) => ({ wiki_path: path, title, summary: description }))
+    .sort((a, b) => (a.wiki_path < b.wiki_path ? -1 : 1));
+  assert.deepEqual((await admin.query(
+    'SELECT wiki_path, title, summary FROM public.knowledge_articles ORDER BY wiki_path COLLATE "C"')).rows, wikiArticles);
 
   const ticketsBefore = (await admin.query('SELECT count(*)::int n FROM public.tickets')).rows[0].n;
   const recorded = await call(apiUrl, '/api/self-service', 'a', { category_id: category, article_id: vpnArticle });
