@@ -71,14 +71,13 @@ test('unmapped dry-run invents no identities and clearly blocks application', ()
   assert.ok(planned.tickets.every(row => row.requester_id === null && row.assigned_to === null));
 });
 
-test('campus profiles, weeks and category weights are reproducible', () => {
+test('enterprise profiles, weeks and category weights are reproducible', () => {
   const options = { weeks: 8, users: 10, weights: { vpn: 100, account: 0, hardware: 0, software: 0, access: 0, 'system-error': 0 } };
   const dataset = generate('campus', now, identityMap, 500, options);
   assert.deepEqual(dataset, generate('campus', now, identityMap, 500, options));
   assert.equal(dataset.profiles.length, 10);
-  assert.equal(dataset.profiles.filter(profile => profile.audience === 'Sinh viên').length, 7);
-  assert.equal(dataset.profiles.filter(profile => profile.audience === 'Giảng viên').length, 2);
-  assert.equal(dataset.profiles.filter(profile => profile.audience === 'Cán bộ').length, 1);
+  assert.ok(dataset.profiles.every(profile => profile.audience === 'Nhân viên'));
+  assert.equal(new Set(dataset.profiles.map(profile => profile.unit)).size, 6);
   assert.deepEqual(dataset.manifest.category_counts, { vpn: 500 });
   assert.ok(dataset.tickets.every(row => row.request_fields.client_version === '4.1' && row.description.includes(row.profile_code)));
   assert.ok(dataset.tickets.some(row => Date.parse(row.created_at) < Date.parse(now) - 42 * 86_400_000));

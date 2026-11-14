@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadArticles, parseArticle, RETIRED_PATHS, wikiClient, wikiEnabled, WIKI_GROUPS } from '../scripts/setup-wiki.mjs';
+import { loadArticles, parseArticle, wikiClient, wikiEnabled, WIKI_GROUPS } from '../scripts/setup-wiki.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -19,7 +19,6 @@ test('W5-08 six CC BY 4.0 articles match the wiki paths seeded in migration 012 
   let seeded = [...migration.matchAll(/'(ho-tro\/[a-z-]+)'\)/g)].map(match => match[1]);
   const renames = await readFile(resolve(root, 'db/migrations/016_knowledge_enterprise_wording.sql'), 'utf8');
   for (const [, to, from] of renames.matchAll(/wiki_path = '(ho-tro\/[a-z-]+)' WHERE wiki_path = '(ho-tro\/[a-z-]+)'/g)) {
-    assert.ok(RETIRED_PATHS.includes(from), `${from} is removed from existing Wiki.js installs`);
     seeded = seeded.map(path => path === from ? to : path);
   }
   seeded.sort();

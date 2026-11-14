@@ -15,8 +15,6 @@ const SECRET_KEYS = ['WIKI_DB_PASSWORD', 'WIKI_ADMIN_PASSWORD', 'WIKI_CLIENT_SEC
 const READ = ['read:pages', 'read:assets', 'read:comments', 'write:comments'];
 const EDIT = [...READ, 'write:pages', 'manage:pages', 'delete:pages', 'read:source', 'read:history', 'write:assets'];
 export const WIKI_GROUPS = { Employee: READ, Agent: EDIT, Manager: EDIT };
-// Bài đã bỏ (migration 016 đổi LMS sang phần mềm nghiệp vụ): xoá khỏi Wiki.js của stack cũ.
-export const RETIRED_PATHS = ['ho-tro/lms'];
 const ATTRIBUTION = '\n\n---\n\n*Nội dung theo giấy phép [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.vi) — TLU-OpenCoreSQN, DX-Desk.*\n';
 
 export function wikiEnabled(env) {
@@ -196,7 +194,7 @@ export async function setupWiki(root, env) {
   });
   // OIDC đứng đầu để autoLogin chuyển thẳng tới Keycloak; quản trị cục bộ vào bằng /login?all=1.
   ensure((await gql('mutation($s:[AuthenticationStrategyInput]!){authentication{updateStrategies(strategies:$s){responseResult{succeeded message}}}}', {
-    s: [strategy(WIKI_STRATEGY_KEY, 'oidc', 'Tài khoản trường (Keycloak)', 0, config, true),
+    s: [strategy(WIKI_STRATEGY_KEY, 'oidc', 'Tài khoản tổ chức (Keycloak)', 0, config, true),
       strategy('local', 'local', 'Quản trị cục bộ', 1, {}, false)],
   })).authentication.updateStrategies, 'Chiến lược đăng nhập');
   ensure((await gql(`mutation($h:String!){site{updateConfig(host:$h,title:"DX-Desk Tri thức",company:"TLU-OpenCoreSQN",
@@ -221,11 +219,7 @@ export async function setupWiki(root, env) {
       {responseResult{succeeded message}}}}`, { id: page.id, ...fields })).pages.update, `Cập nhật bài ${article.path}`);
     updated++;
   }
-  let removed = 0;
-  for (const page of existing.filter(item => RETIRED_PATHS.includes(item.path))) {
-    ensure((await gql('mutation($id:Int!){pages{delete(id:$id){responseResult{succeeded message}}}}', { id: page.id })).pages.delete,
-      `Xoá bài cũ ${page.path}`);
-    removed++;
-  }
-  console.log(`Wiki.js: SSO Keycloak, nhóm theo vai trò; bài mới ${created}, cập nhật ${updated}, xoá ${removed}.`);
+  // An old page can contain operator edits or be linked from outside DX-Desk.
+  // The database and home page reference the replacement without deleting that content.
+  console.log(`Wiki.js: SSO Keycloak, nhóm theo vai trò; bài mới ${created}, cập nhật ${updated}.`);
 }
