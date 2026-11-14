@@ -1,14 +1,14 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import type { Connect, Plugin } from 'vite';
-import { sampleCatalog, sampleResources } from './catalog-fixtures';
+import { sampleCatalog, sampleCollections, sampleResources } from './catalog-fixtures';
 
 /**
  * Dev/preview: /ld/* đi tới API thật qua gateway (W5-04) khi stack đang chạy; chỉ khi
  * không kết nối được gateway mới phục vụ mẫu tĩnh kèm header X-DXDesk-Catalog: sample.
  */
 export function catalogFallback(gateway?: string): Plugin {
-  const files = new Map(Object.entries({ '/ld/catalog': sampleCatalog, ...sampleResources })
+  const files = new Map(Object.entries({ '/ld/catalog': sampleCatalog, ...sampleCollections, ...sampleResources })
     .map(([path, json]) => [path, JSON.stringify(json, null, 2) + '\n']));
   function sample(path: string, method: string, response: Parameters<Connect.NextHandleFunction>[1]) {
     const json = files.get(path);
@@ -30,15 +30,19 @@ export function catalogFallback(gateway?: string): Plugin {
     void fetch(new URL(path, gateway), {
       method, headers: { Accept: 'application/ld+json' }, signal: AbortSignal.timeout(1500),
     }).then(async upstream => {
-      if (upstream.status >= 500) return sample(path, method, response);
+      if (upstream.status >= 500) {
+        await upstream.body?.cancel();
+        return sample(path, method, response);
+      }
+      const body = method === 'GET' ? Buffer.from(await upstream.arrayBuffer()) : undefined;
       response.statusCode = upstream.status;
       // Stack cũ chưa có route W5-04 thì nginx trả mẫu: giữ nguyên header đánh dấu mẫu.
       for (const name of ['Content-Type', 'X-DXDesk-Catalog']) {
         const value = upstream.headers.get(name);
         if (value) response.setHeader(name, value);
       }
-      response.end(method === 'GET' ? Buffer.from(await upstream.arrayBuffer()) : undefined);
-    }, () => sample(path, method, response));
+      response.end(body);
+    }).catch(() => sample(path, method, response));
   };
   return {
     name: 'dxdesk-catalog-sample',

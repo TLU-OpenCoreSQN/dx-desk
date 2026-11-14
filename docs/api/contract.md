@@ -264,6 +264,8 @@ Ngoài tiền tố `/api`, công khai, chỉ `GET`/`HEAD`, không cần `Authori
 - `GET /ld/services/{code}` (`schema:Service`), `GET /ld/request-types/{code}`
   (`schema:DefinedTerm`), `GET /ld/device-types/{code}` (`schema:Product`): `@id`,
   `schema:name`, `schema:identifier`, thêm `schema:description` khi có.
+- `GET /ld/services`, `GET /ld/request-types` và `GET /ld/device-types`: `@graph` của nhóm,
+  chỉ gồm tài nguyên đang hoạt động và có URI hợp lệ.
 - `@context` nhúng sẵn (`dcat`, `dct`, `schema`, `xsd`), `@id` là IRI tương đối theo origin.
   `Content-Type: application/ld+json; charset=utf-8`, `Cache-Control: public, max-age=300`.
 - Mã không khớp `^[a-z][a-z0-9_-]{1,39}$`, mã không tồn tại/ngừng dùng, nhóm hay đường

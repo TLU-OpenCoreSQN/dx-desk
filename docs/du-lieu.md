@@ -52,10 +52,11 @@ tham chiếu trong PostgreSQL, không viết tay từng tệp:
 | `/ld/services/{code}` | `schema:Service` | `categories` đang dùng (`active`) |
 | `/ld/request-types/{code}` | `schema:DefinedTerm` | `categories` đang dùng |
 | `/ld/device-types/{code}` | `schema:Product` | `private.device_types` (khóa ngoại từ `device_requests.device_type`) |
+| `/ld/services`, `/ld/request-types`, `/ld/device-types` | `@graph` | Danh sách đang hoạt động theo nhóm |
 | `/ld/catalog` | `dcat:Catalog` gồm 3 `dcat:Dataset` | `private.linked_datasets` + số mức của `sla_policies` |
 
-Người ẩn danh không có claims nên không đi qua RLS của `authenticated`. API đọc qua hai
-hàm `SECURITY DEFINER` `private.linked_resource(kind, code)` và `private.linked_catalog()`,
+Người ẩn danh không có claims nên không đi qua RLS của `authenticated`. API đọc qua các
+hàm `SECURITY DEFINER` `private.linked_resource(kind, code)`, `private.linked_resources(kind)` và `private.linked_catalog()`,
 chỉ cấp cho `api_login`, chỉ trả cột công khai (mã, tên, mô tả, giấy phép, ngày cập nhật).
 Không có phiếu, người dùng hay sự kiện thật trong JSON-LD. Mã sai định dạng, nhóm lạ,
 danh mục ngừng dùng hoặc phương thức khác đều nhận 404 với thông báo cố định.
@@ -63,7 +64,8 @@ danh mục ngừng dùng hoặc phương thức khác đều nhận 404 với th
 Mẫu tĩnh `apps/web/catalog-fixtures.ts` vẫn là dự phòng khi không có stack: Vite dev thử
 gateway trước rồi mới dùng mẫu, còn nginx của container web chỉ trả mẫu khi được gọi trực
 tiếp không qua APISIX. Chỉ mẫu mới có header `X-DXDesk-Catalog: sample`, và trang
-`/du-lieu` dựa vào header này để ghi "Đang hiển thị danh mục mẫu". Ngày cập nhật của bộ
+`/du-lieu` dựa vào header này để ghi "Đang hiển thị danh mục mẫu". Khi API trả 404 cho tài nguyên,
+trang hiển thị trạng thái tài nguyên đã vắng mặt. Ngày cập nhật của bộ
 dữ liệu là ngày xuất mẫu bằng `scripts/export-demo-samples.mjs`; khi xuất lại, thêm một
 migration cập nhật `private.linked_datasets.modified`.
 

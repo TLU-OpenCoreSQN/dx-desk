@@ -42,6 +42,33 @@ paths:
           content:
             application/ld+json:
               schema: { $ref: "#/components/schemas/LinkedDataCatalog" }
+  /ld/{kind}:
+    servers:
+      - url: http://localhost:9080
+    get:
+      operationId: linkedDataCollection
+      summary: Danh sách tài nguyên tham chiếu đang hoạt động
+      security: []
+      parameters:
+        - in: path
+          name: kind
+          required: true
+          schema: { type: string, enum: [ services, request-types, device-types ] }
+      responses:
+        "200":
+          description: Đồ thị JSON-LD của nhóm tài nguyên
+          content:
+            application/ld+json:
+              schema:
+                type: object
+                required: [ "@context", "@id", "@graph" ]
+                properties:
+                  "@context": { type: object }
+                  "@id": { type: string, example: /ld/services }
+                  "@graph":
+                    type: array
+                    items: { type: object }
+        "404": { $ref: "#/components/responses/Error" }
   /ld/{kind}/{code}:
     servers:
       - url: http://localhost:9080

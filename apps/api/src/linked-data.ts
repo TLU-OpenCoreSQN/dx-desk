@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 // W5-04: JSON-LD/DCAT công khai, chỉ đọc. Nội dung sinh từ dữ liệu tham chiếu trong
-// PostgreSQL qua hai hàm SECURITY DEFINER của migration 020; không cần JWT.
+// PostgreSQL qua các hàm SECURITY DEFINER của migration 020 và 023; không cần JWT.
 // Lược đồ URI và hình dạng JSON giữ đúng như mẫu tĩnh apps/web/catalog-fixtures.ts.
 import { All, Controller, Get, Header, NotFoundException, Param } from '@nestjs/common';
 import { Database } from './database';
@@ -79,6 +79,18 @@ export class LinkedDataController {
   async catalog() {
     const rows = (await this.db.pool.query<DatasetRow>('SELECT * FROM private.linked_catalog()')).rows;
     return catalogDocument(rows);
+  }
+
+  @Get(':kind')
+  @Header('Content-Type', LD_CONTENT_TYPE)
+  @Header('Cache-Control', 'public, max-age=300')
+  async collection(@Param('kind') kind: string) {
+    if (!Object.hasOwn(resourceKinds, kind)) throw new NotFoundException(NOT_FOUND_MESSAGE);
+    const { rows } = await this.db.pool.query<ResourceRow>('SELECT * FROM private.linked_resources($1)', [kind]);
+    return { '@context': ldContext, '@id': `/ld/${kind}`, '@graph': rows.map(row => {
+      const { '@context': _context, ...resource } = resourceDocument(kind as ResourceKind, row);
+      return resource;
+    }) };
   }
 
   @Get(':kind/:code')

@@ -1280,6 +1280,9 @@ test('W5-04 public JSON-LD/DCAT is generated from reference data without a JWT',
   // Danh mục ngừng dùng và mã lạ đều 404 với thông báo cố định; không lộ lỗi PostgreSQL.
   await admin.query("UPDATE public.categories SET active=false WHERE code='software'");
   try {
+    const collection = await (await get('/ld/services')).json();
+    assert.equal(collection['@id'], '/ld/services');
+    assert.deepEqual(collection['@graph'].map(item => item['schema:identifier']), fixtureCodes.filter(code => code !== 'software').sort());
     for (const path of ['/ld/services/software', '/ld/services/khong-ton-tai', '/ld/device-types/vpn', '/ld/tickets/vpn']) {
       const response = await get(path);
       assert.equal(response.status, 404, path);
