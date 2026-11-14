@@ -1,7 +1,7 @@
 # 0010. Nơi chạy bản Internet của DX-Desk
 
-- Trạng thái: **Đề xuất** — chờ đội và thầy chốt trước thứ Bảy 14/11/2026
-- Ngày: 04/11/2026
+- Trạng thái: **Đã chốt** 12/11/2026 — thầy đồng ý phương án A (thuê VPS) và chi phí; tên miền chọn sau khi thuê VPS
+- Ngày: 04/11/2026 (đề xuất), 12/11/2026 (chốt)
 - Người ghi: TV1 (Nguyên, nền tảng)
 - Mã kế hoạch: QĐ-7 (issue #36), đầu vào cho W6-06
 
@@ -16,18 +16,16 @@ và đăng nhập bằng tài khoản thử. Ràng buộc:
   Ước lượng sau tuần 5 ở mục *Ước lượng tài nguyên*.
 - **Tên miền và HTTPS.** Keycloak cần URL HTTPS ổn định cho issuer và redirect URI
   (`KEYCLOAK_PUBLIC_URL`, `WIKI_PUBLIC_URL`, client `dxdesk-web`, `wikijs`).
-- **Ổn định** ít nhất đến 11/12/2026; chi phí đội chịu được; không vi phạm quy định của trường
-  hoặc thể lệ.
+- **Ổn định** ít nhất đến 11/12/2026; chi phí đội chịu được; không vi phạm thể lệ.
 
 ## Ước lượng tài nguyên (hồ sơ chạy Internet)
 
 | Thành phần | RAM ước lượng | Nguồn |
 |---|---|---|
-| `demo-light` tuần 4 (Tầng 1, API, web, n8n, Mattermost) | ~3,0 GiB | Đo W4-09 |
-| Wiki.js 2.5.315 + PostgreSQL riêng | ~0,2 GiB | Một mẫu 04/11, [tai-nguyen.md](../tai-nguyen.md) |
-| Metabase OSS (JVM, `-Xmx1024m` như TN-04) | ~1,0–1,3 GiB | Giới hạn heap TN-04, chờ đo W5-06 |
-| Ứng dụng 2 (cùng API/web) | không đáng kể | W5-01 |
-| **Tổng không có Ollama** | **~5 GiB** | |
+| `demo-light` tuần 5 (Tầng 1, API, web, n8n, Mattermost, Wiki.js + CSDL) | ~3,0 GiB | Đo 12/11, ba lượt |
+| Metabase OSS + PostgreSQL riêng (hồ sơ `full`) | ~1,4 GiB | Đo 12/11, [tai-nguyen.md](../tai-nguyen.md) |
+| Ứng dụng 2 (cùng API/web) | không đáng kể | W5-01, chưa đo |
+| **Tổng không có Ollama** | **~4,4 GiB** | `full` đo 12/11 (Ollama rỗng ~16 MiB) |
 | Ollama + mô hình 1,5–4B (cảnh 4) | +2–4 GiB, CPU nặng | ADR 0005, chờ W6-05 |
 
 Ổ đĩa: image + volume hiện khoảng 10–15 GB; dành 40 GB trở lên (60 GB của Gói 8 đủ khi không tải mô hình). CPU: 2 vCPU đủ cho demo không có
@@ -50,15 +48,15 @@ Giá đối chiếu trên **trang chính thức** của nhà cung cấp ngày 04
 
 | Phương án | Chi phí đến 11/12 | Ưu điểm | Nhược điểm / rủi ro | Kết luận |
 |---|---|---|---|---|
-| A. Thuê VPS 4 vCPU / 8 GB (BizFly VPS Gói 8) | 16/11–11/12 tính 2 tháng: ~1,01 triệu đồng gồm VAT + tên miền | Có IP công khai, chủ động cấu hình, chạy 24/7, dựng ngay trong ngày | Tốn phí (VPS nước ngoài còn cần thẻ quốc tế); đội tự vận hành bảo mật máy chủ | **Đề xuất chọn** |
-| B. Xin máy của trường (qua thầy Tạ Chí Hiếu, hỏi Trung tâm CNTT trong buổi W4-10) | 0 đồng | Không tốn phí; đúng bối cảnh trường | Thời gian cấp chưa biết; có thể không có IP công khai/cổng 443; phụ thuộc lịch người khác sát mốc W6-06 | Hỏi song song; chỉ chuyển sang nếu được cấp trước 16/11 |
+| A. Thuê VPS 4 vCPU / 8 GB (BizFly VPS Gói 8) | 16/11–11/12 tính 2 tháng: ~1,01 triệu đồng gồm VAT + tên miền | Có IP công khai, chủ động cấu hình, chạy 24/7, dựng ngay trong ngày | Tốn phí (VPS nước ngoài còn cần thẻ quốc tế); đội tự vận hành bảo mật máy chủ | **Chọn** (12/11) |
+| B. Xin máy của trường (qua Trung tâm CNTT của trường) | 0 đồng | Không tốn phí | Thời gian cấp chưa biết; có thể không có IP công khai/cổng 443; phụ thuộc lịch người khác sát mốc W6-06 | **Loại** (12/11): DX-Desk chỉ phục vụ doanh nghiệp, không còn liên quan Trung tâm CNTT của trường; buổi W4-10 đã hủy |
 | C. Đường hầm từ máy của đội (Cloudflare Tunnel có tên, cần tên miền trên DNS Cloudflare) | 0 đồng + tên miền | Không cần IP công khai; HTTPS do Cloudflare cấp | Máy phải bật suốt 7–11/12; mất điện/mạng là mất bản Internet; Quick Tunnel (`trycloudflare.com`) đổi URL mỗi lần chạy và không dành cho sản phẩm, nên không dùng được với issuer Keycloak cố định | **Dự phòng** (giả định G6) |
 
-## Quyết định (đề xuất)
+## Quyết định
 
 1. Thuê **một VPS 4 vCPU / 8 GB RAM / 60 GB SSD** (BizFly Cloud VPS Gói 8, kiến trúc amd64), Ubuntu LTS, chạy hồ sơ `demo-light`
    (không Ollama) từ 16/11 đến hết 11/12/2026.
-2. **Tên miền:** một tên miền riêng của đội (ưu tiên `.id.vn` nếu thành viên đủ điều kiện nhận
+2. **Tên miền** (chọn sau khi thuê VPS, trong W6-06): một tên miền riêng của đội (ưu tiên `.id.vn` nếu thành viên đủ điều kiện nhận
    miễn phí theo chương trình của VNNIC — cần kiểm lại điều kiện hiện hành; nếu không, mua một tên
    miền rẻ năm đầu). Ba tên miền con: `desk.` (APISIX), `sso.` (Keycloak), `wiki.` (Wiki.js).
 3. **HTTPS:** reverse proxy Caddy trước APISIX/Keycloak/Wiki.js, chứng chỉ Let's Encrypt tự gia hạn
@@ -66,8 +64,7 @@ Giá đối chiếu trên **trang chính thức** của nhà cung cấp ngày 04
 4. **Dự phòng:** Cloudflare Tunnel có tên từ máy của một thành viên, dùng cùng tên miền (chuyển
    DNS sang Cloudflare). Nếu cả hai không ổn định trong thời gian chấm: trình diễn bản cục bộ, bản
    Internet chỉ giới thiệu bằng đường dẫn.
-5. Phương án B được hỏi song song ở buổi W4-10; nếu trường cấp máy có IP công khai trước 16/11 thì
-   ghi ADR thay thế ADR này.
+5. Không dùng phương án B (xem bảng trên).
 
 ## Hệ quả
 
@@ -76,16 +73,22 @@ Giá đối chiếu trên **trang chính thức** của nhà cung cấp ngày 04
   Script `setup-automation.mjs` hiện chỉ chạy với Keycloak cục bộ (`localDemo`), nên bootstrap
   roster/Mattermost trên máy chủ phải cấu hình tường minh; `setup-wiki.mjs` chạy được với Keycloak
   bất kỳ khi có admin credentials.
+- Metabase (W5-06) hiện chỉ có trong hồ sơ `full`, nên `demo-light` trên VPS không có dashboard
+  `/bao-cao`. W6-06 chọn một trong hai: thêm Metabase vào hồ sơ chạy Internet (vẫn không Ollama),
+  hoặc chỉ trình diễn dashboard ở bản cục bộ. Số đo RAM 12/11 ở [tai-nguyen.md](../tai-nguyen.md).
 - Chỉ mở cổng 80/443 (và SSH bằng khóa); các cổng dịch vụ tiếp tục bind `127.0.0.1` như compose hiện tại.
 - Tài khoản thử cho giám khảo: tạo riêng, không dùng mật khẩu mẫu trong README.
-- Chi phí cần báo đội và thầy trước 14/11; người thuê giữ hóa đơn.
+- Người thuê giữ hóa đơn.
 
-## Việc còn mở trước khi chốt
+## Theo dõi
 
 - [x] Đối chiếu giá trên trang chính thức của BizFly Cloud và Hetzner (04/11/2026).
-- [ ] Hỏi Trung tâm CNTT về phương án B trong buổi W4-10.
-- [ ] Đội và thầy đồng ý chi phí; ghi người chịu trách nhiệm thanh toán.
-- [ ] Đổi trạng thái ADR sang **Đã chốt** kèm ngày, cập nhật bảng ADR và issue #36.
+- [x] Phương án B: loại ngày 12/11/2026 do đổi phạm vi sang doanh nghiệp.
+- [x] Thầy đồng ý phương án A và chi phí (12/11/2026).
+- [x] Đổi trạng thái ADR sang **Đã chốt** và cập nhật bảng ADR.
+- [ ] Cập nhật issue #36 khi xác nhận các bước thuê VPS và chọn tên miền.
+- [ ] Thuê VPS (kiểm lại giá khi đặt hàng), SSH bằng khóa vào được — hạn 16/11 để W6-06 bắt đầu.
+- [ ] Chọn tên miền và cấp HTTPS (W6-06).
 
 ## Nguồn
 

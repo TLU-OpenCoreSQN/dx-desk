@@ -34,7 +34,7 @@ từ PostgreSQL trước khi commit transaction. Sự kiện thao tác người/
 kiểm tra báo cáo. Số liệu không phải biên bản khảo sát hay kết quả vận hành thật.
 
 Quy mô 150 phiếu/tuần, trọng số danh mục, sáu phòng ban giả lập và hệ số cao điểm 2,5
-là [giả định của đội trong W4-10](../khao-sat-trung-tam-cntt.md).
+là [giả định của đội](../tham-so-du-lieu-gia-lap.md).
 Xem [lược đồ dữ liệu và RLS](../du-lieu.md) cho cấu trúc các bảng.
 
 **Giấy phép dữ liệu.** Bản giả lập xuất offline và các mẫu ticket, sự kiện, chính sách

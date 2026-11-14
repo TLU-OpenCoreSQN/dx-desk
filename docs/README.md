@@ -41,7 +41,7 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 - Endpoint queue, claim, phê duyệt và `/system/*`: [hợp đồng API](api/contract.md) và [OpenAPI](api/openapi.yaml).
 - [Kịch bản demo tuần 4 — luồng VPN](demo-tuan-4.md).
 - [RAM theo dịch vụ cho hồ sơ `full` và `demo-light`](tai-nguyen.md) (W4-09, số đo tạm).
-- [Khảo sát Trung tâm CNTT: câu hỏi, tham số giả định cho bộ sinh dữ liệu](khao-sat-trung-tam-cntt.md) (W4-10).
+- [Tham số giả định cho bộ sinh dữ liệu](tham-so-du-lieu-gia-lap.md) (W4-10 đã hủy ngày 12/11/2026).
 - ADR 0008 cập nhật trạng thái runtime Mattermost và giấy phép image 12.0.1 (W4-04).
 
 ## Phát hành
