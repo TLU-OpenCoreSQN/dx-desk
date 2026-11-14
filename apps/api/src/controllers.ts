@@ -70,6 +70,9 @@ export function workflowExceptionForCode(code?: string): { status: number; messa
   if (code === '45013') {
     return { status: 422, message: 'Cần ghi lý do từ chối (5–2000 ký tự).' };
   }
+  if (code === '45015') {
+    return { status: 409, message: 'Đề nghị chưa được bàn giao nên chưa có biên bản.' };
+  }
   if (code === '45014') {
     return { status: 422, message: 'Tài khoản chưa được gán đơn vị nên chưa gửi được đề nghị thiết bị. Liên hệ quản trị hệ thống.' };
   }

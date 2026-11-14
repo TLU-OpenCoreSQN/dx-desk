@@ -457,6 +457,44 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+  /device-requests/{id}/handover-url:
+    post:
+      operationId: issueDeviceHandoverUrl
+      summary: W5-03 — cấp URL ký tải biên bản bàn giao PDF (hạn 120 giây)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: URL ký; biên bản được tạo nếu chưa có
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /device-handovers/{id}/content:
+    get:
+      operationId: downloadDeviceHandover
+      summary: W5-03 — tải biên bản bằng chữ ký ngắn hạn, không cần JWT
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: expires, in: query, required: true, schema: { type: string } }
+        - { name: signature, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Tệp PDF
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /teams:
     get:
       operationId: listTeams
@@ -832,6 +870,8 @@ components:
         prepared_at: { type: string, format: date-time, nullable: true }
         handed_over_by: { type: string, format: uuid, nullable: true }
         handed_over_at: { type: string, format: date-time, nullable: true }
+        handover_key: { type: string, nullable: true, description: Khóa tệp biên bản trong SeaweedFS (W5-03) }
+        handover_generated_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     Attachment:

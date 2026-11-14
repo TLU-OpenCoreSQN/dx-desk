@@ -1157,3 +1157,89 @@ test('W5-02 device approval: direct manager approves, IT prepares and hands over
   assert.deepEqual(rejectedEvents.map(row => row.type).sort(), ['device_request.created', 'device_request.rejected']);
   await admin.query("UPDATE private.outbox SET status='delivered', delivered_at=now() WHERE destination='device_request' AND status='pending'");
 });
+
+test('W5-03 handover PDF is generated once on hand-over, stored in SeaweedFS and downloadable only by parties via signed URL', async () => {
+  const rpc = (key, id, to) => call(restUrl, '/rpc/transition_device_request', key, { p_id: id, p_to: to });
+  const link = (key, id, customToken) => call(apiUrl, `/api/device-requests/${id}/handover-url`, key, {}, customToken);
+  await admin.query("UPDATE private.outbox SET available_at=now()+interval '1 day' WHERE status='pending'");
+  const body = { device_type: 'keyboard', reason: 'Bàn phím liệt phím, cần thay mới', quantity: 1 };
+  const id = (await call(restUrl, '/device_requests', 'a', body)).body[0].id;
+  const key = `device-handover/${id}.pdf`;
+
+  // Chưa bàn giao thì chưa có biên bản, kể cả với người đề nghị; trình duyệt không tự đặt được khóa tệp.
+  assert.equal((await link('a', id)).status, 409);
+  assert.equal((await rpc('manager', id, 'approved')).status, 200);
+  assert.equal((await rpc('agent', id, 'preparing')).status, 200);
+  assert.equal((await link('agent', id)).status, 409);
+  assert.notEqual((await call(restUrl, '/rpc/set_device_handover', 'a', { p_id: id, p_key: key, p_size: 10 })).status, 200);
+  assert.notEqual((await patch(restUrl, `/device_requests?id=eq.${id}`, 'a', { handover_key: key })).status, 200);
+  assert.equal((await rpc('agent', id, 'handed_over')).body.handover_key, null);
+  assert.equal(seaweedPuts.filter(item => item.url === '/' + key).length, 0);
+
+  // Sự kiện bàn giao qua n8n -> API sinh PDF, lưu kho tệp, ghi khóa. Gọi lặp không sinh lại.
+  const event = (await admin.query(`SELECT event_id FROM private.outbox
+    WHERE envelope->>'request_id'=$1 AND envelope->>'event_type'='device_request.handed_over'`, [id])).rows[0].event_id;
+  const path = `/api/system/device-events/${event}/process`;
+  const ack = await call(apiUrl, path, 'service', { schema_version: 1 });
+  assert.equal(ack.status, 200, JSON.stringify(ack.body));
+  assert.equal(ack.body.notification.kind, 'handed_over');
+  assert.equal((await call(apiUrl, path, 'service', { schema_version: 1 })).status, 200);
+  const stored = seaweedPuts.filter(item => item.url === '/' + key);
+  assert.equal(stored.length, 1, 'Exactly one PDF object');
+  assert.equal(stored[0].body.subarray(0, 5).toString(), '%PDF-');
+  const row = (await admin.query('SELECT handover_key, handover_size_bytes::int AS size, handover_generated_at FROM public.device_requests WHERE id=$1', [id])).rows[0];
+  assert.equal(row.handover_key, key);
+  assert.equal(row.size, stored[0].body.length);
+  assert.ok(row.handover_generated_at);
+  // Tên trên biên bản lấy từ lịch sử do PostgreSQL ghi.
+  const data = (await db.asAutomation(automationClaims, async client =>
+    (await client.query('SELECT private.device_handover_data($1) AS data', [id])).rows[0].data));
+  assert.deepEqual([data.requester_name, data.approver_name, data.handed_over_by_name], ['test.a', 'test.manager', 'test.agent']);
+  assert.equal('reason' in data, false);
+
+  // Người đề nghị, Manager của đơn vị và IT lấy được liên kết; người ngoài và Manager đơn vị khác thì không.
+  const otherManager = await token('manager', { sub: '20000000-0000-4000-8000-000000000007', department: 'phong-ke-toan' });
+  assert.equal((await link('b', id)).status, 404);
+  assert.equal((await link('manager', id, otherManager)).status, 404);
+  assert.equal((await call(apiUrl, `/api/device-requests/${id}/handover-url`, null, {})).status, 401);
+  for (const who of ['a', 'manager', 'agent']) {
+    const issued = await link(who, id);
+    assert.equal(issued.status, 200, JSON.stringify(issued.body));
+    const response = await fetch(apiUrl + issued.body.url);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'application/pdf');
+    assert.match(response.headers.get('content-disposition'), /^attachment; filename="bien-ban-ban-giao-DX-TB-[0-9A-F]{8}\.pdf"$/);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), stored[0].body);
+  }
+  assert.equal(seaweedPuts.filter(item => item.url === '/' + key).length, 1, 'Issuing links never regenerates');
+  const issued = (await link('a', id)).body;
+  const url = new URL(issued.url, apiUrl);
+  assert.ok(new Date(issued.expires_at).getTime() - Date.now() <= 120_000);
+  url.searchParams.set('signature', 'a'.repeat(64));
+  assert.equal((await fetch(url)).status, 403);
+  // Chữ ký của đề nghị này không mở được biên bản của đề nghị khác.
+  const elsewhere = new URL(issued.url.replace(id, '20000000-0000-4000-8000-00000000ffff'), apiUrl);
+  assert.equal((await fetch(elsewhere)).status, 403);
+
+  // Tự động hóa tắt (sự kiện chưa được xử lý): lần tải đầu tiên của người có quyền tự tạo biên bản.
+  const lazy = (await call(restUrl, '/device_requests', 'a', { ...body, device_type: 'mouse' })).body[0].id;
+  for (const [who, to] of [['manager', 'approved'], ['agent', 'preparing'], ['agent', 'handed_over']]) await rpc(who, lazy, to);
+  assert.equal((await link('b', lazy)).status, 404);
+  assert.equal(seaweedPuts.filter(item => item.url === `/device-handover/${lazy}.pdf`).length, 0, 'Outsiders cannot trigger generation');
+  const first = await link('a', lazy);
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.equal((await fetch(apiUrl + first.body.url)).status, 200);
+  assert.equal((await link('agent', lazy)).status, 200);
+  assert.equal(seaweedPuts.filter(item => item.url === `/device-handover/${lazy}.pdf`).length, 1);
+
+  // Kho tệp hỏng: báo 503, không ghi khóa, lần sau thử lại được.
+  const broken = (await call(restUrl, '/device_requests', 'a', { ...body, device_type: 'other' })).body[0].id;
+  for (const [who, to] of [['manager', 'approved'], ['agent', 'preparing'], ['agent', 'handed_over']]) await rpc(who, broken, to);
+  const endpoint = process.env.SEAWEEDFS_ENDPOINT;
+  process.env.SEAWEEDFS_ENDPOINT = 'http://127.0.0.1:1';
+  try { assert.equal((await link('a', broken)).status, 503); } finally { process.env.SEAWEEDFS_ENDPOINT = endpoint; }
+  assert.equal((await admin.query('SELECT handover_key FROM public.device_requests WHERE id=$1', [broken])).rows[0].handover_key, null);
+  assert.equal((await link('a', broken)).status, 200);
+  await admin.query("UPDATE private.outbox SET status='delivered', delivered_at=now() WHERE destination='device_request' AND status='pending'");
+});

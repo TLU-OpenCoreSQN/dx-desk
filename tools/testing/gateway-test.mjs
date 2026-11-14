@@ -97,6 +97,10 @@ try {
   await check('only content route bypasses JWT for signed capabilities', async () => {
     assert.equal((await call('/api/attachments/10000000-0000-4000-8000-000000000001/content')).status, 200);
     assert.equal((await call('/api/attachments/10000000-0000-4000-8000-000000000001/download-url')).status, 401);
+    // W5-03: chỉ đường dẫn nội dung biên bản (có chữ ký) qua cổng không cần JWT.
+    assert.equal((await call('/api/device-handovers/10000000-0000-4000-8000-000000000001/content')).status, 200);
+    assert.equal((await call('/api/device-requests/10000000-0000-4000-8000-000000000001/handover-url')).status, 401);
+    assert.equal((await call('/api/device-handovers/10000000-0000-4000-8000-000000000001/other')).status, 401);
   });
   const logs = docker(['logs', name], false);
   assert.doesNotMatch(logs, /failed to (check|parse|read).*schema/);

@@ -58,6 +58,10 @@ Metadata kiểm tại dependency đã cài ngày 21/10/2026:
 - lucide-react 0.453.0: ISC.
 - NestJS 11.2.7, pg 8.16.3, jose 6.1.0: MIT.
 - RxJS 7.8.2: Apache-2.0.
+- PDFKit 0.20.2 (W5-03, sinh biên bản bàn giao trong API): MIT; dependency bắc cầu trong `apps/api/package-lock.json`.
+- Phông Noto Sans Regular/Bold (W5-03): SIL Open Font License 1.1, © 2022 The Noto Project Authors. Tệp `.ttf` nguyên
+  bản lấy từ gói npm `@expo-google-fonts/noto-sans` 0.4.2, đặt ở `apps/api/assets/fonts/` kèm `OFL.txt`; biên bản PDF
+  nhúng tập con của phông. Văn bản giấy phép: `LICENSES/OFL-1.1.txt`.
 - Ứng dụng 2 (`apps/device-request`, W5-01) chỉ dùng React/React DOM 18.3.1 và keycloak-js 26.2.4 cùng phiên bản
   với web; không thêm thư viện runtime mới. Build cũng tạo `dist/THIRD-PARTY-LICENSES.txt`.
 

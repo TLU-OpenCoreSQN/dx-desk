@@ -108,3 +108,5 @@ export function formatTime(value: string | null): string {
   return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
 }
 export const shortId = (id: string) => id.slice(0, 8).toUpperCase();
+/** W5-03: API trả 409 (chưa bàn giao) hoặc 503 (kho tệp chưa sẵn sàng) khi chưa có biên bản. */
+export const HANDOVER_UNAVAILABLE = 'Chưa tạo được biên bản bàn giao. Vui lòng thử lại sau ít phút.';
