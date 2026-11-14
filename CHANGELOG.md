@@ -17,6 +17,10 @@
 - W5-05/06/07 (#38): bộ sinh dữ liệu giả lập 6–8 tuần có kịch bản VPN và tự đối chiếu KPI (dữ liệu CC0-1.0, migration 013); Metabase OSS v0.64.3 trong hồ sơ `full` với dashboard Manager nhúng ký tại `/bao-cao`; trang danh mục dữ liệu công khai hiển thị JSON-LD và DCAT; nghiệm thu `tools/testing/week5-metabase.mjs`.
 
 ### Thay đổi
+- Giao diện web: trang chi tiết và trang tạo phiếu tách thành component con, dùng chung `Button`/`FormField`; thêm `Toast`, `Modal`, `Skeleton`; các trang tải theo kiểu lazy (skeleton trong vùng nội dung, có màn "Không thể tải trang" khi chunk cũ không còn sau lần cập nhật).
+- Trang tạo phiếu tự lưu bản nháp trong trình duyệt theo từng người dùng (lưu khi rời trang, xoá khi gửi phiếu hoặc đăng xuất); danh sách phiếu đồng bộ từ khoá, bộ lọc và số trang với URL.
+- Ứng dụng 2 "Xin cấp thiết bị": giao diện đồng bộ với DX-Desk, nút chuyển sáng/tối dùng chung thiết lập, thanh tiến trình có số bước.
+- Dark mode: màu chữ trạng thái của ứng dụng 2 và màu tint/viền nhấn của web tối theo nền để đủ tương phản.
 - W5-11 (#39): 6 bài tri thức Wiki.js và tài liệu thống nhất theo bối cảnh doanh nghiệp (bài LMS đổi thành "Phần mềm nghiệp vụ nội bộ"), migration 016.
 
 ### Tài liệu (tuần 5)

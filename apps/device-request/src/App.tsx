@@ -38,7 +38,7 @@ export function Workspace({ user }: { user: CurrentUser }) {
 
   return (
     <div className="min-h-screen bg-surface-warm text-content">
-      <header className="border-b border-edge bg-surface/95 backdrop-blur-md sticky top-0 z-30 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <header className="border-b border-edge bg-surface/95 backdrop-blur-md sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-[6px] bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center font-bold text-white text-sm shadow-xs shrink-0">
@@ -55,11 +55,11 @@ export function Workspace({ user }: { user: CurrentUser }) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5 text-sm">
-            <div className="flex items-center gap-2 h-9 px-3 bg-surface-warm border border-edge rounded-[6px] shadow-2xs text-xs">
+            <div className="flex items-center gap-2 min-h-9 px-3 py-1 bg-surface-warm border border-edge rounded-[6px] shadow-2xs text-xs">
               <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-primary-tint to-primary-tint border border-primary-edge text-primary-text font-bold text-[10px] flex items-center justify-center shrink-0">
                 {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
-              <span data-testid="identity" className="flex items-center gap-1.5">
+              <span data-testid="identity" className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                 <span className="font-semibold text-content">{user.name}</span>
                 <span className="flex items-center gap-1">
                   {user.roles.map(role => (
@@ -78,7 +78,7 @@ export function Workspace({ user }: { user: CurrentUser }) {
                   ))}
                 </span>
                 {user.department && (
-                  <span className="text-muted text-[11px] hidden md:inline">· đơn vị {user.department}</span>
+                  <span className="text-muted text-[11px]">· đơn vị {user.department}</span>
                 )}
               </span>
             </div>

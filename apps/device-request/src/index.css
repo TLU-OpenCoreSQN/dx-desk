@@ -108,11 +108,12 @@
     border: 1px solid var(--color-edge-subtle, #e4e3e0);
     border-radius: var(--radius-md, 6px);
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Không chuyển động màu nền/chữ: đổi sáng/tối phải tức thời, tránh khung hình chữ lẫn vào nền. */
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .dx-card-hover {
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .dx-card-hover:hover {
     transform: translateY(-2px);

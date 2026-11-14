@@ -90,8 +90,10 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
       {request.status !== 'rejected' && (
         <ol className="mt-3.5 grid grid-cols-4 gap-1.5 text-[11px]" aria-label="Tiến trình">
           {['Gửi đề nghị', 'Quản lý duyệt', 'IT chuẩn bị', 'Bàn giao'].map((label, index) => {
-            const isDone = index < step;
-            const isCurrent = index === step;
+            // Đã bàn giao là trạng thái kết thúc: bước cuối cũng tính là hoàn tất.
+            const finished = request.status === 'handed_over';
+            const isDone = index < step || finished;
+            const isCurrent = index === step && !finished;
             return (
               <li
                 key={label}

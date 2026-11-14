@@ -91,7 +91,8 @@ describe('TicketListPage URL Search Parameters Synchronization', () => {
     expect(statusSelect).toHaveValue('in_progress');
 
     // Filtered result matching on the page
-    expect(screen.getByText('Cài đặt phần mềm VPN')).toBeInTheDocument();
+    // Chờ danh sách hiển thị xong; kiểm tra đồng bộ ngay sau lời gọi API sẽ chập chờn.
+    expect(await screen.findByText('Cài đặt phần mềm VPN')).toBeInTheDocument();
     expect(screen.queryByText('Mất kết nối mạng dây phòng 401')).not.toBeInTheDocument();
   });
 

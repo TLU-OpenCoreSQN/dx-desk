@@ -434,7 +434,7 @@ export const TicketListPage: React.FC = () => {
           {/* Sticky column header (desktop only, sticks below the app header) */}
           <div
             aria-hidden="true"
-            className={`dx-ticket-list-header sticky top-14 z-20 hidden border-b border-[var(--color-edge-subtle)] bg-[color-mix(in_srgb,var(--color-primary-tint)_35%,#f7f6f3)] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)] lg:grid lg:gap-x-4 ${TABLE_GRID}`}
+            className={`dx-ticket-list-header sticky top-14 z-20 hidden border-b border-[var(--color-edge-subtle)] bg-[color-mix(in_srgb,var(--color-primary-tint)_35%,var(--color-surface-warm))] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)] lg:grid lg:gap-x-4 ${TABLE_GRID}`}
           >
             <span>Mã phiếu</span>
             <span>Tiêu đề</span>
