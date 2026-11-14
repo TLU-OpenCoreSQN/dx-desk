@@ -296,6 +296,8 @@ Thông báo: mỗi bước tạo / duyệt / từ chối / bàn giao ghi một d
 `device-request` (`DEVICE_REQUEST_WEBHOOK_URL`), n8n gọi `POST /api/system/device-events/:id/process`
 bằng token dịch vụ và nhận ACK `{event_id,result:"notification",request_id,notification:{kind,audience,team_id}}`
 (`audience`: `manager` khi có đề nghị, `it` khi đã duyệt, `requester` khi từ chối/bàn giao). Tin Mattermost
-chỉ gồm loại sự kiện, mã đề nghị và mã sự kiện: tin cho IT vào kênh nhóm IT Support, tin cho quản lý và
-người đề nghị vào kênh vận hành chung (bản demo chưa có tài khoản Mattermost cho nhân viên; người đề
-nghị theo dõi trạng thái trong ứng dụng). Bước "IT chuẩn bị" không phát thông báo.
+chỉ gồm loại sự kiện, mã đề nghị và mã sự kiện. API tra khóa kênh từ đề nghị và lease đang giữ trong
+PostgreSQL. Kênh riêng của nhóm IT dùng khóa `device-it`, kênh của quản lý dùng
+`device-manager:<department>`, kênh cá nhân dùng `device-requester:<Keycloak-sub>`. Cấu hình ánh xạ trong
+`MATTERMOST_TEAM_CHANNELS`. Nếu thiếu kênh, outbox thử lại theo giới hạn hiện hành. Bước "IT chuẩn bị"
+không phát thông báo.

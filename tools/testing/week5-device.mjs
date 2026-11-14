@@ -55,6 +55,23 @@ async function posted(channel, id, phrase, forbidden) {
     return posts.some(post => post.message.includes(phrase));
   }, 'Mattermost notice: ' + phrase);
 }
+async function mattermostCredentials(username) {
+  const response = await fetch('http://localhost:' + env.MATTERMOST_PORT + '/api/v4/users/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10000),
+    body: JSON.stringify({ login_id: username, password: env.MATTERMOST_DEMO_PASSWORD }),
+  });
+  assert.equal(response.status, 200);
+  await response.body?.cancel();
+  return response.headers.get('token');
+}
+async function canReadNoticeChannel(username, channel) {
+  const credentials = await mattermostCredentials(username);
+  const response = await fetch('http://localhost:' + env.MATTERMOST_PORT + '/api/v4/channels/' + channel + '/posts', {
+    headers: { Authorization: 'Bearer ' + credentials }, signal: AbortSignal.timeout(10000),
+  });
+  await response.body?.cancel();
+  return response.status;
+}
 
 const body = { device_type: 'monitor', reason: '[SYNTHETIC W5 acceptance] Màn hình thứ hai ' + Date.now(), quantity: 1 };
 try {
@@ -65,9 +82,8 @@ try {
     assert.notEqual(claimsOf(other).department, claimsOf(manager).department);
     assert.match(claimsOf(employee).department, /^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
-  const teams = (await call('/api/system/teams', service)).data.data;
-  const support = teams.find(team => team.name === 'IT Support');
-  assert.ok(support);
+  const managerChannel = channels['device-manager:' + claimsOf(manager).department];
+  const requesterChannel = channels['device-requester:' + claimsOf(employee).sub];
   const failedBefore = Number((await call('/api/system/outbox', service)).data.failed);
   let id;
   await check('Employee creates a request through PostgREST; unit comes from the token', async () => {
@@ -86,15 +102,18 @@ try {
     assert.equal((await transition(employee, id, 'approved')).data.code, '45012');
     assert.equal((await transition(agent, id, 'preparing')).status, 404);
   });
-  await check('New request notifies managers with identifiers only', () =>
-    posted(channels.default, id, 'chờ quản lý trực tiếp duyệt', body.reason));
+  await check('New request notifies only its department managers', async () => {
+    await posted(managerChannel, id, 'chờ quản lý trực tiếp duyệt', body.reason);
+    assert.equal(await canReadNoticeChannel('manager.1', managerChannel), 200);
+    assert.equal(await canReadNoticeChannel('agent.1', managerChannel), 403);
+  });
   await check('Direct manager approves; IT is notified in its team channel and now sees the request', async () => {
     const approved = await transition(manager, id, 'approved');
     assert.equal(approved.status, 200, JSON.stringify(approved.data));
     assert.equal(approved.data.status, 'approved');
     assert.equal(approved.data.decided_by, claimsOf(manager).sub);
     assert.equal(await visible(agent, id), 1);
-    await posted(channels[support.id], id, 'IT chuẩn bị', body.reason);
+    await posted(channels['device-it'], id, 'IT chuẩn bị', body.reason);
   });
   await check('IT prepares and hands over in order; requester is notified', async () => {
     assert.equal((await transition(manager, id, 'preparing')).data.code, '45012');
@@ -103,7 +122,10 @@ try {
     const handed = await transition(agent, id, 'handed_over');
     assert.equal(handed.data.status, 'handed_over');
     assert.equal(handed.data.handed_over_by, claimsOf(agent).sub);
-    await posted(channels.default, id, 'Thiết bị đã bàn giao', body.reason);
+    await posted(requesterChannel, id, 'Thiết bị đã bàn giao', body.reason);
+    assert.equal(await canReadNoticeChannel('employee.a', requesterChannel), 200);
+    assert.equal(await canReadNoticeChannel('employee.b', requesterChannel), 403);
+    assert.equal(await canReadNoticeChannel('manager.1', requesterChannel), 403);
     const history = (await call('/rest/device_request_events?request_id=eq.' + id + '&order=created_at,id', employee)).data;
     assert.deepEqual(history.map(row => row.to_status), ['pending', 'approved', 'preparing', 'handed_over']);
     assert.ok(history.every(row => row.actor_type === 'user'));

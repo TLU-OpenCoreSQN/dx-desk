@@ -134,7 +134,14 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         const ack = await response.json() as Ack;
         if (!validAck(item, ack)) throw new Error('invalid_durable_ack');
         if (ack.result === 'unresolved') throw new Error('routing_unresolved');
-        if (item.destination !== 'automation' && ack.result === 'notification') await this.notify(item, ack);
+        if (item.destination !== 'automation' && ack.result === 'notification') {
+          const key = item.destination === 'device_request'
+            ? await this.db.asAutomation(identity.claims, async client => (await client.query<{ channel_key: string | null }>(
+              'SELECT private.device_notice_channel($1,$2) AS channel_key', [item.event_id, item.lease_token],
+            )).rows[0]?.channel_key)
+            : ack.notification?.team_id ?? ack.team_id ?? 'default';
+          await this.notify(item, key);
+        }
         const completed = await this.db.asAutomation(identity.claims, async client => (await client.query(
           'SELECT private.complete_outbox($1,$2) AS completed', [item.event_id, item.lease_token],
         )).rows[0]?.completed === true);
@@ -150,12 +157,10 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async notify(item: Delivery, ack: Ack) {
+  private async notify(item: Delivery, key: string | null | undefined) {
     const channels: Record<string, string> = JSON.parse(required('MATTERMOST_TEAM_CHANNELS'));
-    const teamId = ack.notification?.team_id ?? ack.team_id;
-    // Tin cho quản lý/người đề nghị thiết bị không có nhóm IT: vào kênh vận hành chung.
-    const channel = teamId ? channels[teamId] ?? (item.destination === 'device_request' ? channels.default : undefined) : channels.default;
-    if (!channel) throw new Error('notification_channel_missing');
+    const channel = key && Object.hasOwn(channels, key) ? channels[key] : undefined;
+    if (typeof channel !== 'string' || !channel) throw new Error('notification_channel_missing');
     // Reconcile an ambiguous prior POST before retrying. This is bounded best
     // effort, not an exactly-once promise across two independent systems.
     const recent = await fetch(required('MATTERMOST_URL').replace(/\/+$/, '') + `/api/v4/channels/${encodeURIComponent(channel)}/posts?per_page=200`, {

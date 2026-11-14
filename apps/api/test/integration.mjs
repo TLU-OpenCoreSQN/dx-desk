@@ -1131,6 +1131,7 @@ test('W5-02 device approval: direct manager approves, IT prepares and hands over
   assert.ok(queued.every(row => row.destination === 'device_request' && !JSON.stringify(row.envelope).includes(body.reason)));
   assert.equal(queued.find(row => row.envelope.event_type === 'device_request.approved').envelope.payload.status, 'approved');
   const expected = { 'device_request.created': 'manager', 'device_request.approved': 'it', 'device_request.handed_over': 'requester' };
+  const channelKeys = { created: 'device-manager:phong-hanh-chinh', approved: 'device-it', handed_over: `device-requester:${users.a.sub}` };
   const support = (await admin.query("SELECT id FROM public.teams WHERE code='support'")).rows[0].id;
   for (const row of queued) {
     const path = `/api/system/device-events/${row.event_id}/process`;
@@ -1141,6 +1142,13 @@ test('W5-02 device approval: direct manager approves, IT prepares and hands over
     assert.deepEqual(ack.body, { event_id: row.event_id, result: 'notification', request_id: id,
       notification: { kind, audience: expected[row.envelope.event_type], team_id: kind === 'approved' ? support : null } });
     assert.deepEqual((await call(apiUrl, path, 'service', { schema_version: 1 })).body, ack.body, 'Gọi lặp trả cùng ACK');
+    const lease = '20000000-0000-4000-8000-000000000031';
+    const lookup = () => automation(async client =>
+      (await client.query('SELECT private.device_notice_channel($1,$2) AS key', [row.event_id, lease])).rows[0].key);
+    assert.equal(await lookup(), null);
+    await admin.query("UPDATE private.outbox SET status='processing', lease_token=$2, locked_until=now()+interval '1 minute' WHERE event_id=$1", [row.event_id, lease]);
+    assert.equal(await lookup(), channelKeys[kind]);
+    await admin.query("UPDATE private.outbox SET status='pending', lease_token=NULL, locked_until=NULL WHERE event_id=$1", [row.event_id]);
   }
   // Sự kiện phiếu không đi nhầm sang cổng thiết bị.
   const ticketEvent = (await admin.query("SELECT event_id FROM private.outbox WHERE destination<>'device_request' LIMIT 1")).rows[0].event_id;

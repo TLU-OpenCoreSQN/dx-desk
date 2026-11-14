@@ -27,6 +27,8 @@ async function fixture(t, mode='success', destination='automation') {
       assert.equal(request.headers['x-dxdesk-webhook-key'],'test-internal-webhook-key-at-least-32');
       if(mode==='unavailable'){response.statusCode=503;response.end('{}');}
       else if(mode==='activating'){response.statusCode=404;response.end('{}');}
+      else if (destination === 'device_request') response.end(JSON.stringify({ event_id: event, request_id: ticket,
+        result: 'notification', notification: { kind: 'handed_over', audience: 'requester' } }));
       else response.end(JSON.stringify({event_id:mode==='bad-ack'?'wrong':event,ticket_id:ticket,
         result:destination==='notification'?'notification':'routed',team_id:'network',notification:{kind:'status',team_id:'network'}}));
     }else if(request.url.startsWith('/api/v4/channels/')){
@@ -42,8 +44,10 @@ async function fixture(t, mode='success', destination='automation') {
     .setAudience('dxdesk-api').setIssuedAt().setExpirationTime('5m').sign(privateKey);
   const env={OIDC_ISSUER:base,OIDC_AUDIENCE:'dxdesk-api',OIDC_JWKS_URL:base+'/certs',OIDC_TOKEN_URL:base+'/token',
     AUTOMATION_CLIENT_ID:'dxdesk-automation',AUTOMATION_CLIENT_SECRET:'client-test-secret',AUTOMATION_WEBHOOK_URL:base+'/events',
-    AUTOMATION_WEBHOOK_KEY:'test-internal-webhook-key-at-least-32',MATTERMOST_URL:base,MATTERMOST_BOT_TOKEN:'bot-token-test',
-    MATTERMOST_TEAM_CHANNELS:JSON.stringify({network:'private-network-channel'})};
+    DEVICE_REQUEST_WEBHOOK_URL:base+'/events', AUTOMATION_WEBHOOK_KEY:'test-internal-webhook-key-at-least-32',
+    MATTERMOST_URL:base,MATTERMOST_BOT_TOKEN:'bot-token-test',
+    MATTERMOST_TEAM_CHANNELS:JSON.stringify({network:'private-network-channel', default:'shared-channel',
+      ...mode !== 'missing-device-channel' && { ['device-requester:' + ticket]: 'private-requester-channel' }})};
   const previous=Object.fromEntries(Object.keys(env).map(key=>[key,process.env[key]]));Object.assign(process.env,env);
   t.after(()=>{for(const [key,value] of Object.entries(previous))value===undefined?delete process.env[key]:process.env[key]=value;});
   const calls=[];let claimed=false;
@@ -53,9 +57,11 @@ async function fixture(t, mode='success', destination='automation') {
       calls.push({sql,params});
       if(sql.includes('complete_outbox'))return {rows:[{completed:mode!=='lost-lease'}]};
       if(sql.includes('fail_outbox'))return {rows:[{deferred:mode!=='lost-lease'}]};
+      if(sql.includes('device_notice_channel'))return {rows:[{channel_key:'device-requester:'+ticket}]};
       const rows=sql.includes('claim_outbox')&&!claimed?[{event_id:event,destination,lease_token:'lease-test',attempts:3,
         envelope:{event_id:event,ticket_id:ticket,event_type:destination==='notification'?'ticket.status_changed':'ticket.created',
-          ticket_version:2,schema_version:1,payload:{title:'PRIVATE TITLE',description:'PRIVATE NOTE'}}}]:[];
+          ticket_version:2,schema_version:1,payload:{title:'PRIVATE TITLE',description:'PRIVATE NOTE'},
+          ...destination === 'device_request' && { request_id:ticket, event_type:'device_request.handed_over' }}}]:[];
       if(sql.includes('claim_outbox'))claimed=true;
       return {rows};
     }});}finally{transaction=false;}
@@ -115,6 +121,20 @@ test('Mattermost failure cannot mark a notification delivered',async t=>{
   const f=await fixture(t,'chat-down','notification');await f.worker.runOnce();
   assert.equal(f.calls.some(call=>call.sql.includes('complete_outbox')),false);
   assert.ok(f.calls.some(call=>call.sql.includes('fail_outbox')));
+});
+test('Device notices use the leased route and never fall back to operations', async t => {
+  await t.test('configured personal channel', async child => {
+    const f = await fixture(child, 'success', 'device_request');
+    await f.worker.runOnce();
+    assert.deepEqual(f.calls.find(call => call.sql.includes('device_notice_channel')).params, [event, 'lease-test']);
+    assert.equal(JSON.parse(f.requests.find(request => request.path === '/api/v4/posts').body).channel_id, 'private-requester-channel');
+  });
+  await t.test('missing personal channel', async child => {
+    const f = await fixture(child, 'missing-device-channel', 'device_request');
+    await f.worker.runOnce();
+    assert.ok(f.requests.every(request => !request.path.startsWith('/api/v4/')));
+    assert.equal(f.calls.find(call => call.sql.includes('fail_outbox')).params[4], false);
+  });
 });
 test('n8n webhook activation 404 is retried instead of terminally losing the event',async t=>{
   const f=await fixture(t,'activating');await f.worker.runOnce();
