@@ -45,6 +45,11 @@ export const sampleResources: Record<string, Record<string, unknown>> = Object.f
   })),
 );
 
+export const sampleCollections: Record<string, Record<string, unknown>> = Object.fromEntries(resourceGroups.map(group => [
+  `/ld/${group.path}`, { '@context': context, '@id': `/ld/${group.path}`,
+    '@graph': Object.keys(group.items).map(code => sampleResources[`/ld/${group.path}/${code}`]) },
+]));
+
 type JsonObject = Record<string, unknown>;
 function objects(value: unknown): JsonObject[] {
   return (Array.isArray(value) ? value : [value]).filter((item): item is JsonObject =>

@@ -18,6 +18,7 @@ import { AutomationGuard } from './service-auth';
 import { AutomationController, WorkQueueController } from './week4';
 import { KnowledgeController } from './knowledge';
 import { AnalyticsController } from './analytics';
+import { LinkedDataController } from './linked-data';
 import { OutboxDispatcher } from './outbox-dispatcher';
 
 @Catch()
@@ -50,7 +51,7 @@ class Errors implements ExceptionFilter {
 @Module({
   controllers: [HealthController, DeskController, AttachmentsController, AttachmentLinksController, AttachmentContentController,
     WorkQueueController, AutomationController, KnowledgeController, AnalyticsController,
-    DeviceHandoverController, DeviceHandoverContentController],
+    DeviceHandoverController, DeviceHandoverContentController, LinkedDataController],
   providers: [Database, JwtGuard, AutomationGuard, OutboxDispatcher],
 })
 export class AppModule {}

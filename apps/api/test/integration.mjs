@@ -14,6 +14,7 @@ import { createApp } from '../dist/app.js';
 import { Database } from '../dist/database.js';
 import { downloadSignature } from '../dist/downloads.js';
 import { applyDataset, generate } from '../../../scripts/seed-synthetic.mjs';
+import jsonld from 'jsonld';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
 if (!adminUrl || !new URL(adminUrl).pathname.startsWith('/dxdesk_test')) {
@@ -1246,4 +1247,62 @@ test('W5-03 handover PDF is generated once on hand-over, stored in SeaweedFS and
   assert.equal((await admin.query('SELECT handover_key FROM public.device_requests WHERE id=$1', [broken])).rows[0].handover_key, null);
   assert.equal((await link('a', broken)).status, 200);
   await admin.query("UPDATE private.outbox SET status='delivered', delivered_at=now() WHERE destination='device_request' AND status='pending'");
+});
+
+test('W5-04 public JSON-LD/DCAT is generated from reference data without a JWT', async () => {
+  const get = path => fetch(apiUrl + path, { headers: { Accept: 'application/ld+json' } });
+  const fixtureCodes = ['vpn', 'account', 'hardware', 'software', 'access', 'system-error'];
+  for (const code of fixtureCodes) {
+    for (const kind of ['services', 'request-types']) {
+      const response = await get(`/ld/${kind}/${code}`);
+      assert.equal(response.status, 200, `${kind}/${code}`);
+      assert.equal(response.headers.get('content-type'), 'application/ld+json; charset=utf-8');
+      assert.equal(response.headers.get('x-dxdesk-catalog'), null);
+      const body = await response.json();
+      assert.equal(body['@id'], `/ld/${kind}/${code}`);
+      assert.equal(body['schema:identifier'], code);
+    }
+  }
+  const vpn = await (await get('/ld/services/vpn')).json();
+  assert.equal(vpn['schema:name'], 'Kết nối VPN');
+  const [expanded] = await jsonld.expand(vpn, { base: 'https://dxdesk.example.test/' });
+  assert.deepEqual(expanded['@type'], ['https://schema.org/Service']);
+  for (const code of ['laptop', 'monitor', 'keyboard', 'mouse', 'other']) {
+    const body = await (await get(`/ld/device-types/${code}`)).json();
+    assert.equal(body['@type'], 'schema:Product', code);
+  }
+  const catalog = await (await get('/ld/catalog')).json();
+  assert.equal(catalog['@type'], 'dcat:Catalog');
+  assert.deepEqual(catalog['dcat:dataset'].map(dataset => dataset['@id']),
+    ['/ld/catalog#tickets', '/ld/catalog#ticket-events', '/ld/catalog#sla-policies']);
+  assert.match(catalog['dcat:dataset'][2]['dct:description'], /Gồm 4 mức ưu tiên: low, normal, high, critical\.$/);
+  assert.deepEqual(catalog['dct:modified'], { '@value': '2026-11-02', '@type': 'xsd:date' });
+  // Danh mục ngừng dùng và mã lạ đều 404 với thông báo cố định; không lộ lỗi PostgreSQL.
+  await admin.query("UPDATE public.categories SET active=false WHERE code='software'");
+  try {
+    const collection = await (await get('/ld/services')).json();
+    assert.equal(collection['@id'], '/ld/services');
+    assert.deepEqual(collection['@graph'].map(item => item['schema:identifier']), fixtureCodes.filter(code => code !== 'software').sort());
+    for (const path of ['/ld/services/software', '/ld/services/khong-ton-tai', '/ld/device-types/vpn', '/ld/tickets/vpn']) {
+      const response = await get(path);
+      assert.equal(response.status, 404, path);
+      assert.equal((await response.json()).message, 'Không tìm thấy tài nguyên dữ liệu liên kết.');
+    }
+  } finally {
+    await admin.query("UPDATE public.categories SET active=true WHERE code='software'");
+  }
+  // Chỉ api_login gọi được hàm SECURITY DEFINER; vai trò JWT và PostgREST thì không.
+  const privileges = (await admin.query(`SELECT r.rolname,
+      has_function_privilege(r.rolname, 'private.linked_catalog()', 'EXECUTE') AS catalog,
+      has_function_privilege(r.rolname, 'private.linked_resource(text,text)', 'EXECUTE') AS resource,
+      has_table_privilege(r.rolname, 'private.linked_datasets', 'SELECT') AS datasets
+    FROM pg_roles r WHERE r.rolname IN ('api_login', 'authenticated', 'anon') ORDER BY r.rolname`)).rows;
+  assert.deepEqual(privileges, [
+    { rolname: 'anon', catalog: false, resource: false, datasets: false },
+    { rolname: 'api_login', catalog: true, resource: true, datasets: false },
+    { rolname: 'authenticated', catalog: false, resource: false, datasets: false },
+  ]);
+  // Loại thiết bị trong bảng tham chiếu khớp CHECK của device_requests qua khóa ngoại.
+  assert.equal((await admin.query(`SELECT count(*)::int n FROM pg_constraint
+    WHERE conname = 'device_requests_device_type_fkey'`)).rows[0].n, 1);
 });

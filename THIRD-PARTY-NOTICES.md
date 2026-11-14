@@ -64,6 +64,8 @@ Metadata kiểm tại dependency đã cài ngày 21/10/2026:
   nhúng tập con của phông. Văn bản giấy phép: `LICENSES/OFL-1.1.txt`.
 - Ứng dụng 2 (`apps/device-request`, W5-01) chỉ dùng React/React DOM 18.3.1 và keycloak-js 26.2.4 cùng phiên bản
   với web; không thêm thư viện runtime mới. Build cũng tạo `dist/THIRD-PARTY-LICENSES.txt`.
+- jsonld 9.0.0 (Digital Bazaar): BSD-3-Clause; chỉ là devDependency của API để kiểm
+  thử JSON-LD W5-04, không nằm trong image runtime.
 
 Build web tạo `dist/THIRD-PARTY-LICENSES.txt` từ LICENSE/NOTICE của toàn bộ cây
 runtime dependency đã cài và đóng gói cùng static assets. Docker API giữ LICENSE

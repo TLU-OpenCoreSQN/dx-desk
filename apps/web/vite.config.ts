@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:9080';
 
   return {
-    plugins: [react(), catalogFallback()],
+    plugins: [react(), catalogFallback(proxyTarget)],
     server: {
       port: 5173,
       host: true,

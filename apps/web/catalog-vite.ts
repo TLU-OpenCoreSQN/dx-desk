@@ -1,16 +1,18 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import type { Connect, Plugin } from 'vite';
-import { sampleCatalog, sampleResources } from './catalog-fixtures';
+import { sampleCatalog, sampleCollections, sampleResources } from './catalog-fixtures';
 
-export function catalogFallback(): Plugin {
-  const files = new Map(Object.entries({ '/ld/catalog': sampleCatalog, ...sampleResources })
+/**
+ * Dev/preview: /ld/* đi tới API thật qua gateway (W5-04) khi stack đang chạy; chỉ khi
+ * không kết nối được gateway mới phục vụ mẫu tĩnh kèm header X-DXDesk-Catalog: sample.
+ */
+export function catalogFallback(gateway?: string): Plugin {
+  const files = new Map(Object.entries({ '/ld/catalog': sampleCatalog, ...sampleCollections, ...sampleResources })
     .map(([path, json]) => [path, JSON.stringify(json, null, 2) + '\n']));
-  const middleware: Connect.NextHandleFunction = (request, response, next) => {
-    const path = request.url?.split('?')[0];
-    if (!path?.startsWith('/ld/')) return next();
+  function sample(path: string, method: string, response: Parameters<Connect.NextHandleFunction>[1]) {
     const json = files.get(path);
-    if (!['GET', 'HEAD'].includes(request.method ?? '')) {
+    if (!['GET', 'HEAD'].includes(method)) {
       response.setHeader('Allow', 'GET, HEAD');
       response.statusCode = 405;
     } else if (json === undefined) response.statusCode = 404;
@@ -18,7 +20,29 @@ export function catalogFallback(): Plugin {
       response.setHeader('Content-Type', 'application/ld+json; charset=utf-8');
       response.setHeader('X-DXDesk-Catalog', 'sample');
     }
-    response.end(request.method === 'GET' && response.statusCode === 200 ? json : undefined);
+    response.end(method === 'GET' && response.statusCode === 200 ? json : undefined);
+  }
+  const middleware: Connect.NextHandleFunction = (request, response, next) => {
+    const path = request.url?.split('?')[0];
+    if (!path?.startsWith('/ld/')) return next();
+    const method = request.method ?? '';
+    if (!gateway || !['GET', 'HEAD'].includes(method)) return sample(path, method, response);
+    void fetch(new URL(path, gateway), {
+      method, headers: { Accept: 'application/ld+json' }, signal: AbortSignal.timeout(1500),
+    }).then(async upstream => {
+      if (upstream.status >= 500) {
+        await upstream.body?.cancel();
+        return sample(path, method, response);
+      }
+      const body = method === 'GET' ? Buffer.from(await upstream.arrayBuffer()) : undefined;
+      response.statusCode = upstream.status;
+      // Stack cũ chưa có route W5-04 thì nginx trả mẫu: giữ nguyên header đánh dấu mẫu.
+      for (const name of ['Content-Type', 'X-DXDesk-Catalog']) {
+        const value = upstream.headers.get(name);
+        if (value) response.setHeader(name, value);
+      }
+      response.end(body);
+    }).catch(() => sample(path, method, response));
   };
   return {
     name: 'dxdesk-catalog-sample',
