@@ -14,6 +14,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const ROLES = ['Employee', 'Agent', 'Manager'];
 const STATUSES = ['new', 'triaged', 'assigned', 'in_progress', 'waiting_user', 'resolved', 'closed', 'cancelled', 'pending_approval'];
 const WEIGHTS = { account: 35, vpn: 25, hardware: 20, software: 12, access: 5, 'system-error': 3 };
+const DEPARTMENTS = ['Phòng hành chính', 'Phòng nhân sự', 'Phòng kế toán', 'Phòng kinh doanh', 'Phòng vận hành', 'Phòng CNTT'];
 const MINUTE = 60_000;
 const WEEK = 7 * 24 * 60 * MINUTE;
 const TEAM_NAMES = { vpn: 'Network Team', account: 'Identity Team', access: 'Identity Team', hardware: 'IT Support', software: 'IT Support', 'system-error': 'IT Support' };
@@ -93,11 +94,9 @@ export function generate(seed = 'dxdesk-w4', now = '2026-11-02T00:00:00.000Z', i
   const parameters = { weeks, users, scenario, weights: Object.fromEntries(categories) };
   const vpnPlan = scenario === 'vpn-4.2' ? planVpnScenario({ weeks, categories, referenceMs, sample: key => sample(seed + ':' + key) }) : null;
   const schemaVersion = vpnPlan ? 3 : 2;
-  const namespace = stableId(`dxdesk-synthetic:v${schemaVersion}:${seed}:${referenceTime}:${identityHash}:${JSON.stringify(parameters)}:${vpnPlan ? count : ''}`);
+  const namespace = stableId(`dxdesk-synthetic:v${schemaVersion}:enterprise:${seed}:${referenceTime}:${identityHash}:${JSON.stringify(parameters)}:${vpnPlan ? count : ''}`);
   const profiles = Array.from({ length: users }, (_, index) => {
-    const audience = weighted([['Sinh viên', 70], ['Giảng viên', 20], ['Cán bộ', 10]], (index + 0.5) / users);
-    const units = audience === 'Cán bộ' ? ['Phòng đào tạo', 'Phòng hành chính', 'Trung tâm CNTT'] : ['Khoa Kỹ thuật', 'Khoa Kinh tế', 'Khoa Công nghệ'];
-    return { code: `SYNTH-${String(index + 1).padStart(4, '0')}`, audience, unit: units[index % units.length] };
+    return { code: `SYNTH-${String(index + 1).padStart(4, '0')}`, audience: 'Nhân viên', unit: DEPARTMENTS[index % DEPARTMENTS.length] };
   });
   const weekWeights = Array.from({ length: weeks }, (_, index) => [index, index < 2 ? 2.5 : 1]);
   const tickets = Array.from({ length: count }, (_, index) => {
@@ -152,7 +151,7 @@ export function generate(seed = 'dxdesk-w4', now = '2026-11-02T00:00:00.000Z', i
   const history = vpnPlan ? scenarioHistory(tickets, identities.system, stableId, referenceMs) : null;
   const manifest = {
     schema_version: schemaVersion, synthetic: true, seed, namespace, reference_time: referenceTime, timezone: 'UTC',
-    parameters, assumptions: 'W4-10: giả định của đội, chưa phải số liệu Trung tâm CNTT.',
+    parameters, assumptions: 'Dữ liệu demo doanh nghiệp, sử dụng tham số giả định của đội.',
     ticket_count: count, role_counts: Object.fromEntries(ROLES.map(role => [role, identities.users.filter(user => user.roles.includes(role)).length])),
     status_counts: counts('status'), category_counts: counts('category_code'),
     roster_count: roster.length, identity_mapping_sha256: identityHash, dataset_sha256: digest(JSON.stringify(history ? { tickets, profiles, ...history } : tickets)),

@@ -90,10 +90,10 @@ try {
     employeeBrowser = await wikiLogin('employee.a');
     const page = await employeeBrowser(wiki + '/ho-tro/vpn');
     assert.equal(page.status, 200);
-    assert.ok(page.text.includes('Kết nối VPN của trường từ xa'));
+    assert.ok(page.text.includes('Kết nối VPN từ xa vào mạng nội bộ'));
   });
   await check('all six knowledge articles are published', async () => {
-    for (const path of ['vpn', 'email', 'wifi', 'lms', 'mat-khau', 'phan-mem-ban-quyen']) {
+    for (const path of ['vpn', 'email', 'wifi', 'phan-mem-nghiep-vu', 'mat-khau', 'phan-mem-ban-quyen']) {
       assert.equal((await employeeBrowser(wiki + '/ho-tro/' + path)).status, 200, path);
     }
   });

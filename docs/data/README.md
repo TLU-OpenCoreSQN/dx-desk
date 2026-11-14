@@ -1,6 +1,6 @@
 # Bộ dữ liệu giả lập DX-Desk
 
-Dữ liệu do bộ sinh tạo cho demo Trung tâm CNTT của một trường đại học. Tên đơn vị và
+Dữ liệu do bộ sinh tạo cho demo bộ phận CNTT nội bộ của một doanh nghiệp. Tên đơn vị và
 hồ sơ là giả lập. Bản sinh bằng `--offline` và các mẫu tải công khai không chứa định
 danh Keycloak, email, nội dung phiếu thực tế hay thông tin cá nhân. Bản nội bộ sinh từ
 realm demo có UUID kỹ thuật để kiểm thử RLS, chỉ dùng trong stack demo.
@@ -33,7 +33,7 @@ phiếu VPN **tuần sau**. Trình sinh tự đối chiếu KPI từ sự kiện
 từ PostgreSQL trước khi commit transaction. Sự kiện thao tác người/hệ thống phục vụ
 kiểm tra báo cáo. Số liệu không phải biên bản khảo sát hay kết quả vận hành thật.
 
-Quy mô 150 phiếu/tuần, trọng số danh mục, tỷ lệ hồ sơ 70/20/10 và hệ số cao điểm 2,5
+Quy mô 150 phiếu/tuần, trọng số danh mục, sáu phòng ban giả lập và hệ số cao điểm 2,5
 là [giả định của đội trong W4-10](../khao-sat-trung-tam-cntt.md).
 Xem [lược đồ dữ liệu và RLS](../du-lieu.md) cho cấu trúc các bảng.
 

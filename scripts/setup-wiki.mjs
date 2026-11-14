@@ -194,7 +194,7 @@ export async function setupWiki(root, env) {
   });
   // OIDC đứng đầu để autoLogin chuyển thẳng tới Keycloak; quản trị cục bộ vào bằng /login?all=1.
   ensure((await gql('mutation($s:[AuthenticationStrategyInput]!){authentication{updateStrategies(strategies:$s){responseResult{succeeded message}}}}', {
-    s: [strategy(WIKI_STRATEGY_KEY, 'oidc', 'Tài khoản trường (Keycloak)', 0, config, true),
+    s: [strategy(WIKI_STRATEGY_KEY, 'oidc', 'Tài khoản tổ chức (Keycloak)', 0, config, true),
       strategy('local', 'local', 'Quản trị cục bộ', 1, {}, false)],
   })).authentication.updateStrategies, 'Chiến lược đăng nhập');
   ensure((await gql(`mutation($h:String!){site{updateConfig(host:$h,title:"DX-Desk Tri thức",company:"TLU-OpenCoreSQN",
@@ -219,5 +219,7 @@ export async function setupWiki(root, env) {
       {responseResult{succeeded message}}}}`, { id: page.id, ...fields })).pages.update, `Cập nhật bài ${article.path}`);
     updated++;
   }
+  // An old page can contain operator edits or be linked from outside DX-Desk.
+  // The database and home page reference the replacement without deleting that content.
   console.log(`Wiki.js: SSO Keycloak, nhóm theo vai trò; bài mới ${created}, cập nhật ${updated}.`);
 }
