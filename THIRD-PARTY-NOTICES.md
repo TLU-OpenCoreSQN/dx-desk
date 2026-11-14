@@ -12,17 +12,18 @@ Kho mã này không chứa, không sửa và không đóng gói lẫn mã nguồ
 | SeaweedFS | 3.99 | Apache-2.0 | Kho tệp, S3 API |
 | ClamAV | 1.5.4 | GPL-2.0 | Quét mã độc, chạy container riêng |
 | n8n | 2.44.4 | Sustainable Use License (fair-code, không thuộc danh sách OSI) | Tự động hóa quy trình |
+| Mattermost Team Edition | 12.0.1 | [Giấy phép binary do Mattermost phát hành và các điều khoản nguồn](https://github.com/mattermost/mattermost/blob/v12.0.1/LICENSE.txt) | Kênh thông báo nhóm hỗ trợ, hồ sơ `full`/`demo-light` (W4-04); Team Edition, không thay bằng Enterprise |
+| Wiki.js | 2.5.315 | [AGPL-3.0](https://github.com/requarks/wiki/blob/v2.5.315/LICENSE) | Tri thức tự phục vụ, hồ sơ `full`/`demo-light` (W5-08); chạy image chính thức không sửa, giao tiếp qua GraphQL |
+| Metabase OSS | v0.64.3 | [AGPL cho binary OSS; Enterprise có giấy phép khác](https://github.com/metabase/metabase/blob/v0.64.3/LICENSE.txt) | Dashboard Manager, hồ sơ `full` (W5-06); tài khoản nội bộ và static embedding |
 
 ## Image PoC, benchmark và build/runtime ứng dụng
 
 Các image sau cũng được ghim trong `infra/compose/tn04.yml`, `.env.example` hoặc
-Dockerfile. PoC được chạy tách biệt; profile benchmark không tự tải mô hình.
+Dockerfile. PoC TN-04 (`tn04.yml`) chạy tách biệt và dùng cùng phiên bản Wiki.js, Mattermost,
+Metabase như bảng trên; profile benchmark không tự tải mô hình.
 
 | Image / phiên bản | Metadata giấy phép upstream | Phạm vi |
 |---|---|---|
-| `ghcr.io/requarks/wiki:2.5.315` | [AGPL-3.0](https://github.com/requarks/wiki/blob/v2.5.315/LICENSE) | Wiki.js tri thức, hồ sơ `full`/`demo-light` (W5-08); chạy image chính thức không sửa, giao tiếp qua GraphQL |
-| `mattermost/mattermost-team-edition:12.0.1` | [Giấy phép binary do Mattermost phát hành và các điều khoản nguồn](https://github.com/mattermost/mattermost/blob/v12.0.1/LICENSE.txt) | Team Edition, không thay bằng Enterprise |
-| `metabase/metabase:v0.64.3` | [AGPL cho binary OSS; Enterprise có giấy phép khác](https://github.com/metabase/metabase/blob/v0.64.3/LICENSE.txt) | Dashboard hồ sơ `full`, tài khoản nội bộ và static embedding |
 | `ollama/ollama:0.12.6` | [MIT](https://github.com/ollama/ollama/blob/v0.12.6/LICENSE) | Công cụ benchmark tùy chọn; mô hình có giấy phép riêng |
 | `node:22.22.0-alpine` | Node.js MIT và notices thành phần đi kèm | Build web và runtime API |
 | `nginx:1.28.0-alpine` | Nginx BSD-2-Clause và notices thành phần đi kèm | Phục vụ static web |

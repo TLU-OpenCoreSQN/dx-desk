@@ -60,7 +60,7 @@ JSON/CSV gốc nằm ở `.local/reports/stack-memory-*.json|csv` trên máy đo
 
 Một lần chụp `docker stats --no-stream` trên máy dev, hồ sơ `full` (chưa nạp mô hình), sau khi
 `up` nạp 6 bài và chạy `tools/testing/week5-wiki.mjs`. **Một mẫu, chưa phải ba lượt** như quy trình
-W4-09; W5-09 đo lại đủ quy trình khi đã có Metabase và ứng dụng 2.
+W4-09; số đo đủ quy trình ở mục *Đo lại tuần 5* bên dưới.
 
 | Dịch vụ | MiB |
 |---|---|
@@ -70,6 +70,43 @@ W4-09; W5-09 đo lại đủ quy trình khi đã có Metabase và ứng dụng 2
 
 Tổng container lúc chụp khoảng 3,8 GiB (gồm ClamAV ~1,0 GiB, Keycloak ~0,7 GiB). Wiki.js không
 làm thay đổi kết luận ngân sách 16 GB.
+
+## Đo lại tuần 5 — Wiki.js + Metabase (W5-09, 12/11/2026)
+
+Cùng máy dev và Docker Desktop như bảng W4-09. Commit nguồn `4a4f2dc` (`develop-nguyenpn`, gồm PR #38
+và nội dung PR #39). Stack dev hiện có (không dựng project mới), mỗi hồ sơ: `up`, chạy
+`week4-stack` (8/8) và `week5-wiki` (5/5) — riêng `full` chạy thêm `week5-metabase` (thoát 0) —
+rồi **ba lượt** `benchmark-stack.mjs --duration=30 --interval=1000` liên tiếp (44 mẫu mỗi hồ sơ).
+Đổi hồ sơ bằng cách dừng Metabase/Ollama và chạy lại `up` với `COMPOSE_PROFILES=demo-light`.
+**Chưa có ứng dụng 2 (W5-01)**; Ollama chưa nạp mô hình. Vẫn là số đo tạm.
+
+| Dịch vụ (MiB) | `demo-light` đỉnh | `demo-light` TB | `full` đỉnh | `full` TB |
+|---|---:|---:|---:|---:|
+| clamav | 842 | 838 | 838 | 838 |
+| keycloak | 658 | 653 | 618 | 617 |
+| n8n | 430 | 427 | 425 | 423 |
+| apisix | 351 | 346 | 343 | 340 |
+| mattermost | 215 | 215 | 227 | 223 |
+| wikijs | 209 | 204 | 211 | 200 |
+| seaweedfs | 143 | 143 | 142 | 142 |
+| postgres | 69 | 68 | 76 | 76 |
+| api | 54 | 54 | 94 | 83 |
+| mattermost-db | 42 | 42 | 50 | 45 |
+| wiki-db | 32 | 30 | 35 | 30 |
+| postgrest | 12 | 11 | 22 | 18 |
+| web | 15 | 15 | 15 | 15 |
+| metabase | — | — | 1274 | 1271 |
+| metabase-db | — | — | 115 | 113 |
+| ollama (chưa nạp mô hình) | — | — | 16 | 15 |
+| **Tổng container** | **2,98 GiB** | **2,97 GiB** | **4,36 GiB** | **4,34 GiB** |
+
+Nhận xét:
+
+- Metabase là khoản thêm lớn nhất của tuần 5: ~1,4 GiB cả CSDL riêng, khớp ước lượng 1,0–1,3 GiB
+  của ADR 0010. Wiki.js + CSDL thêm ~0,24 GiB.
+- `demo-light` vẫn ~3 GiB vì Metabase chỉ có trong `full`; `full` ~4,4 GiB, dưới trần 7,59 GiB của
+  Docker Desktop và dưới 8 GB của VPS đã chốt (ADR 0010), kể cả khi bật Metabase trên VPS.
+- Còn phải đo lại khi W5-01 (ứng dụng 2) gộp `main`, trước khi gắn thẻ v0.5.0.
 
 ## So sánh với W2-10
 
