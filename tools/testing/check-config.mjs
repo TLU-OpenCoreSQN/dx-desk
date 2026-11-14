@@ -35,10 +35,29 @@ const otpSource = otp.services.keycloak.volumes[0].split(':')[0];
 await access(resolve(root, 'infra/compose', otpSource));
 assert.equal(resolve(root, 'infra/compose', otpSource), resolve(root, 'infra/keycloak/realm-dxdesk-otp.json'),
   'OTP overlay paths are relative to the first Compose file');
-for (const clientId of ['dxdesk-web', 'appsmith']) {
+for (const clientId of ['dxdesk-web', 'dxdesk-device']) {
   const client = realm.clients.find(client => client.clientId === clientId);
   assert.ok(client.protocolMappers.some(mapper => mapper.config['included.client.audience'] === 'dxdesk-api'));
   assert.ok(client.protocolMappers.some(mapper => mapper.config['claim.value'] === 'authenticated'));
+}
+// W5-01: ứng dụng 2 là client công khai PKCE, chỉ nhận redirect dưới /thiet-bi/, đứng sau APISIX cùng origin.
+for (const realmPath of ['infra/keycloak/realm-dxdesk.json', 'infra/keycloak/realm-dxdesk-otp.json']) {
+  const document = JSON.parse(await read(realmPath));
+  const device = document.clients.find(client => client.clientId === 'dxdesk-device');
+  assert.ok(device.publicClient && !device.secret && !device.directAccessGrantsEnabled, `${realmPath}: dxdesk-device is a public code-flow client`);
+  assert.equal(device.attributes['pkce.code.challenge.method'], 'S256');
+  assert.ok(device.redirectUris.every(uri => uri.endsWith('/thiet-bi/*')), `${realmPath}: redirects stay under /thiet-bi/`);
+  assert.ok(device.protocolMappers.some(mapper => mapper.config['claim.name'] === 'department'));
+  assert.ok(!document.clients.some(client => client.clientId === 'appsmith'), `${realmPath}: the Appsmith trial client is retired`);
+}
+{
+  const gateway = parse(await read('infra/apisix/apisix.yaml'));
+  const route = gateway.routes.find(item => item.id === 'device-request');
+  assert.deepEqual(route.uris, ['/thiet-bi', '/thiet-bi/*']);
+  assert.deepEqual(route.upstream.nodes, { 'device-request:80': 1 });
+  assert.ok(route.priority > gateway.routes.find(item => item.id === 'web').priority, 'App 2 route wins over the SPA catch-all');
+  assert.ok(!compose.services['device-request'].ports, 'App 2 is reachable only through APISIX');
+  assert.equal(compose.services.apisix.depends_on['device-request'].condition, 'service_healthy');
 }
 // W5-02: đơn vị (department) đi trong access token của ứng dụng người dùng; chỉ quản trị viên sửa được.
 for (const realmPath of ['infra/keycloak/realm-dxdesk.json', 'infra/keycloak/realm-dxdesk-otp.json']) {

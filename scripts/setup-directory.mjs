@@ -8,7 +8,7 @@
 export const DEPARTMENT_ATTRIBUTE = 'department';
 export const DEPARTMENT_PATTERN = '^[a-z0-9]+(-[a-z0-9]+)*$';
 /** Client cấp token mà PostgREST/API chấp nhận cho người dùng cuối. */
-export const DEPARTMENT_CLIENTS = ['dxdesk-web'];
+export const DEPARTMENT_CLIENTS = ['dxdesk-web', 'dxdesk-device'];
 /** Đơn vị giả lập của tài khoản demo; employee.b ở đơn vị khác để thấy phạm vi của Manager. */
 export const DEMO_DEPARTMENTS = {
   'employee.a': 'phong-hanh-chinh', 'manager.1': 'phong-hanh-chinh', 'employee.b': 'phong-ke-toan',
@@ -27,6 +27,30 @@ export const departmentMapper = {
     'access.token.claim': 'true', 'id.token.claim': 'false', 'userinfo.token.claim': 'false', multivalued: 'false' },
 };
 
+export const DEVICE_CLIENT_ID = 'dxdesk-device';
+/**
+ * W5-01: client công khai của ứng dụng 2 "Xin cấp thiết bị" (PKCE, không có secret). Token mang cùng
+ * audience và claim vai trò CSDL như dxdesk-web để APISIX và PostgREST chấp nhận, nên RLS áp dụng y hệt.
+ */
+export function deviceClient(env = {}) {
+  const gateway = 'http://localhost:' + (env.APISIX_PORT || '9080');
+  return {
+    clientId: DEVICE_CLIENT_ID, name: 'DX-Desk xin cấp thiết bị (ứng dụng 2)', enabled: true, protocol: 'openid-connect',
+    publicClient: true, standardFlowEnabled: true, directAccessGrantsEnabled: false, implicitFlowEnabled: false,
+    serviceAccountsEnabled: false,
+    redirectUris: [gateway + '/thiet-bi/*', 'http://localhost:5174/thiet-bi/*'], webOrigins: ['+'],
+    attributes: { 'pkce.code.challenge.method': 'S256', 'post.logout.redirect.uris': gateway + '/*' },
+    protocolMappers: [
+      { name: 'api-audience', protocol: 'openid-connect', protocolMapper: 'oidc-audience-mapper',
+        config: { 'included.client.audience': 'dxdesk-api', 'access.token.claim': 'true', 'id.token.claim': 'false' } },
+      { name: 'db-role', protocol: 'openid-connect', protocolMapper: 'oidc-hardcoded-claim-mapper',
+        config: { 'claim.name': 'role', 'claim.value': 'authenticated', 'jsonType.label': 'String',
+          'access.token.claim': 'true', 'id.token.claim': 'false', 'userinfo.token.claim': 'false' } },
+      departmentMapper,
+    ],
+  };
+}
+
 /** Thêm thuộc tính vào user profile hiện có; trả null khi không phải đổi gì. */
 export function withDepartment(profile) {
   const attributes = profile.attributes ?? [];
@@ -42,14 +66,37 @@ async function json(url, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-export async function setupDepartments(env, clients = DEPARTMENT_CLIENTS) {
+async function adminApi(env) {
   const base = env.KEYCLOAK_PUBLIC_URL;
   const token = await json(base + '/realms/master/protocol/openid-connect/token', { method: 'POST', body: new URLSearchParams({
     client_id: 'admin-cli', grant_type: 'password', username: env.KEYCLOAK_ADMIN, password: env.KEYCLOAK_ADMIN_PASSWORD,
   }) });
   const headers = { Authorization: 'Bearer ' + token.access_token, 'Content-Type': 'application/json' };
-  const admin = (path, method = 'GET', body) => json(base + '/admin/realms/' + env.KEYCLOAK_REALM + path,
+  return (path, method = 'GET', body) => json(base + '/admin/realms/' + env.KEYCLOAK_REALM + path,
     { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+}
+
+/** Tạo/cập nhật client ứng dụng 2. Realm mới không cài client Appsmith. */
+export async function setupDeviceClient(env) {
+  const admin = await adminApi(env);
+  const client = deviceClient(env);
+  const [existing] = await admin('/clients?clientId=' + DEVICE_CLIENT_ID);
+  if (!existing) await admin('/clients', 'POST', client);
+  else {
+    const { protocolMappers, ...settings } = client;
+    await admin('/clients/' + existing.id, 'PUT', { ...existing, ...settings });
+    const mappers = await admin('/clients/' + existing.id + '/protocol-mappers/models');
+    for (const mapper of protocolMappers) {
+      const current = mappers.find(item => item.name === mapper.name);
+      if (current) await admin('/clients/' + existing.id + '/protocol-mappers/models/' + current.id, 'PUT', { ...current, ...mapper });
+      else await admin('/clients/' + existing.id + '/protocol-mappers/models', 'POST', mapper);
+    }
+  }
+  console.log(`Keycloak client ${DEVICE_CLIENT_ID} ${existing ? 'updated' : 'created'}.`);
+}
+
+export async function setupDepartments(env, clients = DEPARTMENT_CLIENTS) {
+  const admin = await adminApi(env);
 
   const profile = withDepartment(await admin('/users/profile'));
   if (profile) await admin('/users/profile', 'PUT', profile);

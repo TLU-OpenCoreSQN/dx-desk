@@ -63,7 +63,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [web, api]
+        app: [web, api, device-request]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

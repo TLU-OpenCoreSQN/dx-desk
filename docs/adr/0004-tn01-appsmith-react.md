@@ -1,6 +1,6 @@
 # 0004. TN-01 / QĐ-1 — Ứng dụng xin cấp thiết bị dùng React
 
-- Trạng thái: Chọn phương án dự phòng React theo slide; chờ review đội.
+- Trạng thái: Đã chấp nhận qua review W5-01. React đã hiện thực thành ứng dụng 2 riêng.
 - Ngày: 21/10/2026.
 - Người phụ trách theo kế hoạch: Séc (TV3), Quyền hỗ trợ.
 - Mã: W2-09, TN-01, QĐ-1.
@@ -41,3 +41,20 @@ Không cần gói Enterprise hoặc thêm login dùng chung. Đội mất phần
 low-code Appsmith, cần trình bày trung thực phương án dự phòng đã chọn.
 Giữ client Appsmith mẫu trong realm để có thể khảo sát lại, không đưa client secret
 đó vào frontend.
+
+## Cập nhật W5-01 (13/11/2026): ứng dụng 2 tách riêng
+
+Tuần 5 tách trang thiết bị thành ứng dụng React riêng `apps/device-request` để chứng minh Tầng 1 là nền
+tảng dùng chung, đúng tiêu chí ban đầu của TN-01:
+
+- **Không có backend riêng.** Trình duyệt gọi PostgREST qua APISIX (`/rest/device_requests`,
+  `/rest/rpc/transition_device_request`) bằng token của chính người dùng; không tài khoản dịch vụ.
+  Quy tắc duyệt và quyền đọc nằm ở PostgreSQL (migration 018, policy 003).
+- **Client OIDC riêng** `dxdesk-device` (công khai, PKCE S256, redirect chỉ dưới `/thiet-bi/`), cùng realm.
+  Vì dùng chung phiên Keycloak, người đã đăng nhập DX-Desk mở ứng dụng 2 không phải đăng nhập lại.
+- **Cùng origin** `http://localhost:9080/thiet-bi/` sau APISIX: không mở cổng mới, không cần CORS.
+- Realm cài mới bỏ client thử nghiệm `appsmith`. Với realm đã chạy, quản trị viên xác nhận client không còn được dùng trước khi gỡ.
+- Trang `/device-requests` trong `apps/web` và `/api/device-requests` giữ lại để tương thích; thanh bên
+  DX-Desk có thêm liên kết sang ứng dụng 2.
+
+Thử Appsmith runtime vẫn chưa thực hiện và không còn nằm trong kế hoạch.

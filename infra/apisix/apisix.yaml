@@ -87,6 +87,14 @@ routes:
       type: roundrobin
       nodes:
         "api:3000": 1
+  # W5-01: ứng dụng 2 cùng origin với DX-Desk nên dùng chung phiên Keycloak và gọi /rest/* không cần CORS.
+  - id: device-request
+    uris: ["/thiet-bi", "/thiet-bi/*"]
+    priority: 10
+    upstream:
+      type: roundrobin
+      nodes:
+        "device-request:80": 1
   - id: web
     uri: /*
     priority: -10

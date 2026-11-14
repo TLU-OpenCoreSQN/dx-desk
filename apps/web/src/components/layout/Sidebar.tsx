@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   ChartNoAxesCombined,
   Database,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -160,6 +161,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {!isCompact && <span className="truncate">{label}</span>}
             </NavLink>
           ))}
+          {/* W5-01: ứng dụng 2 chạy riêng dưới /thiet-bi/ (cùng origin, dùng chung phiên Keycloak),
+              nên là liên kết tải trang thật chứ không phải route của SPA này. */}
+          {isAuthenticated && (
+            <a
+              href="/thiet-bi/"
+              title={isCompact ? 'Xin cấp thiết bị (ứng dụng 2)' : undefined}
+              aria-label="Xin cấp thiết bị (ứng dụng 2)"
+              className={`group flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm font-medium transition-all min-h-[40px] text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] ${
+                isCompact ? 'justify-center px-2' : ''
+              }`}
+            >
+              <ExternalLink size={18} aria-hidden="true" className="shrink-0 transition-transform group-hover:scale-110" />
+              {!isCompact && <span className="truncate">Xin cấp thiết bị (ứng dụng 2)</span>}
+            </a>
+          )}
         </nav>
 
         {/* Footer info */}

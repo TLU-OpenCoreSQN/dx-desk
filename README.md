@@ -51,6 +51,8 @@ node scripts/dxdesk.mjs verify
 Web: **http://localhost:9080**. Đăng nhập qua Keycloak rồi tạo/xem yêu cầu IT,
 xem lịch sử và tạo yêu cầu thiết bị tối thiểu. Frontend dùng React/TypeScript,
 Vite, Tailwind; backend NestJS/TypeScript; database PostgreSQL.
+Ứng dụng 2 "Xin cấp thiết bị": **http://localhost:9080/thiet-bi/** — dùng chung đăng nhập, gọi thẳng
+PostgREST bằng token người dùng (W5-01).
 Mọi request web đi qua APISIX. Employee chỉ xem dữ liệu của mình, Agent/Manager
 đọc dữ liệu hỗ trợ, Critical chỉ dành cho Manager.
 
@@ -126,8 +128,9 @@ Tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env` (`M
 | `infra/compose` | `docker-compose.yml` của Tầng 1 |
 | `infra/keycloak`, `infra/apisix`, `infra/n8n`, `infra/postgres` | Cấu hình dạng mã: realm, route, workflow, khởi tạo CSDL |
 | `db/migrations`, `db/policies` | Lược đồ CSDL và chính sách RLS (chạy khi khởi tạo PostgreSQL) |
-| `apps/web`, `apps/api` | React và NestJS tuần 2; trang thiết bị dùng chung web |
-| `apps/assistant`, `apps/device-request` | Giữ chỗ cho các mốc sau; không phải dịch vụ đã chạy |
+| `apps/web`, `apps/api` | React và NestJS: ứng dụng 1 DX-Desk |
+| `apps/device-request` | Ứng dụng 2 "Xin cấp thiết bị" (React, không backend riêng) tại `/thiet-bi/` |
+| `apps/assistant` | Giữ chỗ cho mốc sau; không phải dịch vụ đã chạy |
 | `tools/testing` | Harness PostgreSQL portable + PostgREST và kiểm tra cấu hình |
 | `scripts/` | Script hỗ trợ `make up` |
 | `docs/` | Tài liệu và quyết định kiến trúc (`docs/adr/`) |

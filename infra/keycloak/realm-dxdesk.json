@@ -95,19 +95,26 @@
       "bearerOnly": true
     },
     {
-      "clientId": "appsmith",
-      "name": "Appsmith (thử nghiệm TN-01)",
+      "clientId": "dxdesk-device",
+      "name": "DX-Desk xin cấp thiết bị (ứng dụng 2)",
       "enabled": true,
-      "publicClient": false,
-      "secret": "appsmith-dev-secret",
+      "protocol": "openid-connect",
+      "publicClient": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://localhost:8081/*"
+        "http://localhost:9080/thiet-bi/*",
+        "http://localhost:5174/thiet-bi/*"
       ],
       "webOrigins": [
         "+"
       ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:9080/*"
+      },
       "protocolMappers": [
         {
           "name": "api-audience",
@@ -123,7 +130,6 @@
           "name": "db-role",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "consentRequired": false,
           "config": {
             "claim.name": "role",
             "claim.value": "authenticated",
@@ -131,6 +137,20 @@
             "access.token.claim": "true",
             "id.token.claim": "false",
             "userinfo.token.claim": "false"
+          }
+        },
+        {
+          "name": "department",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "department",
+            "claim.name": "department",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
           }
         }
       ]

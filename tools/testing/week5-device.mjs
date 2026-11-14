@@ -9,6 +9,7 @@ import { parseEnv } from 'node:util';
 import { spawnSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const env = { ...parseEnv(await readFile(resolve(root, '.env'), 'utf8')), ...process.env };
@@ -85,6 +86,16 @@ try {
   const managerChannel = channels['device-manager:' + claimsOf(manager).department];
   const requesterChannel = channels['device-requester:' + claimsOf(employee).sub];
   const failedBefore = Number((await call('/api/system/outbox', service)).data.failed);
+  await check('Gateway serves app 2 under /thiet-bi/ on the same origin, without its own port', async () => {
+    const page = await fetch(base + '/thiet-bi/', { signal: AbortSignal.timeout(15000) });
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /<title>Xin cấp thiết bị/);
+    const bare = await fetch(base + '/thiet-bi', { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+    assert.equal(bare.status, 302);
+    assert.equal(new URL(bare.headers.get('location'), base).pathname, '/thiet-bi/');
+    const deep = await fetch(base + '/thiet-bi/bat-ky', { signal: AbortSignal.timeout(15000) });
+    assert.equal(deep.status, 200, 'SPA fallback');
+  });
   let id;
   await check('Employee creates a request through PostgREST; unit comes from the token', async () => {
     const created = await call('/rest/device_requests', employee, body);
@@ -136,6 +147,33 @@ try {
       assert.equal(Number(status.failed), failedBefore, 'No new failed outbox deliveries');
       return Number(status.pending) === 0 && Number(status.processing) === 0;
     }, 'outbox drained');
+  });
+  await check('App 2 reuses the browser SSO session and submits through PostgREST', async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.goto(base);
+      await page.getByRole('button', { name: 'Đăng nhập hệ thống (SSO)', exact: true }).click();
+      await page.locator('#username').fill('employee.a');
+      await page.locator('#password').fill(env.DEMO_USER_PASSWORD ?? 'DxDesk@2026');
+      await page.locator('#kc-login').click();
+      await page.getByRole('button', { name: /Đăng xuất/ }).waitFor();
+      await page.getByRole('link', { name: 'Xin cấp thiết bị (ứng dụng 2)' }).click();
+      await page.waitForURL(base + '/thiet-bi/**');
+      await page.getByRole('heading', { name: 'Xin cấp thiết bị', exact: true }).waitFor();
+      const reason = '[SYNTHETIC W5 browser] Bàn phím thay thế ' + Date.now();
+      await page.getByLabel('Lý do').fill(reason);
+      const posted = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/device_requests'
+        && response.request().method() === 'POST');
+      await page.getByRole('button', { name: 'Gửi đề nghị', exact: true }).click();
+      const response = await posted;
+      assert.equal(response.status(), 201);
+      const [created] = await response.json();
+      assert.equal(created.requester_id, claimsOf(employee).sub);
+      await page.getByRole('region', { name: 'Đề nghị của tôi' }).getByText(reason, { exact: true }).waitFor();
+    } finally {
+      await browser.close();
+    }
   });
   report.passed = true;
 } catch (error) { console.error(error.message); report.error = error.message; process.exitCode = 1; }
