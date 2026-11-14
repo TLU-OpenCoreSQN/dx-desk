@@ -1003,3 +1003,50 @@ test('W5-06 issues a short-lived dashboard token only to Manager', async () => {
     }
   }
 });
+
+test('W5-10 automation_weekly matches a hand count per actor type and stays reporting-only', async () => {
+  const client = await admin.connect();
+  try {
+    await client.query('BEGIN');
+    // Lịch sử biết trước ở một tuần không dữ liệu nào khác chạm tới; rollback nên không để lại dấu vết.
+    await client.query("SET LOCAL app.demo_history = 'on'");
+    const ticket = (await client.query('SELECT id FROM public.tickets ORDER BY created_at, id LIMIT 1')).rows[0].id;
+    const insert = (type, actor, at) => client.query(
+      `INSERT INTO public.ticket_events(ticket_id, actor_id, event_type, payload, actor_type, actor_name, created_at)
+       VALUES ($1, $2, $3, '{}'::jsonb, $4, 'W5-10 fixture', $5)`, [ticket, users.agent.sub, type, actor, at]);
+    // Tuần 06/01/2020 theo giờ Việt Nam: thứ Hai 00:30 và Chủ nhật 23:59 vẫn thuộc tuần này.
+    for (const [type, actor, at] of [
+      ['status_changed', 'user', '2020-01-05T17:30:00Z'], ['status_changed', 'user', '2020-01-08T03:00:00Z'],
+      ['status_changed', 'user', '2020-01-12T16:59:00Z'], ['status_changed', 'system', '2020-01-06T02:00:00Z'],
+      ['status_changed', 'system', '2020-01-07T02:00:00Z'], ['status_changed', 'ai', '2020-01-09T02:00:00Z'],
+      // Không phải bước xử lý: audit phân công, cảnh báo SLA, tạo phiếu.
+      ['assignment_changed', 'user', '2020-01-08T03:00:00Z'], ['sla_warning', 'system', '2020-01-08T04:00:00Z'],
+      ['created', 'user', '2020-01-06T01:00:00Z'],
+      // 00:00 thứ Hai giờ Việt Nam thuộc tuần kế tiếp.
+      ['status_changed', 'system', '2020-01-12T17:00:00Z'],
+    ]) await insert(type, actor, at);
+    const rows = (await client.query(`SELECT week_start::text, steps::int, human_steps::int, system_steps::int, ai_steps::int,
+      manual_percent::float, system_percent::float, ai_percent::float
+      FROM reporting.automation_weekly WHERE week_start < '2020-02-01' ORDER BY week_start`)).rows;
+    assert.deepEqual(rows, [
+      { week_start: '2020-01-06', steps: 6, human_steps: 3, system_steps: 2, ai_steps: 1,
+        manual_percent: 50, system_percent: 33.3, ai_percent: 16.7 },
+      { week_start: '2020-01-13', steps: 1, human_steps: 0, system_steps: 1, ai_steps: 0,
+        manual_percent: 0, system_percent: 100, ai_percent: 0 },
+    ]);
+    const totals = (await client.query(`SELECT (SELECT sum(steps)::int FROM reporting.automation_weekly) AS view_steps,
+      (SELECT count(*)::int FROM public.ticket_events WHERE event_type = 'status_changed') AS hand_steps`)).rows[0];
+    assert.equal(totals.view_steps, totals.hand_steps);
+    await client.query('SAVEPOINT unknown_actor');
+    await assert.rejects(insert('status_changed', 'robot', '2020-01-09T02:00:00Z'), { code: '23514' });
+    await client.query('ROLLBACK TO SAVEPOINT unknown_actor');
+  } finally {
+    await client.query('ROLLBACK');
+    client.release();
+  }
+  const grants = (await admin.query(`SELECT has_table_privilege('reporting_reader', 'reporting.automation_weekly', 'SELECT') AS view,
+    has_table_privilege('reporting_reader', 'public.ticket_events', 'SELECT') AS events,
+    has_table_privilege('authenticated', 'reporting.automation_weekly', 'SELECT') AS users`)).rows[0];
+  assert.deepEqual(grants, { view: true, events: false, users: false });
+  assert.notEqual((await call(restUrl, '/automation_weekly', 'manager')).status, 200, 'Reporting schema is not exposed through PostgREST');
+});
