@@ -461,6 +461,7 @@ paths:
     post:
       operationId: issueDeviceHandoverUrl
       summary: W5-03 — cấp URL ký tải biên bản bàn giao PDF (hạn 120 giây)
+      description: Dành cho người đề nghị, người đã duyệt đề nghị và IT.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:

@@ -112,7 +112,7 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
           <button type="button" onClick={() => { setRejecting(false); setNoteError(null); }}
             className="rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-surface-warm">Hủy</button>
         )}
-        {request.status === 'handed_over' && (
+        {request.status === 'handed_over' && (request.requester_id === user.id || request.decided_by === user.id || user.roles.includes('Agent')) && (
           <button type="button" disabled={busy} onClick={() => void download()}
             className="rounded-md border border-primary-edge bg-primary-tint px-3 py-1.5 text-sm font-semibold text-primary-text hover:bg-surface disabled:opacity-60">
             Tải biên bản (PDF)

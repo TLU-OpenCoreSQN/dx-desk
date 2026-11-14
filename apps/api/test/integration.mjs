@@ -1180,6 +1180,8 @@ test('W5-03 handover PDF is generated once on hand-over, stored in SeaweedFS and
   const event = (await admin.query(`SELECT event_id FROM private.outbox
     WHERE envelope->>'request_id'=$1 AND envelope->>'event_type'='device_request.handed_over'`, [id])).rows[0].event_id;
   const path = `/api/system/device-events/${event}/process`;
+  const attempts = await Promise.all([call(apiUrl, path, 'service', { schema_version: 1 }), link('a', id)]);
+  assert.ok(attempts.every(result => result.status === 200 || result.status === 503));
   const ack = await call(apiUrl, path, 'service', { schema_version: 1 });
   assert.equal(ack.status, 200, JSON.stringify(ack.body));
   assert.equal(ack.body.notification.kind, 'handed_over');
@@ -1197,10 +1199,12 @@ test('W5-03 handover PDF is generated once on hand-over, stored in SeaweedFS and
   assert.deepEqual([data.requester_name, data.approver_name, data.handed_over_by_name], ['test.a', 'test.manager', 'test.agent']);
   assert.equal('reason' in data, false);
 
-  // Người đề nghị, Manager của đơn vị và IT lấy được liên kết; người ngoài và Manager đơn vị khác thì không.
+  // Chỉ người đề nghị, người đã duyệt và IT lấy được liên kết.
   const otherManager = await token('manager', { sub: '20000000-0000-4000-8000-000000000007', department: 'phong-ke-toan' });
+  const sameDepartment = await token('manager', { sub: '20000000-0000-4000-8000-000000000008', department: 'phong-hanh-chinh' });
   assert.equal((await link('b', id)).status, 404);
   assert.equal((await link('manager', id, otherManager)).status, 404);
+  assert.equal((await link('manager', id, sameDepartment)).status, 404);
   assert.equal((await call(apiUrl, `/api/device-requests/${id}/handover-url`, null, {})).status, 401);
   for (const who of ['a', 'manager', 'agent']) {
     const issued = await link(who, id);

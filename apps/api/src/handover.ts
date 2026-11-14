@@ -4,7 +4,7 @@
 // dữ liệu đề nghị không rời khỏi dịch vụ; lưu SeaweedFS và tải bằng URL ký ngắn hạn như tệp đính kèm
 // (ADR 0009). Phông Noto Sans (OFL-1.1) được nhúng để hiển thị đúng tiếng Việt.
 import {
-  ConflictException, Controller, ForbiddenException, Get, HttpCode, NotFoundException, Param, ParseUUIDPipe, Post,
+  Controller, ForbiddenException, Get, HttpCode, NotFoundException, Param, ParseUUIDPipe, Post,
   Query, Req, Res, ServiceUnavailableException, StreamableFile, UseGuards,
 } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -99,22 +99,30 @@ export function renderHandover(data: HandoverData): Promise<Buffer> {
 
 /**
  * Bảo đảm biên bản đã có trong kho tệp. `run` chạy truy vấn dưới vai trò của người gọi (người dùng hoặc
- * dịch vụ tự động hóa); giao dịch CSDL đóng trước khi gọi kho tệp. Gọi lặp an toàn: khóa tệp xác định theo
- * mã đề nghị và chỉ được ghi một lần.
+ * dịch vụ tự động hóa). Khóa giao dịch ngăn hai replica tạo cùng một tệp đồng thời.
+ * Nếu lần ghi gặp lỗi, lần thử sau dùng lại cùng đường dẫn và nội dung biên bản.
  */
 export async function ensureHandover(run: Run, id: string): Promise<string> {
-  const data = await run(async client =>
-    (await client.query('SELECT private.device_handover_data($1) AS data', [id])).rows[0].data as HandoverData);
-  if (data.handover_key) return data.handover_key;
-  const pdf = await renderHandover(data);
-  const key = handoverKey(id);
-  try {
-    await putObject(key, 'application/pdf', pdf);
-  } catch {
-    throw new ServiceUnavailableException('Kho tệp chưa sẵn sàng nên chưa tạo được biên bản. Vui lòng thử lại.');
-  }
-  await run(client => client.query('SELECT private.set_device_handover($1,$2,$3)', [id, key, pdf.length]));
-  return key;
+  return run(async client => {
+    const read = async () => (await client.query<{ data: HandoverData }>(
+      'SELECT private.device_handover_data($1) AS data', [id])).rows[0].data;
+    const existing = await read();
+    if (existing.handover_key) return existing.handover_key;
+    const lock = await client.query<{ acquired: boolean }>(
+      "SELECT pg_try_advisory_xact_lock(hashtextextended('dxdesk-device-handover:' || $1::uuid::text, 0)) AS acquired", [id]);
+    if (!lock.rows[0].acquired) throw new ServiceUnavailableException('Biên bản đang được tạo. Vui lòng thử lại.');
+    const data = await read();
+    if (data.handover_key) return data.handover_key;
+    const pdf = await renderHandover(data);
+    const key = handoverKey(data.id);
+    try {
+      await putObject(key, 'application/pdf', pdf);
+    } catch {
+      throw new ServiceUnavailableException('Kho tệp chưa sẵn sàng nên chưa tạo được biên bản. Vui lòng thử lại.');
+    }
+    await client.query('SELECT private.set_device_handover($1,$2,$3)', [data.id, key, pdf.length]);
+    return key;
+  });
 }
 
 function signature(id: string, expires: string): string {
@@ -141,19 +149,16 @@ export function validHandover(id: string, expires: unknown, signed: unknown, now
 export class DeviceHandoverController {
   constructor(private readonly db: Database) {}
 
-  // RLS quyết định ai lấy được liên kết: người đề nghị, Manager của đơn vị và IT.
+  // Quyền lấy liên kết: người đề nghị, người đã duyệt và IT.
   @Post('device-requests/:id/handover-url')
   @HttpCode(200)
   async issue(@Req() request: AuthRequest, @Param('id', ParseUUIDPipe) id: string,
     @Res({ passthrough: true }) response: Response) {
-    const row = await this.db.asUser(request.claims, async client =>
-      (await client.query('SELECT status FROM public.device_requests WHERE id=$1', [id])).rows[0]);
-    if (!row) throw new NotFoundException('Không tìm thấy đề nghị thiết bị.');
-    if (row.status !== 'handed_over') throw new ConflictException('Đề nghị chưa được bàn giao nên chưa có biên bản.');
+    const canonicalId = id.toLowerCase();
     // Thường biên bản đã được tạo ngay sau sự kiện bàn giao; nhánh này phục vụ khi tự động hóa tắt.
-    await ensureHandover(operation => this.db.asUser(request.claims, operation), id);
+    await ensureHandover(operation => this.db.asUser(request.claims, operation), canonicalId);
     response.setHeader('Cache-Control', 'no-store');
-    return handoverUrl(id);
+    return handoverUrl(canonicalId);
   }
 }
 

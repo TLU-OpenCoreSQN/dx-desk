@@ -142,6 +142,14 @@ describe('IT', () => {
 });
 
 describe('handover document (W5-03)', () => {
+  it('does not offer the PDF to a department manager who did not approve it', async () => {
+    rest.listRequests.mockImplementation(async (_user, queue) => queue === 'followed'
+      ? [row({ status: 'handed_over', decided_by: 'another-manager' })] : []);
+    render(<Workspace user={manager} />);
+    const done = await screen.findByRole('article', { name: 'Đề nghị 11111111' });
+    expect(within(done).queryByRole('button', { name: 'Tải biên bản (PDF)' })).toBeNull();
+  });
+
   it('offers the PDF only for handed-over requests and follows the signed URL', async () => {
     rest.listRequests.mockResolvedValue([row({ status: 'handed_over' }), row({ id: '55555555-0000-4000-8000-000000000005', status: 'approved' })]);
     rest.handoverUrl.mockResolvedValueOnce('/api/device-handovers/x/content?expires=1&signature=s')

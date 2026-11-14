@@ -313,7 +313,7 @@ biên bản **không** chứa lý do đề nghị hay ghi chú duyệt.
 - Sinh tự động: workflow n8n `device-request` gọi `POST /api/system/device-events/:id/process`; với sự kiện
   bàn giao API tạo biên bản trước khi trả ACK. Kho tệp lỗi → 503, outbox thử lại; gọi lặp không sinh lại.
 - Khi tự động hóa tắt: lần lấy liên kết đầu tiên của người có quyền sẽ tạo biên bản.
-- `POST /api/device-requests/:id/handover-url` (JWT): người đề nghị, Manager của đơn vị và IT nhận
+- `POST /api/device-requests/:id/handover-url` (JWT): người đề nghị, người đã duyệt đề nghị và IT nhận
   `{url, expires_at}`; không đọc được đề nghị → 404; chưa bàn giao → 409; kho tệp lỗi → 503.
 - `GET /api/device-handovers/:id/content?expires=&signature=`: không cần JWT, chữ ký HMAC hạn 120 giây
   (khóa `ATTACHMENT_SIGNING_KEY`, tiền tố riêng nên không dùng lẫn với tệp đính kèm); trả
