@@ -449,13 +449,14 @@ paths:
                 quantity: { type: integer, minimum: 1, maximum: 10, default: 1 }
       responses:
         "201":
-          description: Yêu cầu thiết bị trạng thái pending
+          description: Yêu cầu thiết bị trạng thái pending; đơn vị lấy từ claim department của JWT
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DeviceRequest" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
   /teams:
     get:
       operationId: listTeams
@@ -817,8 +818,22 @@ components:
         device_type: { type: string, enum: [ laptop, monitor, keyboard, mouse, other ] }
         reason: { type: string }
         quantity: { type: integer }
-        status: { type: string, enum: [ pending, approved, rejected, fulfilled ] }
+        status:
+          type: string
+          enum: [ pending, approved, rejected, preparing, handed_over ]
+          description: >-
+            W5-02: pending -> approved -> preparing -> handed_over, hoặc pending -> rejected. Chỉ đổi qua
+            PostgREST RPC transition_device_request; API này không có endpoint đổi trạng thái.
+        department: { type: string, description: Mã đơn vị lấy từ claim department của JWT lúc tạo }
+        decided_by: { type: string, format: uuid, nullable: true }
+        decided_at: { type: string, format: date-time, nullable: true }
+        decision_note: { type: string, nullable: true, maxLength: 2000 }
+        prepared_by: { type: string, format: uuid, nullable: true }
+        prepared_at: { type: string, format: date-time, nullable: true }
+        handed_over_by: { type: string, format: uuid, nullable: true }
+        handed_over_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
     Attachment:
       type: object
       properties:

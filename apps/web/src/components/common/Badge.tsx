@@ -128,11 +128,18 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
           Từ chối
         </span>
       );
-    case 'fulfilled':
+    case 'preparing':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] text-xs font-semibold bg-[#e7f3f8] text-[#337ea9] border border-[#b7d9ea] shadow-2xs">
+          <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
+          IT đang chuẩn bị
+        </span>
+      );
+    case 'handed_over':
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] text-xs font-semibold bg-[#edf3ec] text-[#448361] border border-[#b8dcce] shadow-2xs">
           <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Đã cấp thiết bị
+          Đã bàn giao
         </span>
       );
     default:

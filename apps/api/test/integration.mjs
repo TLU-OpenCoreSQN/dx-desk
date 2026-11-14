@@ -22,10 +22,10 @@ if (!adminUrl || !new URL(adminUrl).pathname.startsWith('/dxdesk_test')) {
 if (!process.env.TEST_POSTGREST_BIN) throw new Error('A real TEST_POSTGREST_BIN is required for TN-02.');
 const admin = new Pool({ connectionString: adminUrl });
 const users = {
-  a: { sub: '20000000-0000-4000-8000-000000000001', roles: ['Employee'] },
-  b: { sub: '20000000-0000-4000-8000-000000000002', roles: ['Employee'] },
+  a: { sub: '20000000-0000-4000-8000-000000000001', roles: ['Employee'], department: 'phong-hanh-chinh' },
+  b: { sub: '20000000-0000-4000-8000-000000000002', roles: ['Employee'], department: 'phong-ke-toan' },
   agent: { sub: '20000000-0000-4000-8000-000000000003', roles: ['Agent'] },
-  manager: { sub: '20000000-0000-4000-8000-000000000004', roles: ['Manager'] },
+  manager: { sub: '20000000-0000-4000-8000-000000000004', roles: ['Manager'], department: 'phong-hanh-chinh' },
   agent2: { sub: '20000000-0000-4000-8000-000000000006', roles: ['Agent'] },
 };
 const automationClaims = { sub:'20000000-0000-4000-8000-000000000005',role:'ticket_automation',azp:'dxdesk-automation',
@@ -43,6 +43,8 @@ const seaweedDeletes = [];
 const tokens = {};
 const claims = key => ({
   sub: users[key].sub, role: 'authenticated', realm_access: { roles: users[key].roles },
+  // W5-02: đơn vị đi trong JWT (thuộc tính Keycloak), Agent không cần đơn vị.
+  ...(users[key].department && { department: users[key].department }),
 });
 async function token(key = 'a', overrides = {}, options = {}) {
   return new SignJWT({ ...claims(key), preferred_username: `test.${key}`, ...overrides })
@@ -216,11 +218,12 @@ after(async () => {
   await admin.end();
 });
 
-test('TN-02: real database has eleven protected domain tables and reference data', async () => {
+test('TN-02: real database has twelve protected domain tables and reference data', async () => {
   const result = await admin.query(`SELECT relname, relrowsecurity, relforcerowsecurity
     FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relkind = 'r'`);
   // W5-08 (migration 012): +knowledge_articles, category_articles, self_service_resolutions.
-  assert.equal(result.rowCount, 11);
+  // W5-02 (migration 018): +device_request_events.
+  assert.equal(result.rowCount, 12);
   assert.ok(result.rows.every(row => row.relrowsecurity && row.relforcerowsecurity));
   // Hợp đồng tuần 3 (migration 003): thêm danh mục access + system-error -> 6 loại active.
   assert.equal((await call(apiUrl, '/api/categories')).body.data.length, 6);
@@ -1056,4 +1059,93 @@ test('W5-10 automation_weekly matches a hand count per actor type and stays repo
     has_table_privilege('authenticated', 'reporting.automation_weekly', 'SELECT') AS users`)).rows[0];
   assert.deepEqual(grants, { view: true, events: false, users: false });
   assert.notEqual((await call(restUrl, '/automation_weekly', 'manager')).status, 200, 'Reporting schema is not exposed through PostgREST');
+});
+
+test('W5-02 device approval: direct manager approves, IT prepares and hands over, RLS hides other units', async () => {
+  const rpc = (key, id, to, note, customToken) => call(restUrl, '/rpc/transition_device_request', key,
+    { p_id: id, p_to: to, ...(note === undefined ? {} : { p_note: note }) }, customToken);
+  const visible = async (key, id, customToken) => (await call(restUrl, `/device_requests?id=eq.${id}`, key, undefined, customToken)).body.length;
+  await admin.query("UPDATE private.outbox SET available_at=now()+interval '1 day' WHERE status='pending'");
+  const body = { device_type: 'monitor', reason: 'Màn hình thứ hai cho công việc kế toán', quantity: 2 };
+  const made = await call(restUrl, '/device_requests', 'a', body);
+  assert.equal(made.status, 201, JSON.stringify(made.body));
+  const id = made.body[0].id;
+  assert.equal(made.body[0].department, 'phong-hanh-chinh', 'Đơn vị lấy từ JWT');
+  // Không tự khai đơn vị, không tự duyệt và không sửa trạng thái trực tiếp.
+  assert.notEqual((await call(restUrl, '/device_requests', 'a', { ...body, department: 'phong-ke-toan' })).status, 201);
+  assert.notEqual((await patch(restUrl, `/device_requests?id=eq.${id}`, 'a', { status: 'approved' })).status, 200);
+  assert.equal((await rpc('a', id, 'approved')).body.code, '45012');
+  const noUnit = await token('a', { sub: '20000000-0000-4000-8000-000000000009', department: undefined });
+  const unstamped = await call(restUrl, '/device_requests', 'a', body, noUnit);
+  assert.equal(unstamped.body.code, '45014');
+  assert.equal((await call(apiUrl, '/api/device-requests', 'a', body, noUnit)).status, 422);
+
+  // Nhân viên khác, IT (chưa duyệt) và Manager đơn vị khác đều không thấy đề nghị đang chờ.
+  const otherManager = await token('manager', { sub: '20000000-0000-4000-8000-000000000007', department: 'phong-ke-toan' });
+  assert.equal(await visible('b', id), 0);
+  assert.equal(await visible('agent', id), 0);
+  assert.equal(await visible('manager', id, otherManager), 0);
+  assert.equal(await visible('manager', id), 1);
+  for (const [key, custom] of [['b'], ['agent'], ['manager', otherManager]]) {
+    const denied = await rpc(key, id, 'approved', undefined, custom);
+    assert.equal(denied.status, 404, JSON.stringify(denied.body));
+  }
+  assert.equal((await call(restUrl, `/device_request_events?request_id=eq.${id}`, 'b')).body.length, 0);
+
+  // Từ chối cần lý do; sai thứ tự bị chặn; Manager đúng đơn vị duyệt được.
+  const second = (await call(restUrl, '/device_requests', 'a', { ...body, device_type: 'mouse' })).body[0].id;
+  assert.equal((await rpc('manager', second, 'rejected', 'ok')).body.code, '45013');
+  const rejected = await rpc('manager', second, 'rejected', 'Đã có chuột dự phòng trong kho đơn vị');
+  assert.equal(rejected.status, 200, JSON.stringify(rejected.body));
+  assert.equal(rejected.body.status, 'rejected');
+  assert.equal(rejected.body.decision_note, 'Đã có chuột dự phòng trong kho đơn vị');
+  assert.equal((await rpc('manager', second, 'approved')).body.code, '45011');
+  assert.equal((await rpc('manager', id, 'handed_over')).body.code, '45011');
+  const approved = await rpc('manager', id, 'approved');
+  assert.equal(approved.status, 200, JSON.stringify(approved.body));
+  assert.equal(approved.body.decided_by, users.manager.sub);
+
+  // Sau khi duyệt IT mới thấy; Manager không làm thay bước của IT, IT không nhảy cóc.
+  assert.equal(await visible('agent', id), 1);
+  assert.equal(await visible('agent', second), 0);
+  assert.equal((await rpc('manager', id, 'preparing')).body.code, '45012');
+  assert.equal((await rpc('agent', id, 'handed_over')).body.code, '45011');
+  assert.equal((await rpc('agent', id, 'preparing')).body.prepared_by, users.agent.sub);
+  const handed = await rpc('agent', id, 'handed_over');
+  assert.equal(handed.body.status, 'handed_over');
+  assert.equal(handed.body.handed_over_by, users.agent.sub);
+  assert.equal((await rpc('agent', id, 'preparing')).body.code, '45011');
+
+  const history = (await call(restUrl, `/device_request_events?request_id=eq.${id}&order=created_at,id`, 'a')).body;
+  assert.deepEqual(history.map(row => [row.from_status, row.to_status, row.actor_id, row.actor_type]), [
+    [null, 'pending', users.a.sub, 'user'], ['pending', 'approved', users.manager.sub, 'user'],
+    ['approved', 'preparing', users.agent.sub, 'user'], ['preparing', 'handed_over', users.agent.sub, 'user']]);
+  assert.notEqual((await call(restUrl, '/device_request_events', 'a', { request_id: id, actor_id: users.a.sub, to_status: 'approved' })).status, 201);
+  assert.equal((await call(apiUrl, '/api/device-requests', 'a')).body.data.find(row => row.id === id).status, 'handed_over');
+
+  // Outbox: tạo, duyệt, bàn giao (không có bước chuẩn bị); phong bì chỉ có ID, trạng thái và mã đơn vị.
+  const queued = (await admin.query(`SELECT o.event_id, o.destination, o.envelope FROM private.outbox o
+    WHERE o.envelope->>'request_id'=$1 ORDER BY o.created_at`, [id])).rows;
+  assert.deepEqual(queued.map(row => row.envelope.event_type).sort(),
+    ['device_request.approved', 'device_request.created', 'device_request.handed_over']);
+  assert.ok(queued.every(row => row.destination === 'device_request' && !JSON.stringify(row.envelope).includes(body.reason)));
+  assert.equal(queued.find(row => row.envelope.event_type === 'device_request.approved').envelope.payload.status, 'approved');
+  const expected = { 'device_request.created': 'manager', 'device_request.approved': 'it', 'device_request.handed_over': 'requester' };
+  const support = (await admin.query("SELECT id FROM public.teams WHERE code='support'")).rows[0].id;
+  for (const row of queued) {
+    const path = `/api/system/device-events/${row.event_id}/process`;
+    assert.equal((await call(apiUrl, path, 'manager', { schema_version: 1 })).status, 403);
+    const ack = await call(apiUrl, path, 'service', { schema_version: 1 });
+    assert.equal(ack.status, 200, JSON.stringify(ack.body));
+    const kind = row.envelope.event_type.split('.')[1];
+    assert.deepEqual(ack.body, { event_id: row.event_id, result: 'notification', request_id: id,
+      notification: { kind, audience: expected[row.envelope.event_type], team_id: kind === 'approved' ? support : null } });
+    assert.deepEqual((await call(apiUrl, path, 'service', { schema_version: 1 })).body, ack.body, 'Gọi lặp trả cùng ACK');
+  }
+  // Sự kiện phiếu không đi nhầm sang cổng thiết bị.
+  const ticketEvent = (await admin.query("SELECT event_id FROM private.outbox WHERE destination<>'device_request' LIMIT 1")).rows[0].event_id;
+  assert.equal((await call(apiUrl, `/api/system/device-events/${ticketEvent}/process`, 'service', { schema_version: 1 })).status, 404);
+  const rejectedEvents = (await admin.query("SELECT envelope->>'event_type' AS type FROM private.outbox WHERE envelope->>'request_id'=$1", [second])).rows;
+  assert.deepEqual(rejectedEvents.map(row => row.type).sort(), ['device_request.created', 'device_request.rejected']);
+  await admin.query("UPDATE private.outbox SET status='delivered', delivered_at=now() WHERE destination='device_request' AND status='pending'");
 });

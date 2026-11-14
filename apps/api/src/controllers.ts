@@ -60,6 +60,19 @@ export function workflowExceptionForCode(code?: string): { status: number; messa
   if (code === '45003') {
     return { status: 422, message: 'Cần ghi chú kết quả xử lý (5–2000 ký tự) trước khi đánh dấu yêu cầu đã xử lý.' };
   }
+  // W5-02: luồng duyệt đề nghị cấp thiết bị (migration 018).
+  if (code === '45011') {
+    return { status: 422, message: 'Chuyển trạng thái không hợp lệ với quy trình duyệt đề nghị thiết bị.' };
+  }
+  if (code === '45012') {
+    return { status: 403, message: 'Chỉ quản lý trực tiếp hoặc bộ phận IT được thực hiện bước này.' };
+  }
+  if (code === '45013') {
+    return { status: 422, message: 'Cần ghi lý do từ chối (5–2000 ký tự).' };
+  }
+  if (code === '45014') {
+    return { status: 422, message: 'Tài khoản chưa được gán đơn vị nên chưa gửi được đề nghị thiết bị. Liên hệ quản trị hệ thống.' };
+  }
   return null;
 }
 

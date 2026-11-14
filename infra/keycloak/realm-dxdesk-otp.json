@@ -14,9 +14,18 @@
   "otpPolicyPeriod": 30,
   "roles": {
     "realm": [
-      { "name": "Employee", "description": "Nhân viên gửi yêu cầu IT" },
-      { "name": "Agent", "description": "Kỹ thuật viên xử lý ticket" },
-      { "name": "Manager", "description": "Quản lý, được đặt mức Critical và duyệt yêu cầu" }
+      {
+        "name": "Employee",
+        "description": "Nhân viên gửi yêu cầu IT"
+      },
+      {
+        "name": "Agent",
+        "description": "Kỹ thuật viên xử lý ticket"
+      },
+      {
+        "name": "Manager",
+        "description": "Quản lý, được đặt mức Critical và duyệt yêu cầu"
+      }
     ]
   },
   "clients": [
@@ -27,9 +36,17 @@
       "publicClient": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
-      "redirectUris": ["http://localhost:5173/*", "http://localhost:9080/*"],
-      "webOrigins": ["+"],
-      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "+" },
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:9080/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
       "protocolMappers": [
         {
           "name": "api-audience",
@@ -54,6 +71,20 @@
             "id.token.claim": "false",
             "userinfo.token.claim": "false"
           }
+        },
+        {
+          "name": "department",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "department",
+            "claim.name": "department",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
+          }
         }
       ]
     },
@@ -71,8 +102,12 @@
       "secret": "appsmith-dev-secret",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:8081/*"],
-      "webOrigins": ["+"],
+      "redirectUris": [
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
       "protocolMappers": [
         {
           "name": "api-audience",
@@ -107,9 +142,15 @@
       "publicClient": false,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:18030/login/keycloak/callback"],
-      "webOrigins": ["http://localhost:18030"],
-      "attributes": { "post.logout.redirect.uris": "http://localhost:18030/*" },
+      "redirectUris": [
+        "http://localhost:18030/login/keycloak/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:18030"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:18030/*"
+      },
       "protocolMappers": [
         {
           "name": "dxdesk-roles",
@@ -135,9 +176,24 @@
       "lastName": "A",
       "enabled": true,
       "emailVerified": true,
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
-      "realmRoles": ["Employee"]
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "DxDesk@2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Employee"
+      ],
+      "attributes": {
+        "department": [
+          "phong-hanh-chinh"
+        ]
+      }
     },
     {
       "username": "employee.b",
@@ -146,9 +202,24 @@
       "lastName": "B",
       "enabled": true,
       "emailVerified": true,
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
-      "realmRoles": ["Employee"]
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "DxDesk@2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Employee"
+      ],
+      "attributes": {
+        "department": [
+          "phong-ke-toan"
+        ]
+      }
     },
     {
       "username": "agent.1",
@@ -157,9 +228,24 @@
       "lastName": "1",
       "enabled": true,
       "emailVerified": true,
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
-      "realmRoles": ["Agent"]
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "DxDesk@2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Agent"
+      ],
+      "attributes": {
+        "department": [
+          "phong-cntt"
+        ]
+      }
     },
     {
       "username": "manager.1",
@@ -168,9 +254,37 @@
       "lastName": "1",
       "enabled": true,
       "emailVerified": true,
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "DxDesk@2026", "temporary": false }],
-      "realmRoles": ["Manager"]
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "DxDesk@2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "Manager"
+      ],
+      "attributes": {
+        "department": [
+          "phong-hanh-chinh"
+        ]
+      }
     }
-  ]
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"department\",\"displayName\":\"Đơn vị\",\"validations\":{\"length\":{\"max\":63},\"pattern\":{\"pattern\":\"^[a-z0-9]+(-[a-z0-9]+)*$\",\"error-message\":\"Mã đơn vị chỉ gồm chữ thường, số và dấu gạch nối.\"}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  }
 }

@@ -208,7 +208,11 @@ try {
     assert.equal(device.reason, reason); assert.equal(device.status, 'pending');
     await page.getByText(`Đã gửi yêu cầu cấp thiết bị thành công (Mã yêu cầu: ${device.id})`, { exact: true }).waitFor();
     await page.getByText(reason, { exact: true }).waitFor();
-    for (const username of ['employee.a', 'agent.1', 'manager.1']) {
+    assert.equal(device.department, 'phong-hanh-chinh', 'Department comes from the Keycloak attribute in the token');
+    // W5-02: người đề nghị và quản lý cùng đơn vị thấy đề nghị đang chờ; IT chỉ thấy sau khi duyệt.
+    const restAgent = await call(restUrl, `/device_requests?id=eq.${device.id}`, tokens['agent.1']);
+    assert.equal(restAgent.status, 200); assert.deepEqual(restAgent.body, []);
+    for (const username of ['employee.a', 'manager.1']) {
       const api = await call(apiUrl, '/api/device-requests', tokens[username]);
       const rest = await call(restUrl, `/device_requests?id=eq.${device.id}`, tokens[username]);
       assert.equal(api.status, 200); assert.equal(rest.status, 200);

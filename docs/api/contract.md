@@ -259,3 +259,43 @@ download trên cùng stack. Đọc kết quả artifact của đúng SHA, không
 với chữ ký cho một dashboard, hạn 5 phút, và `Cache-Control: no-store`.
 Tài khoản chưa đăng nhập nhận 401, Employee và Agent nhận 403. API trả 503 khi
 Metabase chưa được cấu hình trong hồ sơ `full`.
+
+## Đề nghị cấp thiết bị và luồng duyệt (W5-02, migration 018)
+
+**Quản lý trực tiếp** là người có vai trò `Manager` và claim JWT `department` trùng đơn vị của đề nghị.
+Đơn vị là thuộc tính người dùng Keycloak `department` (mã chữ thường, số, gạch nối; chỉ quản trị viên
+sửa được), đi vào access token qua mapper của client. PostgreSQL đóng dấu `device_requests.department`
+từ claim lúc tạo; trình duyệt không gửi được trường này. Tài khoản chưa có đơn vị nhận 422
+(SQLSTATE `45014`). Tài khoản demo: `employee.a` và `manager.1` thuộc `phong-hanh-chinh`,
+`employee.b` thuộc `phong-ke-toan` (chưa có Manager nên đề nghị ở trạng thái chờ), `agent.*` thuộc `phong-cntt`.
+
+Máy trạng thái chỉ định nghĩa ở PostgreSQL (ứng dụng 2 không có backend riêng):
+
+| Từ | Sang | Ai được làm | Ghi chú |
+|---|---|---|---|
+| `pending` | `approved` | Manager cùng đơn vị, không phải người đề nghị | ghi chú tùy chọn |
+| `pending` | `rejected` | Manager cùng đơn vị, không phải người đề nghị | lý do 5–2000 ký tự |
+| `approved` | `preparing` | Agent (IT) | |
+| `preparing` | `handed_over` | Agent (IT) | |
+
+- Đổi trạng thái: `POST /rest/rpc/transition_device_request` với `{"p_id","p_to","p_note"}` và token người
+  dùng; trả dòng `device_requests` mới. Vai trò `authenticated` không có quyền `UPDATE` trên bảng.
+- Lỗi PostgREST mang `code`: `45011` sai thứ tự, `45012` sai vai trò/đơn vị, `45013` thiếu lý do từ chối,
+  `45014` thiếu đơn vị; đề nghị không đọc được trả 404 (không lộ sự tồn tại). `/api` ánh xạ các mã này
+  sang thông báo tiếng Việt cố định (422/403).
+- Quyền đọc (RLS, thay policy "mọi staff" cũ): người đề nghị thấy đề nghị của mình; Manager thấy đề nghị
+  của đơn vị mình; Agent chỉ thấy `approved`, `preparing`, `handed_over`.
+- Lịch sử: `GET /rest/device_request_events?request_id=eq.<id>` trả `from_status`, `to_status`, `actor_id`,
+  `actor_type` (`user|system|ai`), `actor_name`, `note`, `created_at` theo đúng quyền đọc đề nghị;
+  chỉ trigger ghi được bảng này.
+- `GET/POST /api/device-requests` giữ nguyên; kết quả có thêm `department`, `decided_*`, `prepared_*`,
+  `handed_over_*`, `updated_at`. Trạng thái `fulfilled` cũ được chuyển thành `handed_over`.
+
+Thông báo: mỗi bước tạo / duyệt / từ chối / bàn giao ghi một dòng outbox `destination=device_request`
+(phong bì chỉ có ID, trạng thái và mã đơn vị). `OutboxDispatcher` gửi tới workflow n8n
+`device-request` (`DEVICE_REQUEST_WEBHOOK_URL`), n8n gọi `POST /api/system/device-events/:id/process`
+bằng token dịch vụ và nhận ACK `{event_id,result:"notification",request_id,notification:{kind,audience,team_id}}`
+(`audience`: `manager` khi có đề nghị, `it` khi đã duyệt, `requester` khi từ chối/bàn giao). Tin Mattermost
+chỉ gồm loại sự kiện, mã đề nghị và mã sự kiện: tin cho IT vào kênh nhóm IT Support, tin cho quản lý và
+người đề nghị vào kênh vận hành chung (bản demo chưa có tài khoản Mattermost cho nhân viên; người đề
+nghị theo dõi trạng thái trong ứng dụng). Bước "IT chuẩn bị" không phát thông báo.
