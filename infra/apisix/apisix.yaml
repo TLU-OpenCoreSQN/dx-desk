@@ -89,6 +89,18 @@ routes:
       type: roundrobin
       nodes:
         "api:3000": 1
+  - id: linked-data
+    # W5-04: JSON-LD/DCAT công khai, chỉ đọc, sinh từ dữ liệu tham chiếu. Phương thức
+    # khác GET/HEAD không khớp route này và rơi xuống route web (nginx từ chối).
+    uri: /ld/*
+    priority: 30
+    methods: [GET, HEAD]
+    plugins:
+      limit-req: *request-limit
+    upstream:
+      type: roundrobin
+      nodes:
+        "api:3000": 1
   - id: service-desk-api
     uri: /api/*
     priority: 20

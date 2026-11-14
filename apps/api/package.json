@@ -35,6 +35,7 @@
     "@types/node": "22.18.6",
     "@types/pdfkit": "0.17.7",
     "@types/pg": "8.15.5",
+    "jsonld": "9.0.0",
     "typescript": "5.9.2"
   }
 }
