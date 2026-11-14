@@ -85,7 +85,8 @@ Giá đối chiếu trên **trang chính thức** của nhà cung cấp ngày 04
 - [x] Đối chiếu giá trên trang chính thức của BizFly Cloud và Hetzner (04/11/2026).
 - [x] Phương án B: loại ngày 12/11/2026 do đổi phạm vi sang doanh nghiệp.
 - [x] Thầy đồng ý phương án A và chi phí (12/11/2026).
-- [x] Đổi trạng thái ADR sang **Đã chốt**, cập nhật bảng ADR và issue #36.
+- [x] Đổi trạng thái ADR sang **Đã chốt** và cập nhật bảng ADR.
+- [ ] Cập nhật issue #36 khi xác nhận các bước thuê VPS và chọn tên miền.
 - [ ] Thuê VPS (kiểm lại giá khi đặt hàng), SSH bằng khóa vào được — hạn 16/11 để W6-06 bắt đầu.
 - [ ] Chọn tên miền và cấp HTTPS (W6-06).
 

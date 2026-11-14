@@ -30,13 +30,13 @@ luồng VPN và báo cáo SLA.
 | Hệ số cao điểm (2 tuần đầu năm, triển khai hệ thống mới) | ×2,5 | phân bố ngày tạo ticket |
 | Đơn vị người gửi | 6 phòng ban mô phỏng, phân bố đều | ghi trong mô tả ticket (W4-07) |
 | Tài khoản, email, phần mềm nghiệp vụ | 35% | `account` |
-| Wi-Fi, mạng, VPN | 25% (trong đó VPN 8%) | `vpn` |
+| Wi-Fi, mạng, VPN | 25% tổng cộng | `vpn` cho cả nhóm. Bộ sinh không tách trọng số riêng cho VPN trong nhóm này. |
 | Thiết bị văn phòng | 20% | `hardware` |
 | Phần mềm bản quyền | 12% | `software` |
 | Cấp quyền hệ thống (cần duyệt) | 5% | `access` |
 | Sự cố hệ thống dùng chung | 3% | `system-error` |
 | Kênh tiếp nhận | Email 40%, trực tiếp/điện thoại 35%, nhóm chat 25% | chỉ dùng cho bản ý tưởng, chưa vào schema |
-| Số người xử lý | 6, chia 3 nhóm (Mạng, Tài khoản/Phần mềm, Thiết bị) | team và roster Keycloak |
+| Số người xử lý | Giả định 6 người, chia 3 nhóm (Mạng, Tài khoản/Phần mềm, Thiết bị) | Realm demo có hai Agent và một Manager để kiểm thử vai trò và roster. |
 
 Tình huống VPN client 4.2 (W5-05) là tham số kịch bản riêng, không suy từ bảng trên.
 
