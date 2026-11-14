@@ -11,6 +11,17 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), catalogFallback(proxyTarget)],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-auth': ['keycloak-js'],
+            'vendor-icons': ['lucide-react'],
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       host: true,

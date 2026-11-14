@@ -5,29 +5,130 @@
 
 @import "tailwindcss";
 
-/* Cùng bảng màu với DX-Desk (apps/web/src/index.css) để hai ứng dụng nhìn như một nền tảng. */
+/* Cùng bảng màu Warm Surface / Notion với DX-Desk (apps/web/src/index.css) để hai ứng dụng nhìn như một nền tảng đồng nhất. */
 @theme {
   --color-primary: #0a78be;
   --color-primary-hover: #08639e;
+  --color-primary-active: color-mix(in srgb, var(--color-primary), black 35%);
   --color-primary-tint: #deeef8;
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary-tint), white 50%);
+  --color-primary-border: color-mix(in srgb, var(--color-primary), white 70%);
   --color-primary-edge: #9dc9e5;
   --color-primary-text: #064e7b;
+
+  /* Notion / HR-V5 Warm Surface Palette */
   --color-surface: #ffffff;
   --color-surface-warm: #f7f6f3;
+  --color-surface-sidebar: #fbfaf8;
+  --color-surface-muted: #f1f1ef;
+  --color-surface-card: #ffffff;
+
   --color-content: #211f1b;
+  --color-content-muted: #5f5e5a;
+  --color-content-subtle: #8a8884;
   --color-muted: #5f5e5a;
+
   --color-edge: #d6d5d2;
+  --color-edge-subtle: #e4e3e0;
+  --color-edge-strong: #9e9d99;
+
   --color-danger: #b3261e;
+  --color-danger-hover: #961f18;
   --color-danger-tint: #fbe4e4;
   --color-danger-edge: #f6c3c1;
+  --color-danger-border: #f6c3c1;
+
   --color-warning: #8a5a00;
+  --color-warning-hover: #6e4800;
   --color-warning-tint: #fbf3db;
   --color-warning-edge: #ecd9a0;
+  --color-warning-border: #f5ddb2;
+
   --color-success: #2f6b4a;
+  --color-success-hover: #245339;
   --color-success-tint: #edf3ec;
   --color-success-edge: #b8dcce;
+  --color-success-border: #b8dcce;
+
+  --color-info: #0a78be;
+  --color-info-hover: #08639e;
+  --color-info-tint: #deeef8;
+  --color-info-border: #b9daf0;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --radius: 6px;
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+}
+
+/* Dark mode: đồng bộ hoàn toàn với DX-Desk */
+:root.dark {
+  color-scheme: dark;
+  --color-surface: #1e1e1e;
+  --color-surface-warm: #252525;
+  --color-surface-sidebar: #181818;
+  --color-surface-muted: #2d2d2d;
+  --color-surface-card: #222222;
+
+  --color-content: #f5f5f4;
+  --color-content-muted: #a8a29e;
+  --color-content-subtle: #a8a29e;
+  --color-muted: #a8a29e;
+
+  --color-edge: #383838;
+  --color-edge-subtle: #2e2e2e;
+  --color-edge-strong: #525252;
+
+  --color-primary-tint: #14354d;
+  --color-primary-edge: #1d5276;
+  --color-primary-text: #70bded;
+
+  /* Chữ trạng thái phải sáng lên để đủ tương phản trên nền tint tối. */
+  --color-danger: #f28b82;
+  --color-danger-tint: #401816;
+  --color-danger-edge: #732a26;
+
+  --color-warning: #e9b949;
+  --color-warning-tint: #3b2c11;
+  --color-warning-edge: #694f1c;
+
+  --color-success: #6fcf97;
+  --color-success-tint: #163625;
+  --color-success-edge: #276142;
+}
+
+@layer utilities {
+  /* Micro-interactions & Modern SaaS Utilities */
+  .dx-card {
+    background-color: var(--color-surface-card);
+    border: 1px solid var(--color-edge-subtle, #e4e3e0);
+    border-radius: var(--radius-md, 6px);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dx-card-hover {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .dx-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border-color: var(--color-edge);
+  }
+
+  .dx-glass {
+    background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 }
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--color-surface-warm);
+  color: var(--color-content);
 }

@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { SkeletonPage } from '../common/Skeleton';
 import { useAuth } from '../../contexts/AuthContext';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
@@ -51,7 +52,10 @@ export const Layout: React.FC = () => {
           id="main-content"
           tabIndex={-1}
         >
-          <Outlet />
+          {/* Trang lazy chỉ thay vùng nội dung; header và sidebar giữ nguyên khi chờ tải. */}
+          <Suspense fallback={<SkeletonPage />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
