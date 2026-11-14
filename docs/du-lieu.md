@@ -53,6 +53,25 @@ chọn **Dịch vụ → Kết nối VPN** để xem JSON-LD, sao chép URI ho�
 - `reporting.self_service_weekly`: số lượt và số người theo tuần/danh mục/bài, không có định danh;
   chỉ cấp cho vai trò `reporting_reader` (Metabase, W5-06), không lộ qua PostgREST.
 
+## Chỉ số tự động hóa H-P-D-I (migration 017, W5-10)
+
+`reporting.automation_weekly` trả mỗi tuần (thứ Hai, giờ `Asia/Ho_Chi_Minh`) một dòng:
+`steps`, `human_steps`, `system_steps`, `ai_steps`, `manual_percent`, `system_percent`, `ai_percent`.
+
+- **Bước xử lý** = một sự kiện `status_changed` trong `ticket_events`. Phân loại/định tuyến, phân công,
+  nhận việc, chờ người dùng, giải quyết, đóng, hủy, mở lại đều là một lần chuyển trạng thái nên đều được đếm.
+- **Không đếm**: `created` (tạo phiếu là đầu vào, chưa phải xử lý); `assignment_changed` (dòng audit đi kèm
+  bước chuyển trạng thái, đếm sẽ trùng); `routing_unresolved`, `sla_warning`, `sla_breached` (cảnh báo).
+- **Ai thực hiện** lấy từ `actor_type` do PostgreSQL ghi, không nhận từ trình duyệt: `user` (người, qua JWT
+  người dùng), `system` (vai trò `ticket_automation`: định tuyến theo `routing_rules`, SLA), `ai` (W6-08).
+- **Tỷ lệ thao tác thủ công** `manual_percent` = `human_steps / steps × 100`, làm tròn một chữ số.
+
+Đối chiếu bằng tay: `SELECT actor_type, count(*) FROM public.ticket_events WHERE event_type = 'status_changed'
+AND created_at >= '<thứ Hai>' AND created_at < '<thứ Hai kế>' GROUP BY 1` (mốc theo giờ Việt Nam).
+View chỉ cấp `SELECT` cho `reporting_reader`; Metabase không đọc được `ticket_events`. Dashboard có hai thẻ
+dùng view này: "Tỷ lệ thao tác thủ công theo tuần (%)" và "Bước xử lý theo tác nhân theo tuần (H-P-D-I)".
+`reporting.ticket_operations_weekly` (migration 015) giữ nguyên để tương thích.
+
 ## Bộ sinh demo trong bối cảnh trường (W4-07)
 
 `make seed` hoặc `node scripts/dxdesk.mjs seed` đọc team từ `/api/system/teams` và kiểm tra

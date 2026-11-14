@@ -76,7 +76,7 @@ export interface TicketEvent {
   id: string;
   ticket_id: string;
   actor_id: string | null;
-  actor_type?: 'user' | 'system';
+  actor_type?: 'user' | 'system' | 'ai';
   actor_name?: string | null;
   event_type: string;
   payload: Record<string, unknown> | null;

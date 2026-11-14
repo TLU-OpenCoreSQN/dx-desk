@@ -19,6 +19,10 @@
   `requester_name`, `sla_breached/sla_breached_at`. Tên thiếu được thể hiện bằng ID,
   không tự bịa danh tính. Version đổi theo trạng thái/phân công/kết quả, không đổi
   vì bookkeeping breach. Events thêm `actor_type=user|system` và `actor_name`.
+  Từ migration 017 (W5-10) `actor_type` nhận thêm `ai` cho bước do AI thực hiện (W6-08 mới ghi giá trị này).
+- Chỉ số tự động hóa H-P-D-I (W5-10): view `reporting.automation_weekly` đếm bước xử lý theo tuần và theo
+  `actor_type`; định nghĩa "bước" ở `docs/du-lieu.md`. Chỉ vai trò `reporting_reader` (Metabase) đọc được,
+  không lộ qua PostgREST hay `/api`.
 - Service có controller/guard riêng: Keycloak client `dxdesk-automation`, database
   role `ticket_automation`, realm role `ticket-automation`. Không cấp Employee/
   Manager giả cho bot và không nới guard người dùng. Service JWT vẫn kiểm issuer,
