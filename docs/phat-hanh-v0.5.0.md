@@ -9,21 +9,21 @@ còn dòng "Chưa xong" ở phạm vi cam kết, hoặc dòng đó đã được
 
 ## Bảng mốc M4
 
-Trạng thái: **Đạt** (đã gộp `main`, CI xanh), **Đang review** (có PR), **Chưa xong**, **Có rủi ro**.
-Cập nhật ngày 12/11/2026; người cập nhật ghi ngày mới khi sửa bảng.
+Trạng thái: **Đạt** (đã gộp `main`, CI xanh), **Theo PR** (xem trạng thái merge và CI ở liên kết), **Chưa xong**, **Có rủi ro**.
+Cập nhật ngày 14/11/2026; người cập nhật ghi ngày mới khi sửa bảng.
 
 | Mã | Việc | Người | Trạng thái | Bằng chứng |
 |---|---|---|---|---|
-| W5-01 | Ứng dụng 2 "Xin cấp thiết bị" | Quyền | Đang review: PR #43 (base là nhánh của #42), CI xanh 13/11 | #26 |
-| W5-02 | RLS cho `device_requests` | Quyền | Đang review: PR #42 (migration 018), CI xanh 13/11 | #27 |
-| W5-03 | Biên bản bàn giao PDF lưu SeaweedFS | Quyền | Đang review: PR #44 (migration 019, base là nhánh của #43), CI xanh 13/11 | #28 |
-| W5-04 | Tài nguyên JSON-LD | Quyền | Đang review: PR #45 (migration 020, base `main`), CI xanh 13/11 | #29 |
+| W5-01 | Ứng dụng 2 "Xin cấp thiết bị" | Quyền | Theo PR | #26, [PR #43](https://github.com/TLU-OpenCoreSQN/dx-desk/pull/43) và kiểm thử SSO liên ứng dụng |
+| W5-02 | RLS cho `device_requests` | Quyền | Đạt | #27, [PR #42](https://github.com/TLU-OpenCoreSQN/dx-desk/pull/42), migrations 018 và 021, [CI](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/43564099930) |
+| W5-03 | Biên bản bàn giao PDF lưu SeaweedFS | Quyền | Theo PR | #28, [PR #44](https://github.com/TLU-OpenCoreSQN/dx-desk/pull/44), migrations 019 và 022 |
+| W5-04 | Tài nguyên JSON-LD | Quyền | Theo PR | #29, [PR #45](https://github.com/TLU-OpenCoreSQN/dx-desk/pull/45), migrations 020 và 023 |
 | W5-05 | Dữ liệu giả lập 6–8 tuần | Séc | Đạt | PR #38 gộp `main` 11/11 (`29c07ae`), CI run [42989051130](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/42989051130) xanh; #30 đã đóng |
 | W5-06 | Dashboard Metabase | Séc | Đạt (hồ sơ `full`) | PR #38, CI run [42989051130](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/42989051130) gồm job "Metabase và KPI demo tuần 5"; #31 đã đóng |
 | W5-07 | Danh mục dữ liệu JSON-LD/DCAT | Séc | Đạt | PR #38, CI run [42989051130](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/42989051130); #32 đã đóng |
-| W5-08 | Wiki.js SSO, 6 bài, gợi ý, lượt tự phục vụ | Nguyên | Đạt | PR #37 gộp `main` 04/11, CI run [41863352656](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/41863352656) xanh; nghiệm thu máy dev và cài sạch ở mục dưới; #33 đã đóng. Đổi bài theo bối cảnh doanh nghiệp: PR #39 (W5-11) |
+| W5-08 | Wiki.js SSO, 6 bài, gợi ý, lượt tự phục vụ | Nguyên | Đạt | PR #37 gộp `main` 04/11, CI run [41863352656](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/41863352656) xanh; nghiệm thu máy dev và cài sạch ở mục dưới; #33 đã đóng. Bối cảnh doanh nghiệp được cập nhật trong [PR #39](https://github.com/TLU-OpenCoreSQN/dx-desk/pull/39). |
 | W5-09 | Notices, docs, đo RAM, phát hành | Nguyên | Đang làm — notices, CHANGELOG, đo RAM có Wiki.js + Metabase xong (12/11); còn phần phụ thuộc W5-01..04 và nghiệm thu máy sạch | #34 |
-| W5-10 | View chỉ số tự động hóa H-P-D-I | Quyền | Đang review: PR #41 (migration 017), CI xanh 13/11 | #35 |
+| W5-10 | View chỉ số tự động hóa H-P-D-I | Quyền | Đạt | #35, [PR #41](https://github.com/TLU-OpenCoreSQN/dx-desk/pull/41), migration 017, [CI](https://github.com/TLU-OpenCoreSQN/dx-desk/actions/runs/43257507451) |
 | QĐ-7 | Nơi chạy bản Internet | Nguyên | Đã chốt 12/11 (thuê VPS, ADR 0010); còn thuê VPS và SSH được trước 16/11 | #36 |
 | W4-10 | Khảo sát Trung tâm CNTT (tồn từ M3) | Nguyên | Hủy 12/11 — dự án chỉ phục vụ doanh nghiệp; tham số giữ là giả định của đội ([tham-so-du-lieu-gia-lap.md](tham-so-du-lieu-gia-lap.md)) | #24 |
 
