@@ -10,12 +10,20 @@ import { AutomationClaims, validateAutomationClaims } from './service-auth';
 interface Envelope {
   event_id: string; ticket_id: string; event_type: string; ticket_version: number;
   schema_version: number; payload: Record<string, unknown>;
+  // W5-02: sự kiện đề nghị thiết bị mang request_id thay cho ticket_id.
+  request_id?: string;
 }
 interface Delivery { event_id: string; destination: string; envelope: Envelope; lease_token: string; attempts: number }
 interface Ack {
-  event_id: string; result: string; ticket_id: string; team_id?: string;
-  notification?: { kind: string; team_id?: string };
+  event_id: string; result: string; ticket_id: string; team_id?: string; request_id?: string;
+  notification?: { kind: string; team_id?: string | null; audience?: string };
 }
+const DEVICE_NOTICES: Record<string, { audience: string; text: string }> = {
+  'device_request.created': { audience: 'manager', text: 'Đề nghị thiết bị mới — chờ quản lý trực tiếp duyệt' },
+  'device_request.approved': { audience: 'it', text: 'Đề nghị thiết bị đã được duyệt — IT chuẩn bị' },
+  'device_request.rejected': { audience: 'requester', text: 'Đề nghị thiết bị không được duyệt' },
+  'device_request.handed_over': { audience: 'requester', text: 'Thiết bị đã bàn giao — biên bản có trong ứng dụng' },
+};
 export function retryDelay(attempts: number, jitter = Math.random()): number {
   return Math.min(60, 2 ** Math.min(6, Math.max(0, attempts - 1))) + Math.floor(Math.max(0, Math.min(1, jitter)) * 3);
 }
@@ -27,9 +35,18 @@ export function notificationText(envelope: Envelope): string {
     'ticket.sla_breached': 'SLA đã quá hạn — cần trưởng nhóm xem xét',
   };
   // Do not send title/description/notes, requester details, files or signed links to chat.
+  const device = DEVICE_NOTICES[envelope.event_type];
+  if (device) return `[DX-Desk] ${device.text} — đề nghị ${envelope.request_id} — sự kiện ${envelope.event_id}`;
   return `[DX-Desk] ${kinds[envelope.event_type] ?? 'Cập nhật phiếu'} — phiếu ${envelope.ticket_id} — sự kiện ${envelope.event_id}`;
 }
 export function validAck(item: Delivery, ack: Ack): boolean {
+  if (item.destination === 'device_request') {
+    const device = DEVICE_NOTICES[item.envelope.event_type];
+    return !!device && !!item.envelope.request_id && ack.event_id === item.event_id
+      && ack.request_id === item.envelope.request_id && ack.result === 'notification'
+      && ack.notification?.kind === item.envelope.event_type.slice('device_request.'.length)
+      && ack.notification.audience === device.audience;
+  }
   if (ack.event_id !== item.event_id || ack.ticket_id !== item.envelope.ticket_id) return false;
   if (item.destination === 'automation') return ['routed','skipped','unresolved'].includes(ack.result);
   if (item.destination !== 'notification') return false;
@@ -103,7 +120,7 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       const item = batch[0];
       if (!item) break;
       try {
-        const response = await fetch(required('AUTOMATION_WEBHOOK_URL'), {
+        const response = await fetch(required(item.destination === 'device_request' ? 'DEVICE_REQUEST_WEBHOOK_URL' : 'AUTOMATION_WEBHOOK_URL'), {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'X-DXDesk-Webhook-Key': required('AUTOMATION_WEBHOOK_KEY') },
           body: JSON.stringify(item.envelope), signal: AbortSignal.timeout(10000),
         });
@@ -117,7 +134,14 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         const ack = await response.json() as Ack;
         if (!validAck(item, ack)) throw new Error('invalid_durable_ack');
         if (ack.result === 'unresolved') throw new Error('routing_unresolved');
-        if (item.destination === 'notification' && ack.result === 'notification') await this.notify(item, ack);
+        if (item.destination !== 'automation' && ack.result === 'notification') {
+          const key = item.destination === 'device_request'
+            ? await this.db.asAutomation(identity.claims, async client => (await client.query<{ channel_key: string | null }>(
+              'SELECT private.device_notice_channel($1,$2) AS channel_key', [item.event_id, item.lease_token],
+            )).rows[0]?.channel_key)
+            : ack.notification?.team_id ?? ack.team_id ?? 'default';
+          await this.notify(item, key);
+        }
         const completed = await this.db.asAutomation(identity.claims, async client => (await client.query(
           'SELECT private.complete_outbox($1,$2) AS completed', [item.event_id, item.lease_token],
         )).rows[0]?.completed === true);
@@ -133,11 +157,10 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async notify(item: Delivery, ack: Ack) {
+  private async notify(item: Delivery, key: string | null | undefined) {
     const channels: Record<string, string> = JSON.parse(required('MATTERMOST_TEAM_CHANNELS'));
-    const teamId = ack.notification?.team_id ?? ack.team_id;
-    const channel = teamId ? channels[teamId] : channels.default;
-    if (!channel) throw new Error('notification_channel_missing');
+    const channel = key && Object.hasOwn(channels, key) ? channels[key] : undefined;
+    if (typeof channel !== 'string' || !channel) throw new Error('notification_channel_missing');
     // Reconcile an ambiguous prior POST before retrying. This is bounded best
     // effort, not an exactly-once promise across two independent systems.
     const recent = await fetch(required('MATTERMOST_URL').replace(/\/+$/, '') + `/api/v4/channels/${encodeURIComponent(channel)}/posts?per_page=200`, {

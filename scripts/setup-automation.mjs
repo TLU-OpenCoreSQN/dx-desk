@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 // Idempotent LOCAL DEMO bootstrap; real Keycloak subjects and a channel-scoped bot.
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -122,14 +122,20 @@ export async function setupChannelsAndRoster(root,env) {
   // removal of MFA is used to discover the real Keycloak subject.
   const admin=await json(env.KEYCLOAK_PUBLIC_URL+'/realms/master/protocol/openid-connect/token',{method:'POST',body:new URLSearchParams({
     grant_type:'password',client_id:'admin-cli',username:env.KEYCLOAK_ADMIN,password:env.KEYCLOAK_ADMIN_PASSWORD})});
-  const identities=await Promise.all(['agent.1','agent.2','manager.1'].map(async username=>{
-    const users=await json(env.KEYCLOAK_PUBLIC_URL+'/admin/realms/'+env.KEYCLOAK_REALM+'/users?exact=true&username='+encodeURIComponent(username),
-      {headers:{Authorization:'Bearer '+admin.access_token}});
-    if(users.length!==1)throw new Error('Required demo roster identity is missing.');
-    return {user_id:users[0].id,display_name:username,active:true};
+  const lookup = path => json(env.KEYCLOAK_PUBLIC_URL + '/admin/realms/' + env.KEYCLOAK_REALM + path,
+    { headers: { Authorization: 'Bearer ' + admin.access_token } });
+  const demoRoles = { 'employee.a': 'Employee', 'employee.b': 'Employee', 'agent.1': 'Agent', 'agent.2': 'Agent', 'manager.1': 'Manager' };
+  const identities = await Promise.all(Object.entries(demoRoles).map(async ([username, role]) => {
+    const [user] = await lookup('/users?exact=true&username=' + encodeURIComponent(username));
+    if (!user?.enabled) throw new Error(`Missing active demo account ${username}`);
+    const roles = await lookup('/users/' + user.id + '/role-mappings/realm/composite');
+    if (!roles.some(item => item.name === role)) throw new Error(`Missing ${role} role for ${username}`);
+    return { user_id: user.id, display_name: username, active: true, role, department: user.attributes?.department?.[0] };
   }));
+  const staff = identities.filter(identity => identity.role !== 'Employee');
   await json(gateway+'/api/system/roster',{method:'POST',headers:{Authorization:'Bearer '+service.access_token,'Content-Type':'application/json'},
-    body:JSON.stringify({members:teams.data.flatMap(team=>identities.map(identity=>({...identity,team_id:team.id})))})});
+    body:JSON.stringify({members:teams.data.flatMap(team => staff.map(({ user_id, display_name, active }) =>
+      ({ user_id, display_name, active, team_id: team.id })))})});
 
   const mm='http://localhost:'+env.MATTERMOST_PORT;
   try {await json(mm+'/api/v4/users',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -151,6 +157,7 @@ export async function setupChannelsAndRoster(root,env) {
     let channel;
     try{channel=await call('/teams/'+mmTeam.id+'/channels/name/'+name);}
     catch(error){if(error.status!==404)throw error;channel=await call('/channels','POST',{team_id:mmTeam.id,name,display_name:label,type:'P'});}
+    if (channel.type !== 'P') throw new Error(`Expected a private Mattermost channel for ${name}`);
     try{await call('/channels/'+channel.id+'/members','POST',{user_id:botId});}catch(error){if(error.status!==400)throw error;}
     return channel;
   }
@@ -159,15 +166,49 @@ export async function setupChannelsAndRoster(root,env) {
     const channel=await ensureChannel('ticket-'+team.id.replaceAll('-',''),team.name);
     channels[team.id]=channel.id;
   }
-  for(const identity of identities){
+  const mmIdentities = await Promise.all(identities.map(async identity => {
     let user;
     try{user=await call('/users/username/'+encodeURIComponent(identity.display_name));}
     catch(error){if(error.status!==404)throw error;user=await call('/users','POST',{
       username:identity.display_name,email:identity.display_name+'@dxdesk.local',password:env.MATTERMOST_DEMO_PASSWORD});}
     try{await call('/teams/'+mmTeam.id+'/members','POST',{team_id:mmTeam.id,user_id:user.id});}catch(error){if(error.status!==400)throw error;}
-    for(const channelId of [...new Set(Object.values(channels))]){
-      try{await call('/channels/'+channelId+'/members','POST',{user_id:user.id});}catch(error){if(error.status!==400)throw error;}
+    return { ...identity, mmId: user.id };
+  }));
+  for (const { role, mmId } of mmIdentities) {
+    if (role === 'Employee') continue;
+    for (const channelId of Object.values(channels)) {
+      try{await call('/channels/'+channelId+'/members','POST',{user_id:mmId});}catch(error){if(error.status!==400)throw error;}
     }
+  }
+  const administrator = await call('/users/me');
+  async function scopedChannel(key, label, recipients) {
+    const name = 'device-' + createHash('sha256').update(key).digest('hex').slice(0, 32);
+    const channel = await ensureChannel(name, label);
+    const path = '/channels/' + channel.id + '/members';
+    const members = [];
+    for (let page = 0; ; page++) {
+      const batch = await call(`${path}?page=${page}&per_page=100`);
+      members.push(...batch.map(member => member.user_id));
+      if (batch.length < 100) break;
+    }
+    const allowed = new Set([botId, administrator.id, ...recipients]);
+    for (const member of members) {
+      if (!allowed.has(member)) await call(path + '/' + member, 'DELETE');
+    }
+    for (const user_id of recipients) {
+      if (!members.includes(user_id)) await call(path, 'POST', { user_id });
+    }
+    channels[key] = channel.id;
+  }
+  await scopedChannel('device-it', 'Đề nghị thiết bị · IT', mmIdentities.filter(user => user.role === 'Agent').map(user => user.mmId));
+  const managers = mmIdentities.filter(user => user.role === 'Manager');
+  for (const department of new Set(managers.map(manager => manager.department))) {
+    if (!department) throw new Error('A demo manager is missing a department');
+    await scopedChannel('device-manager:' + department, 'Đề nghị thiết bị · ' + department,
+      managers.filter(manager => manager.department === department).map(manager => manager.mmId));
+  }
+  for (const user of mmIdentities) {
+    await scopedChannel('device-requester:' + user.user_id, 'Đề nghị thiết bị · ' + user.display_name, [user.mmId]);
   }
   if(!env.MATTERMOST_BOT_TOKEN){
     const token=await call('/users/'+botId+'/tokens','POST',{description:'DX-Desk local notification bot'});

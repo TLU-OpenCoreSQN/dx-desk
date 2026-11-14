@@ -154,6 +154,7 @@ services:
       AUTOMATION_CLIENT_SECRET: ${AUTOMATION_CLIENT_SECRET:-}
       OIDC_TOKEN_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
       AUTOMATION_WEBHOOK_URL: http://n8n:5678/webhook/dxdesk-ticket-events
+      DEVICE_REQUEST_WEBHOOK_URL: http://n8n:5678/webhook/dxdesk-device-requests
       AUTOMATION_WEBHOOK_KEY: ${AUTOMATION_WEBHOOK_KEY:-}
       MATTERMOST_URL: http://mattermost:8065
       MATTERMOST_BOT_TOKEN: ${MATTERMOST_BOT_TOKEN:-}

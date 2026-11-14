@@ -9,7 +9,9 @@ dữ liệu tham chiếu, được seed ngay khi bootstrap. Chưa có ticket gi�
 - `categories`: VPN, tài khoản, thiết bị, phần mềm.
 - `sla_policies`: số phút phản hồi/xử lý theo mức ưu tiên; chưa có timer n8n.
 - `routing_rules`: ánh xạ danh mục → team; tuần 2 chưa tự phân công.
-- `device_requests`: nhu cầu thiết bị với số lượng, lý do, trạng thái pending.
+- `device_requests`: nhu cầu thiết bị với số lượng, lý do; từ migration 018 (W5-02) có đơn vị lấy từ JWT, luồng
+  `pending → approved → preparing → handed_over` (hoặc `rejected`) và lịch sử ở `device_request_events`.
+  Quy tắc duyệt và quyền đọc: `docs/api/contract.md`.
 
 ```mermaid
 erDiagram

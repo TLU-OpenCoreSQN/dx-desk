@@ -31,6 +31,19 @@ User dev: `employee.a`, `employee.b`, `agent.1`, `manager.1`, mật khẩu `DxDe
 Admin Keycloak lấy từ `.env`. Đây là tài khoản mẫu dùng cho demo cục bộ.
 Web đăng nhập bằng redirect Keycloak, không nhận mật khẩu trong form của ứng dụng.
 
+### Đơn vị của người dùng (W5-02)
+
+Luồng duyệt đề nghị thiết bị xác định quản lý trực tiếp bằng thuộc tính Keycloak `department` (mã chữ thường,
+số, gạch nối). `make up` chạy `scripts/setup-directory.mjs`: khai báo thuộc tính trong user profile (chỉ quản
+trị viên sửa được), thêm mapper đưa claim `department` vào access token của `dxdesk-web` và gán đơn vị cho
+tài khoản demo chưa có: `employee.a`, `manager.1` → `phong-hanh-chinh`; `employee.b` → `phong-ke-toan`;
+`agent.*` → `phong-cntt`. Script chạy lặp an toàn và không ghi đè đơn vị đã gán tay.
+
+Gán đơn vị cho tài khoản khác: Keycloak Admin → realm `dxdesk` → Users → chọn người dùng → trường **Đơn vị**.
+Người dùng phải đăng nhập lại để token mới mang claim. Một đơn vị cần ít nhất một tài khoản vai trò
+`Manager` cùng mã thì đề nghị mới có người duyệt. Nghiệm thu trên stack có `AUTOMATION_ENABLED=true`:
+`node tools/testing/week5-device.mjs` (báo cáo ở `.local/reports/week5-device.json`).
+
 ### Wiki.js tri thức (W5-08)
 
 Hồ sơ `demo-light` và `full` có Wiki.js 2.5.315 tại `http://localhost:18030` (đổi bằng `WIKI_PORT`,
