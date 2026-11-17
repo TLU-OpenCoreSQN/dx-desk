@@ -11,6 +11,7 @@ import { TicketDetailHeader } from '../../../components/ticket-detail/TicketDeta
 import { TicketTimeline } from '../../../components/ticket-detail/TicketTimeline';
 import { TicketWorkflowActions } from '../../../components/ticket-detail/TicketWorkflowActions';
 import { TicketAttachmentSection } from '../../../components/ticket-detail/TicketAttachmentSection';
+import { TicketStageTracker, SlaPauseBanner } from '../../../components/workflow';
 import { TicketAiSuggestion } from '../TicketAiSuggestion';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
@@ -146,6 +147,11 @@ export const TicketDetailPage: React.FC = () => {
         onRefresh={() => void loadTicketData(true)}
         onBack={() => navigate('/tickets')}
       />
+
+      <SlaPauseBanner ticket={ticket} />
+
+      <TicketStageTracker ticket={ticket} events={events} />
+
       {profile?.assistant_enabled && roles.some(role => role === 'Agent' || role === 'Manager') && (
         <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} categories={categories} refresh={() => loadTicketData(true)} />
       )}

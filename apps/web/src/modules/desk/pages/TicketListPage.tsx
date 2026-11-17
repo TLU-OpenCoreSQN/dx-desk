@@ -7,6 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Inbox,
+  Kanban,
+  LayoutList,
   PlusCircle,
   RefreshCw,
   Search,
@@ -15,12 +17,13 @@ import {
   UserCheck,
   X,
 } from 'lucide-react';
-import { getTickets, getCategories } from '../../../services/api';
+import { getTickets, getCategories, claimTicket } from '../../../services/api';
 import { Ticket, Category } from '../../../types/api';
 import { PriorityBadge, StatusBadge } from '../../../components/common/Badge';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
 import { EmptyState } from '../../../components/common/EmptyState';
+import { TicketKanbanBoard } from '../../../components/workflow';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const PAGE_SIZE = 25;
@@ -98,6 +101,8 @@ export const TicketListPage: React.FC = () => {
   const filterStatus = VALID_STATUSES.includes(rawStatus) ? rawStatus : 'all';
   const pageParam = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
   const offset = (pageParam - 1) * PAGE_SIZE;
+  const viewParam = searchParams.get('view') ?? 'table';
+  const viewMode = viewParam === 'kanban' ? 'kanban' : 'table';
 
   // Local state for immediate zero-latency search input responsiveness
   const [searchQuery, setSearchQuery] = useState<string>(qParam);
@@ -117,7 +122,8 @@ export const TicketListPage: React.FC = () => {
               value === null ||
               value === '' ||
               value === 'all' ||
-              (key === 'page' && Number(value) <= 1)
+              (key === 'page' && Number(value) <= 1) ||
+              (key === 'view' && value === 'table')
             ) {
               next.delete(key);
             } else {
@@ -248,7 +254,36 @@ export const TicketListPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="flex flex-wrap shrink-0 items-center gap-2.5">
+          <div role="group" aria-label="Chế độ xem" className="inline-flex rounded-md border border-edge bg-surface p-0.5 shadow-2xs">
+            <button
+              type="button"
+              aria-pressed={viewMode === 'table'}
+              onClick={() => updateSearchParams({ view: undefined })}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-[4px] transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-content-muted hover:text-content hover:bg-surface-muted'
+              }`}
+            >
+              <LayoutList className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Bảng danh sách</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={viewMode === 'kanban'}
+              onClick={() => updateSearchParams({ view: 'kanban' })}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-[4px] transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-content-muted hover:text-content hover:bg-surface-muted'
+              }`}
+            >
+              <Kanban className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Kanban luồng việc</span>
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => void loadData(offset)}
@@ -429,6 +464,16 @@ export const TicketListPage: React.FC = () => {
             icon={<SearchX className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
           />
         )
+      ) : viewMode === 'kanban' ? (
+        <TicketKanbanBoard
+          tickets={filteredTickets}
+          onTicketClick={(t) => navigate(`/tickets/${encodeURIComponent(t.id)}`)}
+          canClaim={(t) => isStaff && t.status === 'assigned' && !t.assigned_to}
+          onClaimTicket={async (t) => {
+            await claimTicket(t.id);
+            await loadData(offset);
+          }}
+        />
       ) : (
         <div className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs overflow-hidden">
           {/* Sticky column header (desktop only, sticks below the app header) */}

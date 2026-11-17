@@ -26,6 +26,7 @@ import { StatusBadge } from '../../../components/common/Badge';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { Alert } from '../../../components/common/Alert';
+import { DeviceWorkflowStepper } from '../../../components/workflow';
 
 const PAGE_SIZE = 25;
 const MIN_QUANTITY = 1;
@@ -605,6 +606,16 @@ export const DeviceRequestPage: React.FC = () => {
                             Số lượng: <strong className="text-[var(--color-content)] font-bold">{req.quantity}</strong>
                           </span>
                         </span>
+                      </div>
+
+                      <div className="pt-2">
+                        <DeviceWorkflowStepper
+                          request={req}
+                          handoverUrl={`/api/device-requests/${req.id}/handover`}
+                          onDownloadHandover={() => {
+                            window.open(`/api/device-requests/${req.id}/handover`, '_blank');
+                          }}
+                        />
                       </div>
                     </div>
                   </article>

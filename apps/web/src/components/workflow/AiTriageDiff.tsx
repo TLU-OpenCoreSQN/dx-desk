@@ -27,6 +27,9 @@ export interface AiTriageDiffProps {
   onReject: () => void | Promise<void>;
   isBusy?: boolean;
   className?: string;
+  acceptLabel?: string;
+  customizeLabel?: string;
+  rejectLabel?: string;
 }
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -56,6 +59,9 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
   onReject,
   isBusy = false,
   className = '',
+  acceptLabel = 'Chấp nhận toàn bộ & Chuyển giao',
+  customizeLabel = 'Tùy chỉnh chi tiết',
+  rejectLabel = 'Bỏ qua đề xuất',
 }) => {
   const diffItems = [
     {
@@ -194,7 +200,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
           ) : (
             <Check className="h-3.5 w-3.5 stroke-[2.5]" />
           )}
-          <span>Chấp nhận toàn bộ & Chuyển giao</span>
+          <span>{acceptLabel}</span>
         </button>
 
         {onCustomize && (
@@ -205,7 +211,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
             className="inline-flex min-h-[38px] items-center gap-1.5 rounded-md border border-edge bg-surface px-3.5 py-1.5 text-xs font-semibold text-content shadow-2xs hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 transition-colors"
           >
             <Sliders className="h-3.5 w-3.5" />
-            <span>Tùy chỉnh chi tiết</span>
+            <span>{customizeLabel}</span>
           </button>
         )}
 
@@ -216,7 +222,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
           className="inline-flex min-h-[38px] items-center gap-1.5 rounded-md border border-edge-subtle bg-surface px-3 py-1.5 text-xs font-medium text-content-subtle hover:text-content hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 transition-colors"
         >
           <X className="h-3.5 w-3.5" />
-          <span>Bỏ qua đề xuất</span>
+          <span>{rejectLabel}</span>
         </button>
       </div>
     </section>
