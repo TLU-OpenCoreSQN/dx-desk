@@ -303,3 +303,20 @@ Tiến trình đọc sáu bài hỗ trợ đã xuất bản qua GraphQL Wiki.js,
 `make up` cấp khóa Wiki cho nhóm giới hạn ở sáu đường dẫn này trong hồ sơ `full`.
 Wiki.js 2.5 yêu cầu quyền quản lý ở cấp trang để API đọc nội dung nguồn.
 Nếu khóa hết hạn, chạy lại `make up`. Qdrant và tiến trình đồng bộ chỉ có địa chỉ nội bộ.
+
+### Cảnh 4 với trợ lý IT (W6-03, W6-04, W6-09)
+
+Trong hồ sơ `full`, tải model chat sau khi tải model nhúng. Khi chỉ mục Wiki đã
+sẵn sàng, mở **Trợ lý AI** từ menu Desk. Bật Mattermost và outbox demo để kiểm tra
+thông báo task của quản lý.
+
+```sh
+docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull qwen3:4b
+npm ci --prefix tools/testing
+npx --prefix tools/testing playwright install chromium
+node tools/testing/week6-assistant.mjs
+```
+
+Bài nghiệm thu tạo phiếu và task trên stack demo. Employee hỏi về VPN, thử hủy
+và xác nhận phiếu. Manager đối chiếu số phiếu VPN theo hai khoảng thời gian tương
+ứng rồi xác nhận task. Agent mở phiếu mới, sửa đề xuất và kiểm tra lịch sử.
