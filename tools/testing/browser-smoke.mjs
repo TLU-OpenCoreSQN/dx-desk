@@ -110,7 +110,7 @@ try {
     const request = route.request(), url = new URL(request.url()), path = url.pathname;
     let json, status = 200;
     if (rejectSession && path !== '/api/health') { status = 401; json = { message: 'Expired fixture' }; }
-    else if (path === '/api/health') json = { status: 'ok', service: 'dx-desk-api', version: '0.1.0' };
+    else if (path === '/api/health') json = { status: 'ok', service: 'dx-desk-api', version: '0.5.0' };
     else if (path === '/api/me') json = { id: '00000000-0000-4000-8000-000000000001', username: 'employee.fixture', roles: ['Employee'] };
     else if (path === '/api/categories') json = { data: [category] };
     else if (request.method() === 'POST') {

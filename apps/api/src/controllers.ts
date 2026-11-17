@@ -26,7 +26,7 @@ export class HealthController {
   async health() {
     try { await this.db.pool.query('SELECT 1'); }
     catch { throw new ServiceUnavailableException('Cơ sở dữ liệu chưa sẵn sàng.'); }
-    return { status: 'ok', service: 'dx-desk-api', version: '0.1.0' };
+    return { status: 'ok', service: 'dx-desk-api', version: '0.5.0' };
   }
 }
 

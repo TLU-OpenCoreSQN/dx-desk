@@ -23,7 +23,7 @@ describe('API Service Client', () => {
   });
 
   it('getHealth calls public health endpoint without Authorization header', async () => {
-    const mockHealth = { status: 'ok', service: 'dx-desk-api', version: '0.1.0' };
+    const mockHealth = { status: 'ok', service: 'dx-desk-api', version: '0.5.0' };
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
       ok: true,
       status: 200,
