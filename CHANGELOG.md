@@ -30,6 +30,7 @@
 - W4-10 hủy (12/11): DX-Desk chỉ phục vụ doanh nghiệp, không khảo sát Trung tâm CNTT của trường. Tài liệu khảo sát đổi thành `docs/tham-so-du-lieu-gia-lap.md`, giữ tham số giả định của đội.
 - `THIRD-PARTY-NOTICES.md`: Wiki.js, Mattermost Team Edition, Metabase OSS chuyển từ mục PoC sang thành phần sản phẩm.
 - ADR 0008, `cai-dat.md`, `tai-nguyen.md`, hợp đồng API/OpenAPI và kịch bản demo cảnh 1 cập nhật theo W5-08.
+- W5-09: kịch bản demo tuần 5 cảnh 1–3 có ứng dụng 2 (`docs/demo-tuan-5.md`): SSO sang `/thiet-bi/`, luồng đề nghị → duyệt → bàn giao có biên bản PDF, báo cáo `/bao-cao` và danh mục `/du-lieu`.
 - W5-09: đo lại RAM ba lượt khi đã có ứng dụng 2 (`demo-light` 3,22 GiB, `full` 4,60 GiB đỉnh, ứng dụng 2 ~20 MiB) trong `tai-nguyen.md`; ADR 0010 cập nhật bảng ước lượng.
 
 ### Tài liệu

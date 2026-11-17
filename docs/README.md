@@ -40,6 +40,7 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 - Lệnh tự động hóa, replay outbox, seed và đo tài nguyên: [README – Tự động hóa và hàng đợi](../README.md#tự-động-hóa-và-hàng-đợi).
 - Endpoint queue, claim, phê duyệt và `/system/*`: [hợp đồng API](api/contract.md) và [OpenAPI](api/openapi.yaml).
 - [Kịch bản demo tuần 4 — luồng VPN](demo-tuan-4.md).
+- [Kịch bản demo tuần 5 — cảnh 1–3 có ứng dụng 2](demo-tuan-5.md) (v0.5.0).
 - [RAM theo dịch vụ cho hồ sơ `full` và `demo-light`](tai-nguyen.md) (W4-09, số đo tạm).
 - [Tham số giả định cho bộ sinh dữ liệu](tham-so-du-lieu-gia-lap.md) (W4-10 đã hủy ngày 12/11/2026).
 - ADR 0008 cập nhật trạng thái runtime Mattermost và giấy phép image 12.0.1 (W4-04).
