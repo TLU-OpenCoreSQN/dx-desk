@@ -20,12 +20,12 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { getDeviceRequests, createDeviceRequest } from '../services/api';
-import { DeviceRequest, DeviceType } from '../types/api';
-import { StatusBadge } from '../components/common/Badge';
-import { ErrorMessage } from '../components/common/ErrorMessage';
-import { EmptyState } from '../components/common/EmptyState';
-import { Alert } from '../components/common/Alert';
+import { getDeviceRequests, createDeviceRequest } from '../../../services/api';
+import { DeviceRequest, DeviceType } from '../../../types/api';
+import { StatusBadge } from '../../../components/common/Badge';
+import { ErrorMessage } from '../../../components/common/ErrorMessage';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { Alert } from '../../../components/common/Alert';
 
 const PAGE_SIZE = 25;
 const MIN_QUANTITY = 1;

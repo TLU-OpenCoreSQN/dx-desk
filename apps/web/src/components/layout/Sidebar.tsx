@@ -3,23 +3,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  Home,
-  Ticket,
-  PlusCircle,
-  Laptop,
-  Shield,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  ShieldCheck,
-  ChartNoAxesCombined,
-  Database,
-  ExternalLink,
-} from 'lucide-react';
+import { Shield, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { assistantManifest } from '../../modules/desk/manifest';
+import { useModules } from '../../modules/ModuleContext';
+import { navEntries } from '../../modules/registry';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -81,25 +68,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
   }, [isOpen]);
 
-  const links = [
-    { to: '/', label: 'Trang chủ', icon: Home },
-    { to: '/du-lieu', label: 'Danh mục dữ liệu', icon: Database },
-    ...(isAuthenticated
-      ? [
-          { to: '/tickets', label: 'Danh sách phiếu', icon: Ticket },
-          { to: '/tickets/new', label: 'Tạo phiếu hỗ trợ', icon: PlusCircle },
-          ...(assistantManifest.enabled(profile) ? [assistantManifest] : []),
-          { to: '/device-requests', label: 'Yêu cầu cấp thiết bị', icon: Laptop },
-          ...(roles.includes('Agent') || roles.includes('Manager') ? [
-            { to: '/work-queue', label: 'Bảng việc kỹ thuật viên', icon: ClipboardList },
-          ] : []),
-          ...(roles.includes('Manager') ? [
-            { to: '/approvals', label: 'Phê duyệt phiếu hỗ trợ', icon: ShieldCheck },
-            { to: '/bao-cao', label: 'Báo cáo vận hành', icon: ChartNoAxesCombined },
-          ] : []),
-        ]
-      : []),
-  ];
+  // W6-11: mục menu dựng từ sổ đăng ký module, lọc theo module bật và vai trò Keycloak.
+  const { modules } = useModules();
+  const links = navEntries(modules, { isAuthenticated, roles, profile });
 
   const renderContent = (isMobile = false) => {
     const isCompact = !isMobile && collapsed;
@@ -137,7 +108,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           aria-label="Điều hướng chính"
           id={isMobile ? 'app-navigation' : undefined}
         >
-          {links.map(({ to, label, icon: Icon }) => (
+          {links.map(({ to, label, icon: Icon, external }) => external ? (
+            <a
+              key={to}
+              href={to}
+              title={isCompact ? label : undefined}
+              aria-label={label}
+              className={`group flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm font-medium transition-all min-h-[40px] text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] ${
+                isCompact ? 'justify-center px-2' : ''
+              }`}
+            >
+              <Icon size={18} aria-hidden="true" className="shrink-0 transition-transform group-hover:scale-110" />
+              {!isCompact && <span className="truncate">{label}</span>}
+            </a>
+          ) : (
             <NavLink
               key={to}
               to={to}
@@ -163,21 +147,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {!isCompact && <span className="truncate">{label}</span>}
             </NavLink>
           ))}
-          {/* W5-01: ứng dụng 2 chạy riêng dưới /thiet-bi/ (cùng origin, dùng chung phiên Keycloak),
-              nên là liên kết tải trang thật chứ không phải route của SPA này. */}
-          {isAuthenticated && (
-            <a
-              href="/thiet-bi/"
-              title={isCompact ? 'Xin cấp thiết bị (ứng dụng 2)' : undefined}
-              aria-label="Xin cấp thiết bị (ứng dụng 2)"
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm font-medium transition-all min-h-[40px] text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] ${
-                isCompact ? 'justify-center px-2' : ''
-              }`}
-            >
-              <ExternalLink size={18} aria-hidden="true" className="shrink-0 transition-transform group-hover:scale-110" />
-              {!isCompact && <span className="truncate">Xin cấp thiết bị (ứng dụng 2)</span>}
-            </a>
-          )}
         </nav>
 
         {/* Footer info */}

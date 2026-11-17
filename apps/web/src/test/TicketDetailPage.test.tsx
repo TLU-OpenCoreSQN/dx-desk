@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { TicketDetailPage } from '../pages/TicketDetailPage';
+import { TicketDetailPage } from '../modules/desk/pages/TicketDetailPage';
 import * as apiService from '../services/api';
 import * as authContext from '../contexts/AuthContext';
 import { Ticket, TicketEvent, UserRole } from '../types/api';

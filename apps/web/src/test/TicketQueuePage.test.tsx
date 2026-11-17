@@ -4,8 +4,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { WorkQueuePage } from '../pages/WorkQueuePage';
-import { ManagerApprovalsPage } from '../pages/ManagerApprovalsPage';
+import { WorkQueuePage } from '../modules/desk/pages/WorkQueuePage';
+import { ManagerApprovalsPage } from '../modules/desk/pages/ManagerApprovalsPage';
 import * as api from '../services/api';
 import * as auth from '../contexts/AuthContext';
 import { PaginatedResponse, Ticket, UserRole } from '../types/api';

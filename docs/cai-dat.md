@@ -55,6 +55,25 @@ Thử luồng: `employee.a` gửi đề nghị → `manager.1` duyệt → `agen
 Phát triển riêng: `npm ci --prefix apps/device-request && npm run dev --prefix apps/device-request`
 (cổng 5174, đường dẫn `/thiet-bi/`, proxy `/rest` tới stack đang chạy ở cổng 9080).
 
+### Bật, tắt module giao diện (W6-11)
+
+Giao diện DX-Desk chia thành bốn module: `core` (trang chủ, luôn bật), `desk` (phiếu hỗ trợ, bảng việc,
+phê duyệt), `devices` (yêu cầu cấp thiết bị và liên kết ứng dụng 2) và `data` (danh mục dữ liệu, báo cáo).
+Danh sách module bật nằm trong `config/doanh-nghiep/modules.json`, container `web` mount tệp này vào
+`/config/modules.json` và trình duyệt đọc lúc tải trang:
+
+```json
+{ "enabled": ["core", "desk", "devices", "data"] }
+```
+
+Bỏ một mã khỏi danh sách rồi tải lại trang: menu, lối tắt ở trang chủ và route của module đó biến mất,
+không cần build lại image hay khởi động lại container. Tệp thiếu hoặc sai dạng thì giao diện bật tất cả
+module. Tắt module chỉ ẩn giao diện; quyền truy cập dữ liệu vẫn do RLS quyết định.
+
+Mỗi module khai báo trong `apps/web/src/modules/<mã>/manifest.ts` (mã, tên, biểu tượng, đường dẫn, vai trò
+Keycloak tối thiểu). Menu chỉ hiện mục đúng vai trò; vai trò cao hơn bao hàm vai trò thấp hơn
+(Employee < Agent < Manager).
+
 ### Wiki.js tri thức (W5-08)
 
 Hồ sơ `demo-light` và `full` có Wiki.js 2.5.315 tại `http://localhost:18030` (đổi bằng `WIKI_PORT`,

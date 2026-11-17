@@ -4,20 +4,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, FileText, Info } from 'lucide-react';
-import { getTicketById, getTicketEvents, getCategories } from '../services/api';
-import { Ticket, TicketEvent, Category } from '../types/api';
-import { ErrorMessage } from '../components/common/ErrorMessage';
-import { TicketDetailHeader } from '../components/ticket-detail/TicketDetailHeader';
-import { TicketTimeline } from '../components/ticket-detail/TicketTimeline';
-import { TicketWorkflowActions } from '../components/ticket-detail/TicketWorkflowActions';
-import { TicketAttachmentSection } from '../components/ticket-detail/TicketAttachmentSection';
-import { TicketAiSuggestion } from '../modules/desk/TicketAiSuggestion';
-import { useAuth } from '../contexts/AuthContext';
+import { getTicketById, getTicketEvents, getCategories } from '../../../services/api';
+import { Ticket, TicketEvent, Category } from '../../../types/api';
+import { ErrorMessage } from '../../../components/common/ErrorMessage';
+import { TicketDetailHeader } from '../../../components/ticket-detail/TicketDetailHeader';
+import { TicketTimeline } from '../../../components/ticket-detail/TicketTimeline';
+import { TicketWorkflowActions } from '../../../components/ticket-detail/TicketWorkflowActions';
+import { TicketAttachmentSection } from '../../../components/ticket-detail/TicketAttachmentSection';
+import { TicketAiSuggestion } from '../TicketAiSuggestion';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   RESOLUTION_NOTE_MAX,
   RESOLUTION_NOTE_MIN,
   statusLabel,
-} from '../lib/ticketWorkflow';
+} from '../../../lib/ticketWorkflow';
 
 export const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

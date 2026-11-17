@@ -4,7 +4,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { preloadModulesConfig } from './modules/config';
 import './index.css';
+
+// W6-11: đọc /config/modules.json ngay, song song với tải chunk và khởi tạo Keycloak.
+void preloadModulesConfig();
 
 const rootElement = document.getElementById('root');
 

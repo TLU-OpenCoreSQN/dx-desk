@@ -5,6 +5,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, LogIn, LogOut, User, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModules } from '../../modules/ModuleContext';
+import { breadcrumbsFor } from '../../modules/registry';
 import { RoleBadge } from '../common/Badge';
 import { ThemeSwitcher } from '../common/ThemeSwitcher';
 import { getHealth } from '../../services/api';
@@ -44,30 +46,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isMobileNavOp
     };
   }, []);
 
-  // Compute breadcrumbs
-  const getBreadcrumbs = () => {
-    const path = location.pathname;
-    const crumbs = [{ label: 'Trang chủ', to: '/' }];
-
-    if (path.startsWith('/tickets')) {
-      crumbs.push({ label: 'Danh sách phiếu', to: '/tickets' });
-      if (path === '/tickets/new') {
-        crumbs.push({ label: 'Tạo phiếu hỗ trợ', to: '/tickets/new' });
-      } else if (path.match(/^\/tickets\/[^/]+$/)) {
-        crumbs.push({ label: 'Chi tiết phiếu', to: path });
-      }
-    } else if (path.startsWith('/device-requests')) {
-      crumbs.push({ label: 'Yêu cầu cấp thiết bị', to: '/device-requests' });
-    } else if (path === '/work-queue') {
-      crumbs.push({ label: 'Bảng việc kỹ thuật viên', to: '/work-queue' });
-    } else if (path === '/approvals') {
-      crumbs.push({ label: 'Phê duyệt phiếu hỗ trợ', to: '/approvals' });
-    }
-
-    return crumbs;
-  };
-
-  const breadcrumbs = getBreadcrumbs();
+  // W6-11: breadcrumb dựng từ sổ đăng ký module, theo module đang bật.
+  const { modules } = useModules();
+  const breadcrumbs = breadcrumbsFor(location.pathname, modules);
 
   return (
     <header className="dx-app-header bg-surface/95 backdrop-blur-md text-[var(--color-content)] border-b border-[var(--color-edge-subtle)] sticky top-0 z-30 h-14 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.03)] w-full">

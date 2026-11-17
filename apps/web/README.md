@@ -42,6 +42,23 @@ npm test
 npm run build
 ```
 
+## Cấu trúc module (W6-11)
+
+```text
+src/modules/
+  types.ts, access.ts      # kiểu manifest và quy tắc vai trò (Employee < Agent < Manager)
+  registry.ts              # sổ đăng ký module, dựng route và mục Sidebar
+  config.ts                # đọc /config/modules.json lúc chạy
+  ModuleContext.tsx        # ModuleProvider, useModules, useModuleEnabled
+  core/ desk/ devices/ data/
+    manifest.ts            # mã, tên, biểu tượng, vai trò tối thiểu, trang và mục menu
+    pages/                 # trang của module
+```
+
+Thêm trang mới: đặt tệp vào `pages/` của module và khai báo trong `manifest.ts`; không sửa `App.tsx`
+hay `Sidebar.tsx`. Tệp mặc định `public/config/modules.json` bật cả bốn module; khi chạy bằng compose,
+tệp `config/doanh-nghiep/modules.json` được mount đè lên (xem `docs/cai-dat.md`).
+
 ## Đóng gói Docker Production
 
 Docker image được xây dựng theo mô hình multi-stage (`node:22.22.0-alpine` + `nginx:1.28.0-alpine`):
