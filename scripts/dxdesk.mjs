@@ -10,7 +10,7 @@ import { renderGateway } from './render-gateway.mjs';
 import { demoSeedIdentities, prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
 import { seedMain } from './seed-synthetic.mjs';
 import { setupDepartments, setupDeviceClient } from './setup-directory.mjs';
-import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled } from './setup-wiki.mjs';
+import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled, wikiIndexEnabled } from './setup-wiki.mjs';
 import { configureMetabaseReader, metabaseEnabled, prepareMetabase, setupMetabase } from './setup-metabase.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -84,6 +84,10 @@ if (action === 'up') {
   migrate();
   if (metabaseEnabled(env)) configureMetabaseReader(base, root);
   await syncKeys();
+  if (wikiIndexEnabled(env)) {
+    compose('up', '-d', '--wait', 'wikijs');
+    await setupWiki(root, env);
+  }
   compose('up', '-d', '--build', '--wait');
   // PostgREST may still hold the old signing keys when the realm was recreated.
   compose('restart', 'postgrest');
@@ -104,7 +108,7 @@ if (action === 'up') {
     compose('restart', 'apisix');
     compose('up', '-d', '--wait', 'apisix');
   }
-  await setupWiki(root, env);
+  if (!wikiIndexEnabled(env)) await setupWiki(root, env);
   if (metabaseEnabled(env) && await setupMetabase(root, env)) {
     compose('up', '-d', '--wait', 'api');
     compose('restart', 'apisix');

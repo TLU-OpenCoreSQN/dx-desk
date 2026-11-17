@@ -301,12 +301,37 @@ services:
     profiles: ["benchmark", "full"]
     <<: *restart
     ports:
-      - "127.0.0.1:11434:11434"
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ollama-data:/root/.ollama
     environment:
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_NUM_PARALLEL: "1"
+
+  qdrant:
+    image: qdrant/qdrant:${QDRANT_VERSION:-v1.20.1}
+    profiles: ["full"]
+    <<: *restart
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  wiki-index:
+    image: node:${ASSISTANT_NODE_VERSION:-22.22.0-alpine}
+    profiles: ["full"]
+    <<: *restart
+    depends_on:
+      - qdrant
+      - ollama
+      - wikijs
+    user: node
+    working_dir: /app
+    volumes:
+      - ../../apps/assistant:/app:ro
+    environment:
+      WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
+      WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
+      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-bge-m3:567m}
+    command: ["node", "index-wiki.mjs"]
 
   mattermost-db:
     image: postgres:${POSTGRES_VERSION}
@@ -440,6 +465,7 @@ volumes:
   postgres-data:
   clamav-db:
   ollama-data:
+  qdrant-data:
   seaweedfs-data:
   mattermost-db-data:
   mattermost-data:
