@@ -49,12 +49,14 @@ async function eventually(read, description, duration = 90000) {
 try {
   const employee = await login('employee.a');
   await employee.getByRole('link', { name: 'Trợ lý AI' }).click();
+  const stream = employee.waitForResponse(response => response.url().endsWith('/api/assistant/chat') && response.status() === 200);
   await question(employee, 'Tôi không kết nối được VPN khi làm từ xa, phải làm gì?');
   const source = employee.getByRole('list', { name: 'Bài Wiki tham chiếu' }).first().getByRole('link').first();
   await source.waitFor();
   assert.match(await source.getAttribute('href'), /\/en\/ho-tro\/vpn$/);
-  await employee.getByRole('button', { name: 'Gửi câu hỏi' }).waitFor();
   await employee.getByText('Trợ lý đang xử lý…').waitFor({ state: 'detached' });
+  const events = (await (await stream).text()).trim().split('\n').map(JSON.parse);
+  assert.ok(events.filter(event => event.type === 'delta').length > 1 && events.at(-1).type === 'done');
   pass('Employee obtains a streamed answer and a link to the Wiki VPN article');
 
   await question(employee, `Tạo phiếu VPN vì vẫn bị lỗi xác thực từ xa. ${unique}`);

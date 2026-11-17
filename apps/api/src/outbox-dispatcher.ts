@@ -139,28 +139,28 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   }
 
   private async deliverWorkflow(item: Delivery, claims: AutomationClaims) {
-        const response = await fetch(required(item.destination === 'device_request' ? 'DEVICE_REQUEST_WEBHOOK_URL' : 'AUTOMATION_WEBHOOK_URL'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-DXDesk-Webhook-Key': required('AUTOMATION_WEBHOOK_KEY') },
-          body: JSON.stringify(item.envelope), signal: AbortSignal.timeout(10000),
-        });
-        if (!response.ok) {
-          await response.body?.cancel();
-          // n8n can answer 404 between HTTP readiness and webhook activation.
-          // Keep this, timeout and rate-limit responses in the bounded retry path.
-          throw Object.assign(new Error('consumer_http'), { terminal:
-            response.status >= 400 && response.status < 500 && ![404,408,425,429].includes(response.status) });
-        }
-        const ack = await response.json() as Ack;
-        if (!validAck(item, ack)) throw new Error('invalid_durable_ack');
-        if (ack.result === 'unresolved') throw new Error('routing_unresolved');
-        if (item.destination !== 'automation' && ack.result === 'notification') {
-          const key = item.destination === 'device_request'
-            ? await this.db.asAutomation(claims, async client => (await client.query<{ channel_key: string | null }>(
-              'SELECT private.device_notice_channel($1,$2) AS channel_key', [item.event_id, item.lease_token],
-            )).rows[0]?.channel_key)
-            : ack.notification?.team_id ?? ack.team_id ?? 'default';
-          await this.notify(item, key);
-        }
+    const response = await fetch(required(item.destination === 'device_request' ? 'DEVICE_REQUEST_WEBHOOK_URL' : 'AUTOMATION_WEBHOOK_URL'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-DXDesk-Webhook-Key': required('AUTOMATION_WEBHOOK_KEY') },
+      body: JSON.stringify(item.envelope), signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      await response.body?.cancel();
+      // n8n can answer 404 between HTTP readiness and webhook activation.
+      // Keep this, timeout and rate-limit responses in the bounded retry path.
+      throw Object.assign(new Error('consumer_http'), { terminal:
+        response.status >= 400 && response.status < 500 && ![404,408,425,429].includes(response.status) });
+    }
+    const ack = await response.json() as Ack;
+    if (!validAck(item, ack)) throw new Error('invalid_durable_ack');
+    if (ack.result === 'unresolved') throw new Error('routing_unresolved');
+    if (item.destination !== 'automation' && ack.result === 'notification') {
+      const key = item.destination === 'device_request'
+        ? await this.db.asAutomation(claims, async client => (await client.query<{ channel_key: string | null }>(
+          'SELECT private.device_notice_channel($1,$2) AS channel_key', [item.event_id, item.lease_token],
+        )).rows[0]?.channel_key)
+        : ack.notification?.team_id ?? ack.team_id ?? 'default';
+      await this.notify(item, key);
+    }
   }
 
   private async notify(item: Delivery, key: string | null | undefined) {
