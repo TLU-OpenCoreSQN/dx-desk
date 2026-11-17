@@ -350,23 +350,28 @@ có thể sai dấu ở một số trình đọc (bảng ToUnicode của phông 
 - `POST /api/assistant/confirm` (JWT) nhận `{id,approve}`. Chỉ tài khoản đã hỏi
   được quyết định một lần trong 5 phút. Việc xác nhận chuyển đúng tham số đã hiển thị
   sang Service Desk API bằng JWT hiện tại và mã đề xuất làm `Idempotency-Key`.
-- Adapter dự kiến cho W6-02 lấy danh sách công cụ theo JWT từ
+- Trợ lý lấy danh sách công cụ theo JWT từ
   `GET /api/assistant-tools` (`{tools: string[]}`), và gọi
   `POST /api/assistant-tools/{tên_cố_định}` với tham số JSON. Khi danh sách công cụ
-  chưa triển khai, trợ lý vẫn có thể tra Wiki. Ghi audit, kiểm quyền RLS và xử lý
-  idempotency thuộc API công cụ.
+  không có quyền ghi, người dùng vẫn có thể tra Wiki và dùng các công cụ chỉ đọc.
+  API công cụ kiểm tra RLS, xác nhận chữ ký nội bộ của hành động ghi và lưu mã
+  chống tạo trùng cùng giao dịch. Task của Manager có thể đọc theo ID tại
+  `GET /api/assistant-tools/tasks/{id}`. Outbox gửi ID của task vào kênh vận hành Mattermost.
 - Hai endpoint trợ lý chỉ có upstream khi chạy hồ sơ `full`. Model chat dùng
   `ASSISTANT_CHAT_MODEL` và được tải một lần như model nhúng. Tên mặc định
   `qwen3:4b` là ứng viên để kiểm thử, quyết định mô hình thuộc W6-05.
 
 ### Giao diện duyệt đề xuất AI (W6-09)
 
-Adapter giao diện cho W6-08 dự kiến đọc `GET /api/tickets/{id}/ai-suggestion`.
+Giao diện đọc `GET /api/tickets/{id}/ai-suggestion` trong hồ sơ `full`.
 Không có đề xuất thì trả 204 hoặc 404. Một đề xuất có `id`, `category_id`,
 `team_id`, `priority` và `summary`.
 
 `POST /api/tickets/{id}/ai-suggestion/decision` nhận `{id,action:"ignore"}`
 hoặc `{id,action:"accept",values:{category_id,team_id,priority,summary}}`.
-Service Desk API cần kiểm tra quyền sửa phiếu, phiên bản đề xuất và mức ưu tiên.
+Service Desk API chỉ cho Agent/Manager quyết định một lần trên phiên bản phiếu
+còn hiệu lực. Danh mục chỉ thay đổi khi giữ được quy tắc phê duyệt và các trường
+đã nhập. Đề xuất dùng tóm tắt trích từ phiếu, giới hạn mức ưu tiên thiết lập ở
+`low`, `normal` và `high`. Chỉ khi xác nhận mới cập nhật thuộc tính phiếu.
 Sau khi xác nhận, giao diện tải lại phiếu và lịch sử để hiển thị
 `ai_suggestion_applied` theo `actor_type` do backend ghi.

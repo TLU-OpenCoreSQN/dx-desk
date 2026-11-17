@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { createServer } from 'node:http';
+import { createHmac } from 'node:crypto';
 import { answer, ndjson, proposalStore, tools } from './chat.mjs';
 import { searchKnowledge, wikiKnowledge } from './knowledge.mjs';
 
@@ -51,8 +52,8 @@ export function assistantServer(dependencies, proposals = proposalStore()) {
         const offer = proposals.take(id, caller.id);
         if (!offer) throw errorWith(404, 'Đề xuất đã hết hạn hoặc đã được xử lý.');
         if (!body.approve) return json(response, 200, { status: 'cancelled' });
-        await dependencies.invoke(offer.tool, offer.args, token, offer.id, controller.signal);
-        return json(response, 200, { status: 'applied' });
+        const result = await dependencies.invoke(offer.tool, offer.args, token, offer.id, controller.signal, caller.id);
+        return json(response, 200, { status: 'applied', result });
       }
       const question = typeof body?.question === 'string' ? body.question.trim() : '';
       if (!question || question.length > 1000 || Object.keys(body).length !== 1) throw errorWith(400, 'Câu hỏi cần từ 1 đến 1000 ký tự.');
@@ -103,11 +104,14 @@ export function assistantDependencies(env = process.env) {
       if (!Array.isArray(catalog.tools)) throw new Error('Invalid assistant tool catalogue');
       return [...new Set(catalog.tools)].filter(name => typeof name === 'string' && Object.hasOwn(tools, name));
     },
-    async invoke(name, args, token, id, signal) {
+    async invoke(name, args, token, id, signal, owner) {
       if (!Object.hasOwn(endpoints, name)) throw new Error('Unexpected assistant tool');
+      const canonical = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b)));
+      const proof = id && createHmac('sha256', env.ASSISTANT_ACTION_KEY || '')
+        .update(JSON.stringify([owner, name, id, canonical])).digest('hex');
       const result = await call('/api/assistant-tools/' + endpoints[name], token, {
         method: 'POST', signal, body: JSON.stringify(args),
-        headers: { 'Content-Type': 'application/json', ...(id ? { 'Idempotency-Key': id } : {}) },
+        headers: { 'Content-Type': 'application/json', ...(id ? { 'Idempotency-Key': id, 'X-DXDesk-Assistant-Proof': proof } : {}) },
       });
       if (!result.ok) {
         await result.body?.cancel();
