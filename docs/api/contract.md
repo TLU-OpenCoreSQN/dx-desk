@@ -58,7 +58,7 @@ Keycloak: `http://localhost:8080`, realm `dxdesk`, public client `dxdesk-web`,
 Authorization Code + PKCE S256. Giữ token trong bộ nhớ, refresh trước request.
 Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
 
-- `GET /api/health`: công khai, `{status:"ok",service:"dx-desk-api",version:"0.1.0"}`.
+- `GET /api/health`: công khai, `{status:"ok",service:"dx-desk-api",version:"0.5.0"}`.
 - `GET /api/me`: `{id,username,roles:["Employee"|"Agent"|"Manager"]}`.
 - `GET /api/categories`: `{data:[{id,code,name,description,requirement_fields}]}`.
   `requirement_fields` là mảng đối tượng `{key,label,required}` — trường động theo loại

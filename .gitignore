@@ -16,3 +16,4 @@ work/
 .local/
 test-results/
 *.tsbuildinfo
+.agents/

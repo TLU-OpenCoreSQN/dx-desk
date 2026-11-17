@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -14,6 +14,7 @@ import {
   Send,
   ShieldAlert,
   Tag,
+  X,
 } from 'lucide-react';
 import { createTicket, getCategories, uploadAttachment } from '../services/api';
 import { ATTACHMENT_TYPES, fileError } from '../lib/attachments';
@@ -21,7 +22,12 @@ import { Category, RequirementField, TicketPriority } from '../types/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Alert } from '../components/common/Alert';
 import { ErrorMessage } from '../components/common/ErrorMessage';
-import { KnowledgeSuggestions } from '../components/common/KnowledgeSuggestions';
+import { FieldError, fieldClass } from '../components/common/FormField';
+import { CategorySelector } from '../components/create-ticket/CategorySelector';
+import { DynamicRequirementFields } from '../components/create-ticket/DynamicRequirementFields';
+import { KnowledgeInlineHelper } from '../components/create-ticket/KnowledgeInlineHelper';
+import { CreateTicketDraft, readDraft, removeDraft, writeDraft } from '../lib/ticketDraft';
+
 
 const PRIORITY_ORDER: TicketPriority[] = ['low', 'normal', 'high', 'critical'];
 
@@ -31,28 +37,6 @@ const PRIORITY_META: Record<TicketPriority, { name: string; desc: string }> = {
   high: { name: 'Cao', desc: 'Ảnh hưởng nhóm' },
   critical: { name: 'Khẩn cấp', desc: 'Toàn hệ thống' },
 };
-
-const isDateField = (field: RequirementField): boolean => field.key.toLowerCase().includes('until');
-
-const fieldClass = (invalid: boolean): string =>
-  [
-    'w-full min-h-[44px] rounded-[6px] border bg-[var(--color-surface-sidebar)] px-3.5 py-2.5 text-sm text-[var(--color-content)]',
-    'transition-all focus:bg-surface focus:outline-none focus:ring-2',
-    invalid
-      ? 'border-[#f6c3c1] focus:border-[#d44c47] focus:ring-[#d44c47]'
-      : 'border-[var(--color-edge-subtle)] focus:border-[var(--color-primary)] focus:ring-[var(--color-primary)]',
-  ].join(' ');
-
-const FieldError: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => (
-  <p
-    id={id}
-    aria-live="polite"
-    className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-danger"
-  >
-    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-    <span>{children}</span>
-  </p>
-);
 
 const Legend: React.FC<{ step: string; icon: React.ReactNode; children: React.ReactNode }> = ({
   step,
@@ -77,19 +61,42 @@ type ChecklistItem = {
 
 export const CreateTicketPage: React.FC = () => {
   const navigate = useNavigate();
-  const { roles } = useAuth();
+  const { roles, profile } = useAuth();
   const isManager = roles.includes('Manager');
+  // Bản nháp gắn với id người dùng để tài khoản khác trên cùng máy không đọc được.
+  const draftUserId = profile?.id;
+
+  // Chỉ khôi phục một lần khi mở trang.
+  const initialDraft = useMemo<CreateTicketDraft | null>(() => readDraft(draftUserId), []);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
   const [categoriesError, setCategoriesError] = useState<unknown>(null);
 
-  // Form states
-  const [categoryId, setCategoryId] = useState<string>('');
-  const [title, setTitle] = useState<string>('');
-  const [description, setDescription] = useState<string>('');
-  const [priority, setPriority] = useState<TicketPriority>('normal');
-  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+  // Form states with draft restoration
+  const [categoryId, setCategoryId] = useState<string>(initialDraft?.categoryId || '');
+  const [title, setTitle] = useState<string>(initialDraft?.title || '');
+  const [description, setDescription] = useState<string>(initialDraft?.description || '');
+  const [priority, setPriority] = useState<TicketPriority>(() => {
+    if (initialDraft?.priority) {
+      if (initialDraft.priority === 'critical' && !isManager) {
+        return 'normal';
+      }
+      return initialDraft.priority;
+    }
+    return 'normal';
+  });
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>(
+    initialDraft?.fieldValues || {}
+  );
+  const [restoredBannerVisible, setRestoredBannerVisible] = useState<boolean>(() => {
+    return Boolean(
+      initialDraft &&
+        (initialDraft.title ||
+          initialDraft.description ||
+          Object.keys(initialDraft.fieldValues || {}).length > 0)
+    );
+  });
 
   const [submitAttempted, setSubmitAttempted] = useState<boolean>(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -100,11 +107,63 @@ export const CreateTicketPage: React.FC = () => {
   const [attachmentError, setAttachmentError] = useState<unknown>(null);
   const [attachmentUploaded, setAttachmentUploaded] = useState(false);
 
+  const isFirstMount = useRef(true);
+  // Lần lưu đang chờ debounce; được gọi ngay khi rời trang để không mất nội dung vừa gõ.
+  const pendingSave = useRef<(() => void) | null>(null);
+
+  // Auto-save draft with 800ms debounce
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+    if (successTicketId) {
+      pendingSave.current = null;
+      return;
+    }
+
+    const save = () => {
+      pendingSave.current = null;
+      const hasContent =
+        title.trim().length > 0 ||
+        description.trim().length > 0 ||
+        Object.values(fieldValues).some((v) => v.trim().length > 0);
+
+      if (hasContent) {
+        writeDraft(draftUserId, {
+          categoryId,
+          title,
+          description,
+          priority,
+          fieldValues,
+          savedAt: new Date().toISOString(),
+        });
+      } else {
+        removeDraft(draftUserId);
+      }
+    };
+    pendingSave.current = save;
+    const timer = setTimeout(save, 800);
+
+    return () => clearTimeout(timer);
+  }, [categoryId, title, description, priority, fieldValues, successTicketId, draftUserId]);
+
+  useEffect(
+    () => () => {
+      pendingSave.current?.();
+    },
+    []
+  );
+
   const sendFile = async (ticketId: string) => {
     if (!attachmentFile) return;
     setAttachmentError(null);
-    try { await uploadAttachment(ticketId, attachmentFile); setAttachmentUploaded(true); }
-    catch (err) { setAttachmentError(err); }
+    try {
+      await uploadAttachment(ticketId, attachmentFile);
+      setAttachmentUploaded(true);
+    } catch (err) {
+      setAttachmentError(err);
+    }
   };
 
   useEffect(() => {
@@ -117,7 +176,12 @@ export const CreateTicketPage: React.FC = () => {
           const catList = res.data || [];
           setCategories(catList);
           if (catList.length > 0) {
-            setCategoryId(catList[0].id);
+            const draftCategoryId = initialDraft?.categoryId;
+            if (!draftCategoryId || !catList.some((c) => c.id === draftCategoryId)) {
+              setCategoryId(catList[0].id);
+              // Danh mục trong bản nháp không còn: bỏ các trường bổ sung của danh mục cũ.
+              if (draftCategoryId) setFieldValues({});
+            }
           }
         }
       } catch (err) {
@@ -231,7 +295,21 @@ export const CreateTicketPage: React.FC = () => {
     setFieldValues({});
   };
 
+  const clearDraftAndReset = () => {
+    pendingSave.current = null;
+    removeDraft(draftUserId);
+    setRestoredBannerVisible(false);
+    setTitle('');
+    setDescription('');
+    setPriority('normal');
+    setFieldValues({});
+    setTouched({});
+  };
+
   const resetForm = () => {
+    pendingSave.current = null;
+    removeDraft(draftUserId);
+    setRestoredBannerVisible(false);
     setSuccessTicketId(null);
     setAttachmentFile(null);
     setAttachmentError(null);
@@ -267,6 +345,9 @@ export const CreateTicketPage: React.FC = () => {
         ...(requirementFields.length > 0 ? { fields: filledValues } : {}),
       });
 
+      pendingSave.current = null;
+      removeDraft(draftUserId);
+      setRestoredBannerVisible(false);
       setSuccessTicketId(ticket.id);
       await sendFile(ticket.id);
     } catch (err) {
@@ -303,6 +384,44 @@ export const CreateTicketPage: React.FC = () => {
         </p>
       </div>
 
+      {restoredBannerVisible && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-[6px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-4 py-2.5 text-xs text-[var(--color-primary-text)]"
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
+            <span>
+              Đã khôi phục nội dung nháp chưa gửi
+              {initialDraft?.savedAt
+                ? ` (lưu lúc ${new Date(initialDraft.savedAt).toLocaleTimeString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })})`
+                : ''}
+              .
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={clearDraftAndReset}
+              className="font-semibold text-danger underline hover:text-[#962824]"
+            >
+              Xóa nháp
+            </button>
+            <button
+              type="button"
+              onClick={() => setRestoredBannerVisible(false)}
+              aria-label="Đóng thông báo khôi phục nháp"
+              className="text-[var(--color-content-muted)] hover:text-[var(--color-content)]"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {successTicketId ? (
         <div className="mx-auto max-w-2xl space-y-4 rounded-[8px] border border-[#b8dcce] bg-surface p-6 text-center shadow-xs sm:p-10">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[8px] border border-[#b8dcce] bg-[#edf3ec] text-[#448361] shadow-2xs">
@@ -318,17 +437,39 @@ export const CreateTicketPage: React.FC = () => {
             </code>
             . Đội ngũ kỹ thuật IT sẽ xem xét theo mức ưu tiên đã định.
           </p>
-          {attachmentFile && <div aria-live="polite">
-            {isSubmitting ? <p>Phiếu đã được tạo. Đang quét và tải tệp…</p> : attachmentUploaded
-              ? <p>Tệp {attachmentFile.name} đã được quét và lưu an toàn.</p>
-              : <div>
-                {attachmentError != null && <ErrorMessage error={attachmentError} title="Phiếu đã tạo; tệp chưa tải thành công" />}
-                <button type="button" className="text-teal-700 underline" disabled={isSubmitting}
-                  onClick={async () => { setIsSubmitting(true); try { await sendFile(successTicketId); } finally { setIsSubmitting(false); } }}>
-                  Thử tải lại tệp vào phiếu này
-                </button>
-              </div>}
-          </div>}
+          {attachmentFile && (
+            <div aria-live="polite">
+              {isSubmitting ? (
+                <p>Phiếu đã được tạo. Đang quét và tải tệp…</p>
+              ) : attachmentUploaded ? (
+                <p>Tệp {attachmentFile.name} đã được quét và lưu an toàn.</p>
+              ) : (
+                <div>
+                  {attachmentError != null && (
+                    <ErrorMessage
+                      error={attachmentError}
+                      title="Phiếu đã tạo; tệp chưa tải thành công"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="text-teal-700 underline"
+                    disabled={isSubmitting}
+                    onClick={async () => {
+                      setIsSubmitting(true);
+                      try {
+                        await sendFile(successTicketId);
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }}
+                  >
+                    Thử tải lại tệp vào phiếu này
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
               type="button"
@@ -372,120 +513,32 @@ export const CreateTicketPage: React.FC = () => {
                 )}
 
                 {/* 1. Category */}
-                <fieldset className="min-w-0">
-                  <Legend
-                    step="1"
-                    icon={<Tag className="h-3.5 w-3.5 text-primary" aria-hidden="true" />}
-                  >
-                    Phân loại sự cố
-                  </Legend>
-
-                  <label
-                    htmlFor="ticket-category"
-                    className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-content"
-                  >
-                    Danh mục sự cố <span className="text-danger" aria-hidden="true">*</span>
-                  </label>
-                  <select
-                    id="ticket-category"
-                    value={categoryId}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
+                <div>
+                  <CategorySelector
+                    categories={categories}
+                    categoriesLoading={categoriesLoading}
+                    categoryId={categoryId}
+                    onChange={handleCategoryChange}
                     onBlur={() => markTouched('categoryId')}
-                    disabled={categoriesLoading}
-                    aria-invalid={showBaseError('categoryId') || undefined}
-                    aria-describedby={
-                      showBaseError('categoryId') ? 'ticket-category-error' : undefined
-                    }
-                    className={`${fieldClass(showBaseError('categoryId'))} cursor-pointer disabled:cursor-wait disabled:bg-surface-muted`}
-                  >
-                    {categoriesLoading && <option value="">Đang tải danh mục...</option>}
-                    {!categoriesLoading && categories.length === 0 && (
-                      <option value="">Không có danh mục nào trên hệ thống</option>
-                    )}
-                    {!categoriesLoading &&
-                      categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name} ({cat.code})
-                        </option>
-                      ))}
-                  </select>
-                  {showBaseError('categoryId') && (
-                    <FieldError id="ticket-category-error">{baseErrors.categoryId}</FieldError>
-                  )}
-                  {categoryId && (
-                    <div className="mt-3">
-                      <KnowledgeSuggestions categoryId={categoryId} />
-                    </div>
-                  )}
-                </fieldset>
+                    error={baseErrors.categoryId}
+                    showError={showBaseError('categoryId')}
+                  />
+                  {categoryId && <KnowledgeInlineHelper categoryId={categoryId} />}
+                </div>
 
                 {/* Dynamic requirement fields */}
-                {requirementFields.length > 0 && (
-                  <fieldset className="min-w-0 rounded-[4px] border border-edge bg-surface-muted/60 p-4">
-                    <legend className="flex items-center gap-1.5 rounded-[4px] bg-surface px-1.5 py-0.5">
-                      <ClipboardList className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-content">
-                        Thông tin bổ sung theo danh mục
-                      </span>
-                    </legend>
-                    <p className="mb-3 text-[11px] text-content-muted">
-                      Các trường có dấu <span className="font-semibold text-danger">*</span> là bắt
-                      buộc theo danh mục đã chọn.
-                    </p>
-
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                      {requirementFields.map((field) => {
-                        const value = fieldValues[field.key] || '';
-                        const invalid = showDynamicError(field);
-                        return (
-                          <div key={field.key} className="min-w-0">
-                            <label
-                              htmlFor={`requirement-${field.key}`}
-                              className="mb-1.5 flex flex-wrap items-center gap-1 text-xs font-semibold text-content"
-                            >
-                              <span className="break-words">{field.label}</span>
-                              {field.required ? (
-                                <span className="text-danger" aria-hidden="true">*</span>
-                              ) : (
-                                <span className="text-[10px] font-normal text-content-subtle">
-                                  (không bắt buộc)
-                                </span>
-                              )}
-                            </label>
-                            <input
-                              id={`requirement-${field.key}`}
-                              name={field.key}
-                              type={isDateField(field) ? 'date' : 'text'}
-                              required={field.required}
-                              value={value}
-                              onChange={(e) =>
-                                setFieldValues((prev) => ({
-                                  ...prev,
-                                  [field.key]: e.target.value,
-                                }))
-                              }
-                              onBlur={() => markTouched(`req-${field.key}`)}
-                              aria-required={field.required}
-                              aria-invalid={invalid || undefined}
-                              aria-describedby={
-                                invalid ? `requirement-${field.key}-error` : undefined
-                              }
-                              placeholder={
-                                isDateField(field) ? '' : `VD: nội dung cho "${field.label}"`
-                              }
-                              className={fieldClass(invalid)}
-                            />
-                            {invalid && (
-                              <FieldError id={`requirement-${field.key}-error`}>
-                                Vui lòng nhập “{field.label}” (trường bắt buộc của danh mục).
-                              </FieldError>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                )}
+                <DynamicRequirementFields
+                  fields={requirementFields}
+                  fieldValues={fieldValues}
+                  onChange={(fieldKey, value) =>
+                    setFieldValues((prev) => ({
+                      ...prev,
+                      [fieldKey]: value,
+                    }))
+                  }
+                  onBlur={(fieldKey) => markTouched(`req-${fieldKey}`)}
+                  isInvalid={showDynamicError}
+                />
 
                 {/* 2. Content */}
                 <fieldset className="min-w-0">
@@ -631,7 +684,15 @@ export const CreateTicketPage: React.FC = () => {
                               />
                             )}
                           </span>
-                          <span className={`mt-1 block text-[11px] leading-snug ${isSelected ? isCritical ? 'text-[#962824]' : 'text-[var(--color-primary-text)]' : 'text-content-muted'}`}>
+                          <span
+                            className={`mt-1 block text-[11px] leading-snug ${
+                              isSelected
+                                ? isCritical
+                                  ? 'text-[#962824]'
+                                  : 'text-[var(--color-primary-text)]'
+                                : 'text-content-muted'
+                            }`}
+                          >
                             {PRIORITY_META[p].desc}
                           </span>
                         </button>
@@ -684,19 +745,32 @@ export const CreateTicketPage: React.FC = () => {
               </div>
 
               <div className="mx-4 mb-4 rounded-lg border border-edge bg-surface-muted p-3 text-xs sm:mx-6">
-                <label htmlFor="ticket-attachment" className="block font-semibold">Ảnh hoặc tệp đính kèm (không bắt buộc)</label>
-                <p>PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.</p>
-                <input id="ticket-attachment" type="file" className="block w-full min-w-0" accept={ATTACHMENT_TYPES.join(',')}
-                  disabled={isSubmitting} onChange={event => {
+                <label htmlFor="ticket-attachment" className="block font-semibold">
+                  Ảnh hoặc tệp đính kèm (không bắt buộc)
+                </label>
+                <p>
+                  PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu
+                  tệp.
+                </p>
+                <input
+                  id="ticket-attachment"
+                  type="file"
+                  className="block w-full min-w-0"
+                  accept={ATTACHMENT_TYPES.join(',')}
+                  disabled={isSubmitting}
+                  onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
                     const issue = file ? fileError(file) : null;
                     setAttachmentError(issue ? new Error(issue) : null);
                     setAttachmentFile(issue ? null : file);
-                  }} />
-                {attachmentError != null && <ErrorMessage error={attachmentError} title="Tệp chưa hợp lệ" />}
+                  }}
+                />
+                {attachmentError != null && (
+                  <ErrorMessage error={attachmentError} title="Tệp chưa hợp lệ" />
+                )}
               </div>
 
-              {/* Action bar: sticky bottom on mobile, inline on desktop */}
+              {/* Action bar */}
               <div className="sticky bottom-0 z-20 flex items-center gap-2.5 border-t border-edge bg-surface/95 px-4 py-3 backdrop-blur sm:px-6 lg:static lg:bg-surface-warm/30 rounded-b-[8px]">
                 <p className="mr-auto hidden text-[11px] text-content-muted lg:block">
                   Mục có dấu <span className="font-semibold text-danger">*</span> là bắt buộc.

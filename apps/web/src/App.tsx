@@ -1,23 +1,26 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React from 'react';
+import React, { lazy } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { Layout } from './components/layout/Layout';
-import { HomePage } from './pages/HomePage';
-import { TicketListPage } from './pages/TicketListPage';
-import { CreateTicketPage } from './pages/CreateTicketPage';
-import { TicketDetailPage } from './pages/TicketDetailPage';
-import { DeviceRequestPage } from './pages/DeviceRequestPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { WorkQueuePage } from './pages/WorkQueuePage';
-import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
-import { ManagerAnalyticsPage } from './pages/ManagerAnalyticsPage';
-import { DataCatalogPage } from './pages/DataCatalogPage';
+import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { LogIn, ShieldAlert } from 'lucide-react';
+
+const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
+const DataCatalogPage = lazy(() => import('./pages/DataCatalogPage').then((m) => ({ default: m.DataCatalogPage })));
+const WorkQueuePage = lazy(() => import('./pages/WorkQueuePage').then((m) => ({ default: m.WorkQueuePage })));
+const ManagerApprovalsPage = lazy(() => import('./pages/ManagerApprovalsPage').then((m) => ({ default: m.ManagerApprovalsPage })));
+const ManagerAnalyticsPage = lazy(() => import('./pages/ManagerAnalyticsPage').then((m) => ({ default: m.ManagerAnalyticsPage })));
+const TicketListPage = lazy(() => import('./pages/TicketListPage').then((m) => ({ default: m.TicketListPage })));
+const CreateTicketPage = lazy(() => import('./pages/CreateTicketPage').then((m) => ({ default: m.CreateTicketPage })));
+const TicketDetailPage = lazy(() => import('./pages/TicketDetailPage').then((m) => ({ default: m.TicketDetailPage })));
+const DeviceRequestPage = lazy(() => import('./pages/DeviceRequestPage').then((m) => ({ default: m.DeviceRequestPage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, login, isKeycloakOffline } = useAuth();
@@ -72,54 +75,58 @@ export const App: React.FC = () => {
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
-              <Route path="du-lieu" element={<DataCatalogPage />} />
-              <Route
-                path="work-queue"
-                element={<ProtectedRoute><WorkQueuePage /></ProtectedRoute>}
-              />
-              <Route
-                path="approvals"
-                element={<ProtectedRoute><ManagerApprovalsPage /></ProtectedRoute>}
-              />
-              <Route path="bao-cao" element={<ProtectedRoute><ManagerAnalyticsPage /></ProtectedRoute>} />
-              <Route
-                path="tickets"
-                element={
-                  <ProtectedRoute>
-                    <TicketListPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="tickets/new"
-                element={
-                  <ProtectedRoute>
-                    <CreateTicketPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="tickets/:id"
-                element={
-                  <ProtectedRoute>
-                    <TicketDetailPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="device-requests"
-                element={
-                  <ProtectedRoute>
-                    <DeviceRequestPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
+          <ToastProvider>
+            <RouteErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<HomePage />} />
+                  <Route path="du-lieu" element={<DataCatalogPage />} />
+                  <Route
+                    path="work-queue"
+                    element={<ProtectedRoute><WorkQueuePage /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="approvals"
+                    element={<ProtectedRoute><ManagerApprovalsPage /></ProtectedRoute>}
+                  />
+                  <Route path="bao-cao" element={<ProtectedRoute><ManagerAnalyticsPage /></ProtectedRoute>} />
+                  <Route
+                    path="tickets"
+                    element={
+                      <ProtectedRoute>
+                        <TicketListPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="tickets/new"
+                    element={
+                      <ProtectedRoute>
+                        <CreateTicketPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="tickets/:id"
+                    element={
+                      <ProtectedRoute>
+                        <TicketDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="device-requests"
+                    element={
+                      <ProtectedRoute>
+                        <DeviceRequestPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Route>
+              </Routes>
+            </RouteErrorBoundary>
+          </ToastProvider>
         </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -22,10 +22,10 @@ và đăng nhập bằng tài khoản thử. Ràng buộc:
 
 | Thành phần | RAM ước lượng | Nguồn |
 |---|---|---|
-| `demo-light` tuần 5 (Tầng 1, API, web, n8n, Mattermost, Wiki.js + CSDL) | ~3,0 GiB | Đo 12/11, ba lượt |
-| Metabase OSS + PostgreSQL riêng (hồ sơ `full`) | ~1,4 GiB | Đo 12/11, [tai-nguyen.md](../tai-nguyen.md) |
-| Ứng dụng 2 (cùng API/web) | không đáng kể | W5-01, chưa đo |
-| **Tổng không có Ollama** | **~4,4 GiB** | `full` đo 12/11 (Ollama rỗng ~16 MiB) |
+| `demo-light` tuần 5 (Tầng 1, API, web, n8n, Mattermost, Wiki.js + CSDL, ứng dụng 2) | ~3,2 GiB | Đo 17/11, ba lượt (12/11 chưa có ứng dụng 2: ~3,0 GiB) |
+| Metabase OSS + PostgreSQL riêng (hồ sơ `full`) | ~1,4 GiB | Đo 12/11 và 17/11, [tai-nguyen.md](../tai-nguyen.md) |
+| Ứng dụng 2 (Nginx phục vụ SPA, dùng chung API/PostgREST) | ~20 MiB | W5-01, đo 17/11 |
+| **Tổng không có Ollama** | **~4,6 GiB** | `full` đo 17/11 (Ollama rỗng ~15 MiB) |
 | Ollama + mô hình 1,5–4B (cảnh 4) | +2–4 GiB, CPU nặng | ADR 0005, chờ W6-05 |
 
 Ổ đĩa: image + volume hiện khoảng 10–15 GB; dành 40 GB trở lên (60 GB của Gói 8 đủ khi không tải mô hình). CPU: 2 vCPU đủ cho demo không có
@@ -75,7 +75,7 @@ Giá đối chiếu trên **trang chính thức** của nhà cung cấp ngày 04
   bất kỳ khi có admin credentials.
 - Metabase (W5-06) hiện chỉ có trong hồ sơ `full`, nên `demo-light` trên VPS không có dashboard
   `/bao-cao`. W6-06 chọn một trong hai: thêm Metabase vào hồ sơ chạy Internet (vẫn không Ollama),
-  hoặc chỉ trình diễn dashboard ở bản cục bộ. Số đo RAM 12/11 ở [tai-nguyen.md](../tai-nguyen.md).
+  hoặc chỉ trình diễn dashboard ở bản cục bộ. Số đo RAM 12/11 và 17/11 ở [tai-nguyen.md](../tai-nguyen.md).
 - Chỉ mở cổng 80/443 (và SSH bằng khóa); các cổng dịch vụ tiếp tục bind `127.0.0.1` như compose hiện tại.
 - Tài khoản thử cho giám khảo: tạo riêng, không dùng mật khẩu mẫu trong README.
 - Người thuê giữ hóa đơn.

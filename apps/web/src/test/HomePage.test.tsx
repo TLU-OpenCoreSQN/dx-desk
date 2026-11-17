@@ -38,7 +38,7 @@ describe('HomePage Component', () => {
     vi.spyOn(apiService, 'getHealth').mockResolvedValue({
       status: 'ok',
       service: 'dx-desk-api',
-      version: '0.1.0',
+      version: '0.5.0',
     });
 
     renderComponent();
@@ -50,7 +50,7 @@ describe('HomePage Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Dịch vụ đang hoạt động bình thường')).toBeInTheDocument();
-      expect(screen.getByText('0.1.0')).toBeInTheDocument();
+      expect(screen.getByText('0.5.0')).toBeInTheDocument();
     });
   });
 
@@ -72,7 +72,7 @@ describe('HomePage Component', () => {
     vi.spyOn(apiService, 'getHealth').mockResolvedValue({
       status: 'ok',
       service: 'dx-desk-api',
-      version: '0.1.0',
+      version: '0.5.0',
     });
 
     renderComponent();
@@ -83,6 +83,11 @@ describe('HomePage Component', () => {
     expect(
       screen.getByRole('button', { name: /Đăng nhập hệ thống \(SSO\)/i })
     ).toBeDisabled();
+
+    await waitFor(() => {
+      expect(screen.getByText('Dịch vụ đang hoạt động bình thường')).toBeInTheDocument();
+      expect(screen.getByText('0.5.0')).toBeInTheDocument();
+    });
   });
 
   it('renders authenticated dashboard with user roles and action cards', async () => {
@@ -103,7 +108,7 @@ describe('HomePage Component', () => {
     vi.spyOn(apiService, 'getHealth').mockResolvedValue({
       status: 'ok',
       service: 'dx-desk-api',
-      version: '0.1.0',
+      version: '0.5.0',
     });
 
     renderComponent();
@@ -113,5 +118,10 @@ describe('HomePage Component', () => {
     expect(screen.getByText('Phiếu yêu cầu IT')).toBeInTheDocument();
     expect(screen.getByText('Gửi sự cố mới')).toBeInTheDocument();
     expect(screen.getByText('Yêu cầu cấp thiết bị')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Dịch vụ đang hoạt động bình thường')).toBeInTheDocument();
+      expect(screen.getByText('0.5.0')).toBeInTheDocument();
+    });
   });
 });

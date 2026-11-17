@@ -9,20 +9,17 @@ import { loadArticles, parseArticle, wikiClient, wikiEnabled, WIKI_GROUPS } from
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-test('W5-08 six CC BY 4.0 articles match the wiki paths seeded in migration 012 and renamed in 016', async () => {
+// Khớp đường dẫn/tiêu đề/tóm tắt với DB sau toàn bộ migration được kiểm ở apps/api/test/integration.mjs
+// (PostgreSQL thật), không đoán bằng cách phân tích SQL của từng migration.
+test('W5-08 six CC BY 4.0 knowledge articles with unique support paths', async () => {
   const all = await loadArticles(root);
   // Trang chủ (path home) là trang mục lục của Wiki.js, không phải bài gợi ý theo danh mục.
   assert.equal(all.filter(article => article.path === 'home').length, 1, 'Wiki.js has a home page for /');
   const articles = all.filter(article => article.path !== 'home');
   assert.equal(articles.length, 6);
-  const migration = await readFile(resolve(root, 'db/migrations/012_knowledge_self_service.sql'), 'utf8');
-  let seeded = [...migration.matchAll(/'(ho-tro\/[a-z-]+)'\)/g)].map(match => match[1]);
-  const renames = await readFile(resolve(root, 'db/migrations/016_knowledge_enterprise_wording.sql'), 'utf8');
-  for (const [, to, from] of renames.matchAll(/wiki_path = '(ho-tro\/[a-z-]+)' WHERE wiki_path = '(ho-tro\/[a-z-]+)'/g)) {
-    seeded = seeded.map(path => path === from ? to : path);
-  }
-  seeded.sort();
-  assert.deepEqual(articles.map(article => article.path).sort(), seeded);
+  const paths = articles.map(article => article.path);
+  assert.equal(new Set(paths).size, paths.length, 'paths are unique');
+  for (const path of paths) assert.match(path, /^ho-tro\/[a-z-]+$/);
   for (const article of articles) {
     assert.ok(article.content.includes('CC BY 4.0'), `${article.path} carries attribution`);
     assert.ok(article.tags.length > 0 && article.title.length > 3);

@@ -3,7 +3,7 @@
 openapi: 3.0.3
 info:
   title: DX-Desk Service Desk API
-  version: 0.4.0
+  version: 0.5.0
   description: >-
     API tuần 4–5: luồng ticket, queue/team/claim, automation tách khỏi người dùng, outbox, SLA; tuần 5 thêm gợi ý bài Wiki, lượt tự phục vụ và JSON-LD/DCAT công khai tại /ld/* (ngoài tiền tố /api). RLS vẫn bảo vệ dữ liệu.
 servers:
