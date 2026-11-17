@@ -52,8 +52,14 @@ export function assistantServer(dependencies, proposals = proposalStore()) {
         const offer = proposals.take(id, caller.id);
         if (!offer) throw errorWith(404, 'Đề xuất đã hết hạn hoặc đã được xử lý.');
         if (!body.approve) return json(response, 200, { status: 'cancelled' });
-        const result = await dependencies.invoke(offer.tool, offer.args, token, offer.id, controller.signal, caller.id);
-        return json(response, 200, { status: 'applied', result });
+        try {
+          const result = await dependencies.invoke(offer.tool, offer.args, token, offer.id, controller.signal, caller.id);
+          return json(response, 200, { status: 'applied', result });
+        } catch (error) {
+          // The API commits by action ID, so retrying the same confirmation is safe after a lost response.
+          if (!error.status || error.status >= 500) proposals.restore(offer);
+          throw error;
+        }
       }
       const question = typeof body?.question === 'string' ? body.question.trim() : '';
       if (!question || question.length > 1000 || Object.keys(body).length !== 1) throw errorWith(400, 'Câu hỏi cần từ 1 đến 1000 ký tự.');
@@ -115,7 +121,7 @@ export function assistantDependencies(env = process.env) {
       });
       if (!result.ok) {
         await result.body?.cancel();
-        throw errorWith(result.status === 403 ? 403 : 503, 'Công cụ chưa thực hiện được thao tác.');
+        throw errorWith([400,403,409,422].includes(result.status) ? result.status : 503, 'Công cụ chưa thực hiện được thao tác.');
       }
       return result.json();
     },
