@@ -92,6 +92,107 @@ paths:
             application/ld+json:
               schema: { $ref: "#/components/schemas/LinkedDataResource" }
         "404": { $ref: "#/components/responses/Error" }
+  /assistant/chat:
+    post:
+      operationId: streamAssistantChat
+      summary: Trợ lý hồ sơ full trả lời và đề xuất hành động qua NDJSON
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        "200":
+          description: Các dòng step, delta, sources, proposal, done hoặc error
+          content:
+            application/x-ndjson:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+  /assistant/confirm:
+    post:
+      operationId: decideAssistantAction
+      summary: Xác nhận hoặc hủy đề xuất của tài khoản đang đăng nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, approve]
+              properties:
+                id: { type: string, format: uuid }
+                approve: { type: boolean }
+      responses:
+        "200": { description: Quyết định và mã phiếu hoặc task nếu được tạo }
+        "404": { $ref: "#/components/responses/Error" }
+  /assistant-tools:
+    get:
+      operationId: listAssistantTools
+      summary: Danh sách công cụ theo vai trò của người hỏi
+      responses:
+        "200": { description: Mảng tools chứa các tên công cụ }
+  /assistant-tools/{kind}:
+    post:
+      operationId: executeAssistantTool
+      summary: Chạy công cụ với quyền người hỏi. Công cụ ghi cần chữ ký nội bộ sau xác nhận.
+      parameters:
+        - in: path
+          name: kind
+          required: true
+          schema: { type: string, enum: [ticket_statistics, similar_tickets, create_ticket, create_task] }
+      responses:
+        "200": { description: Kết quả truy vấn hoặc mã phiếu hoặc task }
+        "403": { $ref: "#/components/responses/Error" }
+  /assistant-tools/tasks/{id}:
+    get:
+      operationId: readAssistantTask
+      summary: Người tạo đọc task đã xác nhận
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Task cùng nội dung và nguồn gốc AI }
+        "404": { $ref: "#/components/responses/Error" }
+  /tickets/{id}/ai-suggestion:
+    get:
+      operationId: readTicketAiSuggestion
+      summary: Agent hoặc Manager xem đề xuất phân loại phiếu
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Đề xuất còn hiệu lực gồm id, category_id, team_id, priority và summary }
+        "204": { description: Phiếu không còn đề xuất chờ duyệt }
+        "403": { $ref: "#/components/responses/Error" }
+  /tickets/{id}/ai-suggestion/decision:
+    post:
+      operationId: decideTicketAiSuggestion
+      summary: Áp dụng hoặc bỏ qua đề xuất đúng phiên bản
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, action]
+              properties:
+                id: { type: string, format: uuid }
+                action: { type: string, enum: [accept, ignore] }
+                values:
+                  type: object
+                  required: [category_id, team_id, priority, summary]
+                  properties:
+                    category_id: { type: string, format: uuid }
+                    team_id: { type: string, format: uuid }
+                    priority: { type: string, enum: [low, normal, high] }
+                    summary: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        "204": { description: Đã lưu quyết định }
+        "409": { $ref: "#/components/responses/Error" }
   /me:
     get:
       operationId: me
@@ -105,6 +206,7 @@ paths:
                 properties:
                   id: { type: string, format: uuid }
                   username: { type: string }
+                  assistant_enabled: { type: boolean, description: Tính năng trợ lý AI được bật trong hồ sơ full }
                   roles:
                     type: array
                     items: { type: string, enum: [ Employee, Agent, Manager ] }

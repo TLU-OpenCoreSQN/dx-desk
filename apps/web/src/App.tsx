@@ -10,6 +10,7 @@ import { Layout } from './components/layout/Layout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { LogIn, ShieldAlert } from 'lucide-react';
+import { assistantManifest } from './modules/desk/manifest';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const DataCatalogPage = lazy(() => import('./pages/DataCatalogPage').then((m) => ({ default: m.DataCatalogPage })));
@@ -21,6 +22,12 @@ const CreateTicketPage = lazy(() => import('./pages/CreateTicketPage').then((m) 
 const TicketDetailPage = lazy(() => import('./pages/TicketDetailPage').then((m) => ({ default: m.TicketDetailPage })));
 const DeviceRequestPage = lazy(() => import('./pages/DeviceRequestPage').then((m) => ({ default: m.DeviceRequestPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const AssistantPage = lazy(assistantManifest.route);
+
+function AssistantRoute() {
+  const { profile } = useAuth();
+  return assistantManifest.enabled(profile) ? <AssistantPage /> : <NotFoundPage />;
+}
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, login, isKeycloakOffline } = useAuth();
@@ -90,6 +97,7 @@ export const App: React.FC = () => {
                     element={<ProtectedRoute><ManagerApprovalsPage /></ProtectedRoute>}
                   />
                   <Route path="bao-cao" element={<ProtectedRoute><ManagerAnalyticsPage /></ProtectedRoute>} />
+                  <Route path={assistantManifest.to} element={<ProtectedRoute><AssistantRoute /></ProtectedRoute>} />
                   <Route
                     path="tickets"
                     element={

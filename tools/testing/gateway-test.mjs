@@ -26,7 +26,8 @@ upstream.listen(0, '0.0.0.0'); await once(upstream, 'listening');
 const probe = createServer(); probe.listen(0, '127.0.0.1'); await once(probe, 'listening');
 const port = probe.address().port; await new Promise(r => probe.close(r));
 const template = (await readFile(resolve(root, 'infra/apisix/apisix.yaml'), 'utf8'))
-  .replace(/"(?:api:3000|postgrest:3000|web:80|device-request:80|n8n:5678)"/g, `"host.docker.internal:${upstream.address().port}"`);
+  .replace(/"(?:api:3000|postgrest:3000|web:80|device-request:80|n8n:5678)"/g, `"host.docker.internal:${upstream.address().port}"`)
+  .replace('"assistant:3000"', `"host.docker.internal:${upstream.address().port}"`);
 const routes = resolve(dir, 'apisix.yaml');
 await writeFile(routes, renderGateway(template, { keys: [jwk] }, issuer, 'dxdesk-api'));
 const version = /^APISIX_VERSION=(.+)$/m.exec(await readFile(resolve(root, '.env.example'), 'utf8'))[1].trim();
@@ -60,6 +61,12 @@ try {
   }
   assert.ok(ready, docker(['logs', '--tail', '30', name], false));
   await check('public health works without JWT', async () => assert.equal((await call('/api/health')).status, 200));
+  await check('assistant chat and confirmation both require an authenticated user', async () => {
+    for (const path of ['/api/assistant/chat', '/api/assistant/confirm']) {
+      assert.equal((await call(path, undefined, { method:'POST' })).status, 401);
+      assert.equal((await call(path, jwt(), { method:'POST' })).status, 200);
+    }
+  });
   for (const path of ['/api/me', '/rest/categories']) {
     await check(`${path}: valid JWT reaches upstream; invalid claims/signature rejected at gateway`, async () => {
       assert.equal((await call(path, jwt())).status, 200);

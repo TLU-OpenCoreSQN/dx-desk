@@ -3,6 +3,7 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { createHmac, randomUUID } from 'node:crypto';
 import { createServer as createTcpServer } from 'node:net';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
@@ -64,7 +65,7 @@ async function call(base, path, key = 'a', body, customToken) {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(10000),
   });
-  return { status: response.status, body: await response.json() };
+  return { status: response.status, body: response.status === 204 ? null : await response.json() };
 }
 async function patch(base, path, key, body, headers = {}) {
   const response = await fetch(base + path, {
@@ -230,7 +231,9 @@ test('TN-02: real database has twelve protected domain tables and reference data
   // Hợp đồng tuần 3 (migration 003): thêm danh mục access + system-error -> 6 loại active.
   assert.equal((await call(apiUrl, '/api/categories')).body.data.length, 6);
   assert.equal((await call(apiUrl, '/api/health', null)).status, 200);
-  assert.equal((await call(apiUrl, '/api/me')).body.id, users.a.sub);
+  const profile = (await call(apiUrl, '/api/me')).body;
+  assert.equal(profile.id, users.a.sub);
+  assert.equal(profile.assistant_enabled, false);
 });
 test('JWT signature/time/issuer/audience/role validation agrees on API and PostgREST', async () => {
   const other = await generateKeyPair('RS256');
@@ -1312,4 +1315,69 @@ test('W5-04 public JSON-LD/DCAT is generated from reference data without a JWT',
   // Loại thiết bị trong bảng tham chiếu khớp CHECK của device_requests qua khóa ngoại.
   assert.equal((await admin.query(`SELECT count(*)::int n FROM pg_constraint
     WHERE conname = 'device_requests_device_type_fkey'`)).rows[0].n, 1);
+});
+test('confirmed assistant writes keep requester scope, avoid duplicates and enqueue the Mattermost task notice', async t => {
+  const signingKey = 'integration-proof-key-that-is-32-bytes-minimum';
+  const old = process.env.ASSISTANT_ACTION_KEY;
+  process.env.ASSISTANT_ACTION_KEY = signingKey;
+  t.after(() => { if (old === undefined) delete process.env.ASSISTANT_ACTION_KEY; else process.env.ASSISTANT_ACTION_KEY = old; });
+  const write = async (kind, who, id, args, signed = true) => {
+    const canonical = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b)));
+    const proof = createHmac('sha256', signingKey).update(JSON.stringify([users[who].sub, kind, id, canonical])).digest('hex');
+    return fetch(apiUrl + '/api/assistant-tools/' + kind, {
+      method: 'POST', headers: { Authorization: 'Bearer ' + tokens[who], 'Content-Type': 'application/json',
+        'Idempotency-Key': id, ...(signed ? { 'X-DXDesk-Assistant-Proof': proof } : {}) }, body: JSON.stringify(args),
+    });
+  };
+  const args = { category: 'vpn', title: 'VPN assistant fixture ' + randomUUID(), description: 'Máy báo lỗi kết nối VPN tại văn phòng.' };
+  const id = randomUUID();
+  assert.equal((await write('create_ticket', 'a', id, args, false)).status, 403);
+  const first = await write('create_ticket', 'a', id, args);
+  assert.equal(first.status, 200, 'Assistant proof allows the explicit user-confirmed action');
+  const created = await first.json();
+  assert.deepEqual(await (await write('create_ticket', 'a', id, args)).json(), created);
+  assert.equal((await write('create_ticket', 'b', id, args)).status, 409);
+  const log = (await call(apiUrl, '/api/tickets/' + created.ticket_id + '/events', 'a')).body.data[0];
+  assert.equal(log.actor_type, 'ai');
+  assert.equal(log.actor_id, users.a.sub);
+  assert.equal((await call(apiUrl, '/api/assistant-tools/similar_tickets', 'b', { query: args.title })).body.data.length, 0);
+  assert.equal((await call(apiUrl, '/api/assistant-tools/similar_tickets', 'a', { query: args.title })).body.data[0].id, created.ticket_id);
+  const task = { title: 'Điều tra phiếu VPN', description: 'Đối chiếu thời điểm tăng phiếu với lỗi của VPN.' };
+  const taskId = randomUUID();
+  assert.equal((await write('create_task', 'a', taskId, task)).status, 403);
+  assert.equal((await write('create_task', 'manager', taskId, task)).status, 200);
+  assert.equal((await admin.query('SELECT destination FROM private.outbox WHERE event_id=$1', [taskId])).rows[0].destination, 'assistant_task');
+});
+
+test('staff can explicitly edit and apply AI triage with a recorded audit while protected fields stay locked', async t => {
+  const model = createServer((_request, response) => {
+    response.setHeader('Content-Type','application/json');
+    response.end(JSON.stringify({ message: { content: JSON.stringify({ category: 'vpn', priority: 'high' }) } }));
+  });
+  model.listen(0,'127.0.0.1'); await once(model,'listening');
+  t.after(() => new Promise(resolve => model.close(resolve)));
+  const env = { ASSISTANT_PROFILE:'full', OLLAMA_URL:'http://127.0.0.1:' + model.address().port };
+  const old = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
+  Object.assign(process.env,env);
+  t.after(() => { for (const [key,value] of Object.entries(old)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } });
+  assert.equal((await call(apiUrl, '/api/me', 'agent')).body.assistant_enabled, true);
+  const ticket = (await call(apiUrl, '/api/tickets', 'a', { category_id: category, title: 'VPN không truy cập',
+    description: 'VPN báo lỗi xác thực khi làm việc từ xa.', fields: { client_version:'4.2', error_message:'Auth failed' } })).body;
+  const path = '/api/tickets/' + ticket.id + '/ai-suggestion';
+  assert.equal((await call(apiUrl,path,'b')).status,403);
+  const first = await call(apiUrl,path,'agent');
+  assert.equal(first.status,200,JSON.stringify(first.body));
+  const { id, ...values } = first.body;
+  assert.equal(values.priority,'high');
+  assert.equal((await call(apiUrl,'/api/tickets/' + ticket.id,'a')).body.priority,'normal');
+  assert.equal((await call(apiUrl,path + '/decision','agent',{ id, action:'accept', values:{ ...values,priority:'critical' } })).status,400);
+  const changed = await call(apiUrl,path + '/decision','agent',{ id, action:'accept', values:{ ...values, summary:'Cần kiểm tra xác thực VPN.' } });
+  assert.equal(changed.status,204,JSON.stringify(changed.body));
+  const history = (await call(apiUrl,'/api/tickets/' + ticket.id + '/events','a')).body.data;
+  assert.ok(history.some(event => event.event_type === 'ai_suggestion_applied' && event.actor_type === 'ai' &&
+    event.actor_id === users.agent.sub && event.payload.note === 'Cần kiểm tra xác thực VPN.'));
+  const updated = (await call(apiUrl,'/api/tickets/' + ticket.id,'agent')).body;
+  assert.equal(updated.priority,'high');
+  assert.equal(updated.assigned_team_id,values.team_id);
+  assert.equal((await call(apiUrl,path + '/decision','agent',{ id, action:'ignore' })).status,409);
 });

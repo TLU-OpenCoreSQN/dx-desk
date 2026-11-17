@@ -64,8 +64,11 @@ export async function prepareWiki(root, env) {
   env.WIKI_PORT ||= '18030';
   env.WIKI_PUBLIC_URL ||= `http://localhost:${env.WIKI_PORT}`;
   for (const key of SECRET_KEYS) if (!env[key]) env[key] = randomBytes(24).toString('hex');
+  if (wikiIndexEnabled(env)) env.ASSISTANT_ACTION_KEY ||= randomBytes(32).toString('hex');
   let text = await readFile(resolve(root, '.env'), 'utf8');
-  for (const key of ['WIKIJS_VERSION', 'WIKI_PORT', 'WIKI_PUBLIC_URL', ...SECRET_KEYS]) {
+  const keys = ['WIKIJS_VERSION', 'WIKI_PORT', 'WIKI_PUBLIC_URL', ...SECRET_KEYS];
+  if (wikiIndexEnabled(env)) keys.push('ASSISTANT_ACTION_KEY');
+  for (const key of keys) {
     const expression = new RegExp('^' + key + '=.*$', 'm');
     const line = key + '=' + env[key];
     text = expression.test(text) ? text.replace(expression, () => line) : text.trimEnd() + '\n' + line + '\n';
