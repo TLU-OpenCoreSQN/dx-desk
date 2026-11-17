@@ -342,3 +342,19 @@ biên bản **không** chứa lý do đề nghị hay ghi chú duyệt.
 
 Hạn chế đã biết: chữ trong PDF hiển thị và in đúng tiếng Việt, nhưng sao chép/tìm kiếm văn bản trong tệp
 có thể sai dấu ở một số trình đọc (bảng ToUnicode của phông tập con).
+## Trợ lý Desk (W6-03)
+
+- `POST /api/assistant/chat` (JWT) nhận `{question}` và trả NDJSON. Mỗi dòng có
+  `type` là `step` (label), `delta` (text), `sources` (items gồm title và URL),
+  `proposal` (id, label, fields), `done` hoặc `error` (message).
+- `POST /api/assistant/confirm` (JWT) nhận `{id,approve}`. Chỉ tài khoản đã hỏi
+  được quyết định một lần trong 5 phút. Việc xác nhận chuyển đúng tham số đã hiển thị
+  sang Service Desk API bằng JWT hiện tại và mã đề xuất làm `Idempotency-Key`.
+- Adapter dự kiến cho W6-02 lấy danh sách công cụ theo JWT từ
+  `GET /api/assistant-tools` (`{tools: string[]}`), và gọi
+  `POST /api/assistant-tools/{tên_cố_định}` với tham số JSON. Khi danh sách công cụ
+  chưa triển khai, trợ lý vẫn có thể tra Wiki. Ghi audit, kiểm quyền RLS và xử lý
+  idempotency thuộc API công cụ.
+- Hai endpoint trợ lý chỉ có upstream khi chạy hồ sơ `full`. Model chat dùng
+  `ASSISTANT_CHAT_MODEL` và được tải một lần như model nhúng. Tên mặc định
+  `qwen3:4b` là ứng viên để kiểm thử, quyết định mô hình thuộc W6-05.
