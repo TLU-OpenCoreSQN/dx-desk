@@ -13,6 +13,7 @@ export interface UserProfile {
   id: string;
   username: string;
   roles: UserRole[];
+  assistant_enabled?: boolean;
 }
 
 export interface RequirementField {

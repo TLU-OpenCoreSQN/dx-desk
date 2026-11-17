@@ -27,7 +27,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { isAuthenticated, roles } = useAuth();
+  const { isAuthenticated, profile, roles } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -88,7 +88,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       ? [
           { to: '/tickets', label: 'Danh sách phiếu', icon: Ticket },
           { to: '/tickets/new', label: 'Tạo phiếu hỗ trợ', icon: PlusCircle },
-          ...(roles.some(role => assistantManifest.roles.includes(role)) ? [assistantManifest] : []),
+          ...(assistantManifest.enabled(profile) ? [assistantManifest] : []),
           { to: '/device-requests', label: 'Yêu cầu cấp thiết bị', icon: Laptop },
           ...(roles.includes('Agent') || roles.includes('Manager') ? [
             { to: '/work-queue', label: 'Bảng việc kỹ thuật viên', icon: ClipboardList },

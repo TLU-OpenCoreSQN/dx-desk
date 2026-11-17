@@ -231,7 +231,9 @@ test('TN-02: real database has twelve protected domain tables and reference data
   // Hợp đồng tuần 3 (migration 003): thêm danh mục access + system-error -> 6 loại active.
   assert.equal((await call(apiUrl, '/api/categories')).body.data.length, 6);
   assert.equal((await call(apiUrl, '/api/health', null)).status, 200);
-  assert.equal((await call(apiUrl, '/api/me')).body.id, users.a.sub);
+  const profile = (await call(apiUrl, '/api/me')).body;
+  assert.equal(profile.id, users.a.sub);
+  assert.equal(profile.assistant_enabled, false);
 });
 test('JWT signature/time/issuer/audience/role validation agrees on API and PostgREST', async () => {
   const other = await generateKeyPair('RS256');
@@ -1358,6 +1360,7 @@ test('staff can explicitly edit and apply AI triage with a recorded audit while 
   const old = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
   Object.assign(process.env,env);
   t.after(() => { for (const [key,value] of Object.entries(old)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } });
+  assert.equal((await call(apiUrl, '/api/me', 'agent')).body.assistant_enabled, true);
   const ticket = (await call(apiUrl, '/api/tickets', 'a', { category_id: category, title: 'VPN không truy cập',
     description: 'VPN báo lỗi xác thực khi làm việc từ xa.', fields: { client_version:'4.2', error_message:'Auth failed' } })).body;
   const path = '/api/tickets/' + ticket.id + '/ai-suggestion';
