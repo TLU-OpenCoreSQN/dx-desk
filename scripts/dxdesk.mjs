@@ -10,7 +10,6 @@ import { renderGateway } from './render-gateway.mjs';
 import { demoSeedIdentities, prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
 import { seedMain } from './seed-synthetic.mjs';
 import { setupDepartments, setupDeviceClient } from './setup-directory.mjs';
-import { importMain, loadEnv } from './import-nhan-vien.mjs';
 import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled, wikiIndexEnabled } from './setup-wiki.mjs';
 import { configureMetabaseReader, metabaseEnabled, prepareMetabase, setupMetabase } from './setup-metabase.mjs';
 
@@ -32,14 +31,12 @@ if (action === 'seed') {
 }
 // W6-15: nhập nhân viên từ CSV; mặc định chạy thử, xem `import-nhan-vien --help`.
 if (action === 'import-nhan-vien') {
-  try {
-    const args = process.argv.slice(3);
-    process.exitCode = await importMain(args, args.includes('--offline') || args.includes('--help') ? {} : await loadEnv(root));
-  } catch (error) {
-    console.error(error.message);
-    process.exitCode = 1;
-  }
-  process.exit(process.exitCode ?? 0);
+  // Tiến trình con tự thoát khi hết việc: gọi process.exit() lúc socket fetch còn đang đóng làm Node trên
+  // Windows dừng bằng lỗi libuv và mất mã thoát.
+  const result = spawnSync(process.execPath, [resolve(root, 'scripts/import-nhan-vien.mjs'), ...process.argv.slice(3)], {
+    stdio: 'inherit', windowsHide: true,
+  });
+  process.exit(result.status ?? 1);
 }
 const allowed = ['up', 'down', 'ps', 'config', 'migrate', 'verify', 'n8n-reload', 'credentials-import'];
 if (!allowed.includes(action)) throw new Error(help);
