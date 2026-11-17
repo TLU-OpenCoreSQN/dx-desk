@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assistantServer } from './server.mjs';
-import { ndjson, proposalStore } from './chat.mjs';
+import { answer, ndjson, proposalStore } from './chat.mjs';
 
 test('confirmation is bound to the question owner, consumes the proposal once, and forwards the exact arguments', async t => {
   const args = { category: 'vpn', title: 'Hỗ trợ VPN', description: 'VPN bị ngắt khi đăng nhập từ xa.' };
@@ -51,6 +51,26 @@ test('proposals expire after five minutes', () => {
   const offer = store.offer('owner', 'create_task', { title: 'Điều tra VPN' });
   now += 300000;
   assert.equal(store.take(offer.id, 'owner'), null);
+});
+
+test('an unresolved VPN report offers a prefilled ticket and awaits confirmation', async () => {
+  const events = [];
+  await answer({
+    caller: { id: 'employee', token: 'token', roles: ['Employee'] },
+    signal: new AbortController().signal,
+    question: 'Tôi đã thử nhưng vẫn không kết nối được VPN.',
+    dependencies: {
+      knowledge: async () => [],
+      available: async () => ['create_ticket'],
+      propose: proposalStore().offer,
+      invoke: () => assert.fail('A proposal must never invoke the write tool'),
+    },
+    emit: (type, data) => events.push({ type, ...data }),
+  });
+  assert.deepEqual(events.find(event => event.type === 'proposal').fields, {
+    category: 'vpn', title: 'Hỗ trợ kết nối VPN', description: 'Tôi đã thử nhưng vẫn không kết nối được VPN.',
+  });
+  assert.equal(events.at(-1).type, 'done');
 });
 
 test('a lost tool response allows retry with the same durable action ID', async t => {

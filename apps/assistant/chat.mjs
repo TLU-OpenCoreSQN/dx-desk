@@ -72,7 +72,8 @@ export async function answer({ caller, signal, question, dependencies, emit }) {
   emit('sources', { items: references.map(({ title, url }) => ({ title, url })) });
   const available = await dependencies.available(caller.token);
   const normalized = question.normalize('NFD').replace(/\p{Mark}/gu, '').toLowerCase();
-  if (normalized.includes('vpn') && normalized.includes('tao phieu') && available.includes('create_ticket')) {
+  const unresolved = /\bvan (bi loi|khong ket noi|chua ket noi)\b|\bchua (khac phuc|xu ly) duoc\b/.test(normalized);
+  if (normalized.includes('vpn') && (normalized.includes('tao phieu') || unresolved) && available.includes('create_ticket')) {
     emit('step', { label: tools.create_ticket.label });
     emit('delta', { text: 'Đây là nội dung phiếu VPN để bạn xem lại. Phiếu sẽ được tạo sau khi bạn xác nhận.' });
     emit('proposal', dependencies.propose(caller.id, 'create_ticket', { category: 'vpn', title: 'Hỗ trợ kết nối VPN', description: question }));
