@@ -52,3 +52,26 @@ test('proposals expire after five minutes', () => {
   now += 300000;
   assert.equal(store.take(offer.id, 'owner'), null);
 });
+
+test('a lost tool response allows retry with the same durable action ID', async t => {
+  const store = proposalStore();
+  const offered = store.offer('owner', 'create_task', { title: 'Điều tra VPN', description: 'Kiểm tra xu hướng hệ thống.' });
+  const ids = [];
+  const server = assistantServer({
+    identity: async () => ({ id: 'owner', roles: ['Manager'] }),
+    invoke: async (_name, _args, _token, id) => {
+      ids.push(id);
+      if (ids.length === 1) throw new Error('lost response');
+      return { id };
+    },
+  }, store);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const confirm = () => fetch(`http://127.0.0.1:${server.address().port}/api/assistant/confirm`, {
+    method: 'POST', headers: { Authorization: 'Bearer demo', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: offered.id, approve: true }),
+  });
+  assert.equal((await confirm()).status, 503);
+  assert.equal((await confirm()).status, 200);
+  assert.deepEqual(ids, [offered.id, offered.id]);
+});

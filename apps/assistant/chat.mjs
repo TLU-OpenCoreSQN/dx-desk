@@ -45,6 +45,9 @@ export function proposalStore(clock = Date.now) {
       pending.delete(id);
       return offer;
     },
+    restore(offer) {
+      if (offer.expires > clock()) pending.set(offer.id, offer);
+    },
   };
 }
 

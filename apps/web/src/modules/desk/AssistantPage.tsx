@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { decideAssistantProposal, streamAssistant, type AssistantEvent, type Proposal, type WikiSource } from './assistantApi';
+import { ApiClientError } from '../../services/api';
 
 interface Answer {
   id: number; question: string; text: string; steps: string[]; sources: WikiSource[];
@@ -66,11 +67,14 @@ export function AssistantPage() {
     try {
       const decision = await decideAssistantProposal(answer.proposal.id, approve, request.signal);
       const result = decision.result;
-      update(answer.id, item => ({ ...item, proposal: undefined, ticketId: result?.ticket_id ?? undefined,
+      update(answer.id, item => ({ ...item, proposal: undefined, error: undefined, ticketId: result?.ticket_id ?? undefined,
         status: decision.status === 'cancelled' ? 'Đã hủy đề xuất.' : result?.ticket_id ? 'Đã tạo phiếu.' :
           result ? `Đã tạo công việc ${result.id}.` : 'Đã thực hiện.' }));
     } catch (error) {
-      if (!request.signal.aborted) update(answer.id, item => ({ ...item, error: (error as Error).message, proposal: undefined }));
+      if (!request.signal.aborted) {
+        const retryable = error instanceof ApiClientError && (error.statusCode === 0 || error.statusCode >= 500);
+        update(answer.id, item => ({ ...item, error: (error as Error).message, proposal: retryable ? item.proposal : undefined }));
+      }
     } finally {
       controller.current = null;
       setBusy(false);
