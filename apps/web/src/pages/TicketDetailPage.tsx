@@ -11,6 +11,8 @@ import { TicketDetailHeader } from '../components/ticket-detail/TicketDetailHead
 import { TicketTimeline } from '../components/ticket-detail/TicketTimeline';
 import { TicketWorkflowActions } from '../components/ticket-detail/TicketWorkflowActions';
 import { TicketAttachmentSection } from '../components/ticket-detail/TicketAttachmentSection';
+import { TicketAiSuggestion } from '../modules/desk/TicketAiSuggestion';
+import { useAuth } from '../contexts/AuthContext';
 import {
   RESOLUTION_NOTE_MAX,
   RESOLUTION_NOTE_MIN,
@@ -20,10 +22,12 @@ import {
 export const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { roles } = useAuth();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [events, setEvents] = useState<TicketEvent[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<unknown>(null);
@@ -43,6 +47,7 @@ export const TicketDetailPage: React.FC = () => {
 
       setTicket(ticketData);
       setEvents(eventsData.data || []);
+      setCategories(categoriesData.data);
 
       if (ticketData && categoriesData.data) {
         const foundCategory = categoriesData.data.find((c) => c.id === ticketData.category_id);
@@ -141,6 +146,9 @@ export const TicketDetailPage: React.FC = () => {
         onRefresh={() => void loadTicketData(true)}
         onBack={() => navigate('/tickets')}
       />
+      {roles.some(role => role === 'Agent' || role === 'Manager') && (
+        <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} categories={categories} refresh={() => loadTicketData(true)} />
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
         {/* Left column: content */}

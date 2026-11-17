@@ -358,3 +358,15 @@ có thể sai dấu ở một số trình đọc (bảng ToUnicode của phông 
 - Hai endpoint trợ lý chỉ có upstream khi chạy hồ sơ `full`. Model chat dùng
   `ASSISTANT_CHAT_MODEL` và được tải một lần như model nhúng. Tên mặc định
   `qwen3:4b` là ứng viên để kiểm thử, quyết định mô hình thuộc W6-05.
+
+### Giao diện duyệt đề xuất AI (W6-09)
+
+Adapter giao diện cho W6-08 dự kiến đọc `GET /api/tickets/{id}/ai-suggestion`.
+Không có đề xuất thì trả 204 hoặc 404. Một đề xuất có `id`, `category_id`,
+`team_id`, `priority` và `summary`.
+
+`POST /api/tickets/{id}/ai-suggestion/decision` nhận `{id,action:"ignore"}`
+hoặc `{id,action:"accept",values:{category_id,team_id,priority,summary}}`.
+Service Desk API cần kiểm tra quyền sửa phiếu, phiên bản đề xuất và mức ưu tiên.
+Sau khi xác nhận, giao diện tải lại phiếu và lịch sử để hiển thị
+`ai_suggestion_applied` theo `actor_type` do backend ghi.
