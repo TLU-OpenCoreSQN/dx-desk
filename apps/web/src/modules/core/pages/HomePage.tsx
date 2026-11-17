@@ -14,10 +14,11 @@ import {
   Shield,
   Ticket,
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { getHealth } from '../services/api';
-import type { HealthResponse } from '../types/api';
-import { RoleBadge } from '../components/common/Badge';
+import { useAuth } from '../../../contexts/AuthContext';
+import { getHealth } from '../../../services/api';
+import type { HealthResponse } from '../../../types/api';
+import { RoleBadge } from '../../../components/common/Badge';
+import { useModuleEnabled } from '../../ModuleContext';
 
 export function HomePage() {
   const { isAuthenticated, isLoading, username, roles, login, isKeycloakOffline } = useAuth();
@@ -25,6 +26,8 @@ export function HomePage() {
   const [checking, setChecking] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
+  const deskEnabled = useModuleEnabled('desk');
+  const devicesEnabled = useModuleEnabled('devices');
 
   useEffect(() => {
     let active = true;
@@ -47,30 +50,34 @@ export function HomePage() {
     };
   }, [attempt]);
 
+  // W6-11: lối tắt chỉ hiện khi module tương ứng đang bật.
   const actions = [
     {
+      module: deskEnabled,
       to: '/tickets/new',
       icon: PlusCircle,
       title: 'Gửi sự cố mới',
       text: 'Mô tả vấn đề để IT tiếp nhận.',
     },
     {
+      module: deskEnabled,
       to: '/tickets',
       icon: Ticket,
       title: 'Phiếu yêu cầu IT',
       text: 'Theo dõi nội dung và tiến độ.',
     },
     {
+      module: devicesEnabled,
       to: '/device-requests',
       icon: Laptop,
       title: 'Yêu cầu cấp thiết bị',
       text: 'Đề xuất thiết bị cho công việc.',
     },
-  ];
+  ].filter((action) => action.module);
 
   const benefits = [
     'Gửi yêu cầu và theo dõi tiến độ ở cùng một nơi.',
-    'Tra cứu lại lịch sử phiếu và thiết bị đã đề xuất.',
+    devicesEnabled ? 'Tra cứu lại lịch sử phiếu và thiết bị đã đề xuất.' : 'Tra cứu lại lịch sử phiếu đã gửi.',
     'Không cần tài khoản riêng — dùng chung SSO của tổ chức.',
   ];
 

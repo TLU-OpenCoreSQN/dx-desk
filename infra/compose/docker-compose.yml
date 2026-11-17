@@ -182,6 +182,9 @@ services:
         VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM}
         VITE_KEYCLOAK_CLIENT_ID: ${WEB_KEYCLOAK_CLIENT_ID}
     <<: *restart
+    # W6-11: danh sách module bật, đọc lúc chạy. Sửa tệp rồi tải lại trang, không build lại image.
+    volumes:
+      - ../../config/doanh-nghiep/modules.json:/usr/share/nginx/html/config/modules.json:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
       interval: 5s

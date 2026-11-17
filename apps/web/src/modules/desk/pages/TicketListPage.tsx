@@ -15,13 +15,13 @@ import {
   UserCheck,
   X,
 } from 'lucide-react';
-import { getTickets, getCategories } from '../services/api';
-import { Ticket, Category } from '../types/api';
-import { PriorityBadge, StatusBadge } from '../components/common/Badge';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { ErrorMessage } from '../components/common/ErrorMessage';
-import { EmptyState } from '../components/common/EmptyState';
-import { useAuth } from '../contexts/AuthContext';
+import { getTickets, getCategories } from '../../../services/api';
+import { Ticket, Category } from '../../../types/api';
+import { PriorityBadge, StatusBadge } from '../../../components/common/Badge';
+import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
+import { ErrorMessage } from '../../../components/common/ErrorMessage';
+import { EmptyState } from '../../../components/common/EmptyState';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const PAGE_SIZE = 25;
 

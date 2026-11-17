@@ -16,17 +16,17 @@ import {
   Tag,
   X,
 } from 'lucide-react';
-import { createTicket, getCategories, uploadAttachment } from '../services/api';
-import { ATTACHMENT_TYPES, fileError } from '../lib/attachments';
-import { Category, RequirementField, TicketPriority } from '../types/api';
-import { useAuth } from '../contexts/AuthContext';
-import { Alert } from '../components/common/Alert';
-import { ErrorMessage } from '../components/common/ErrorMessage';
-import { FieldError, fieldClass } from '../components/common/FormField';
-import { CategorySelector } from '../components/create-ticket/CategorySelector';
-import { DynamicRequirementFields } from '../components/create-ticket/DynamicRequirementFields';
-import { KnowledgeInlineHelper } from '../components/create-ticket/KnowledgeInlineHelper';
-import { CreateTicketDraft, readDraft, removeDraft, writeDraft } from '../lib/ticketDraft';
+import { createTicket, getCategories, uploadAttachment } from '../../../services/api';
+import { ATTACHMENT_TYPES, fileError } from '../../../lib/attachments';
+import { Category, RequirementField, TicketPriority } from '../../../types/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { Alert } from '../../../components/common/Alert';
+import { ErrorMessage } from '../../../components/common/ErrorMessage';
+import { FieldError, fieldClass } from '../../../components/common/FormField';
+import { CategorySelector } from '../../../components/create-ticket/CategorySelector';
+import { DynamicRequirementFields } from '../../../components/create-ticket/DynamicRequirementFields';
+import { KnowledgeInlineHelper } from '../../../components/create-ticket/KnowledgeInlineHelper';
+import { CreateTicketDraft, readDraft, removeDraft, writeDraft } from '../../../lib/ticketDraft';
 
 
 const PRIORITY_ORDER: TicketPriority[] = ['low', 'normal', 'high', 'critical'];

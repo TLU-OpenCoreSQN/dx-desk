@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { getAnalyticsEmbed } from '../services/api';
+import { useAuth } from '../../../contexts/AuthContext';
+import { getAnalyticsEmbed } from '../../../services/api';
 
 export function ManagerAnalyticsPage() {
   const { roles } = useAuth();

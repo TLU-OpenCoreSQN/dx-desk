@@ -10,20 +10,17 @@ import { Layout } from './components/layout/Layout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { LogIn, ShieldAlert } from 'lucide-react';
+import { ModuleProvider, useModules } from './modules/ModuleContext';
+import { moduleRoutes } from './modules/registry';
+import { canAccess } from './modules/access';
+import type { ModuleAccess } from './modules/types';
 
-const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
-const DataCatalogPage = lazy(() => import('./pages/DataCatalogPage').then((m) => ({ default: m.DataCatalogPage })));
-const WorkQueuePage = lazy(() => import('./pages/WorkQueuePage').then((m) => ({ default: m.WorkQueuePage })));
-const ManagerApprovalsPage = lazy(() => import('./pages/ManagerApprovalsPage').then((m) => ({ default: m.ManagerApprovalsPage })));
-const ManagerAnalyticsPage = lazy(() => import('./pages/ManagerAnalyticsPage').then((m) => ({ default: m.ManagerAnalyticsPage })));
-const TicketListPage = lazy(() => import('./pages/TicketListPage').then((m) => ({ default: m.TicketListPage })));
-const CreateTicketPage = lazy(() => import('./pages/CreateTicketPage').then((m) => ({ default: m.CreateTicketPage })));
-const TicketDetailPage = lazy(() => import('./pages/TicketDetailPage').then((m) => ({ default: m.TicketDetailPage })));
-const DeviceRequestPage = lazy(() => import('./pages/DeviceRequestPage').then((m) => ({ default: m.DeviceRequestPage })));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const NotFoundPage = lazy(() => import('./modules/core/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading, login, isKeycloakOffline } = useAuth();
+const AccessGuard: React.FC<{ access: ModuleAccess; children: React.ReactNode }> = ({ access, children }) => {
+  const { isAuthenticated, isLoading, login, isKeycloakOffline, roles } = useAuth();
+
+  if (access === 'public') return <>{children}</>;
 
   if (isLoading) {
     return <LoadingSpinner label="Đang kiểm tra trạng thái đăng nhập..." />;
@@ -67,7 +64,42 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
+  if (!canAccess(access, { isAuthenticated, roles })) {
+    return (
+      <section className="max-w-md mx-auto my-12 rounded-lg border border-edge bg-surface p-6 text-center" role="alert">
+        <h1 className="text-xl font-bold text-content">Không có quyền truy cập</h1>
+        <p className="mt-2 text-sm text-content-muted">Trang này dành cho {access === 'Manager' ? 'Quản lý' : access === 'Agent' ? 'kỹ thuật viên và Quản lý' : 'người dùng đã được cấp vai trò trong DX-Desk'}.</p>
+        <Link className="mt-4 inline-block text-primary underline" to="/">Về trang chủ</Link>
+      </section>
+    );
+  }
+
   return <>{children}</>;
+};
+
+/** Route dựng từ sổ đăng ký module (W6-11); module tắt trong /config/modules.json không có route. */
+export const AppRoutes: React.FC = () => {
+  const { ready, modules } = useModules();
+
+  if (!ready) return <LoadingSpinner label="Đang tải cấu hình module..." />;
+
+  return (
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        {moduleRoutes(modules).map((route) => {
+          const element = (
+            <AccessGuard access={route.access}>
+              <route.component />
+            </AccessGuard>
+          );
+          return route.path === ''
+            ? <Route key={`${route.moduleId}:index`} index element={element} />
+            : <Route key={`${route.moduleId}:${route.path}`} path={route.path} element={element} />;
+        })}
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
+  );
 };
 
 export const App: React.FC = () => {
@@ -76,56 +108,11 @@ export const App: React.FC = () => {
       <AuthProvider>
         <ThemeProvider>
           <ToastProvider>
-            <RouteErrorBoundary>
-              <Routes>
-                <Route path="/" element={<Layout />}>
-                  <Route index element={<HomePage />} />
-                  <Route path="du-lieu" element={<DataCatalogPage />} />
-                  <Route
-                    path="work-queue"
-                    element={<ProtectedRoute><WorkQueuePage /></ProtectedRoute>}
-                  />
-                  <Route
-                    path="approvals"
-                    element={<ProtectedRoute><ManagerApprovalsPage /></ProtectedRoute>}
-                  />
-                  <Route path="bao-cao" element={<ProtectedRoute><ManagerAnalyticsPage /></ProtectedRoute>} />
-                  <Route
-                    path="tickets"
-                    element={
-                      <ProtectedRoute>
-                        <TicketListPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="tickets/new"
-                    element={
-                      <ProtectedRoute>
-                        <CreateTicketPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="tickets/:id"
-                    element={
-                      <ProtectedRoute>
-                        <TicketDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="device-requests"
-                    element={
-                      <ProtectedRoute>
-                        <DeviceRequestPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Route>
-              </Routes>
-            </RouteErrorBoundary>
+            <ModuleProvider>
+              <RouteErrorBoundary>
+                <AppRoutes />
+              </RouteErrorBoundary>
+            </ModuleProvider>
           </ToastProvider>
         </ThemeProvider>
       </AuthProvider>

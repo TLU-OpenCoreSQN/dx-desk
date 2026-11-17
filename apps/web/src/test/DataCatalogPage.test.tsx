@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { DataCatalogPage } from '../pages/DataCatalogPage';
+import { DataCatalogPage } from '../modules/data/pages/DataCatalogPage';
 import { sampleCatalog, sampleCollections, sampleResources } from '../../catalog-fixtures';
 
 afterEach(() => vi.unstubAllGlobals());
