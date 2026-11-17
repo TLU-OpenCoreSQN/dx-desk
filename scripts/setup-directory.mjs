@@ -59,14 +59,14 @@ export function withDepartment(profile) {
   return { ...profile, attributes: [...attributes.filter(attribute => attribute !== current), departmentProfileAttribute] };
 }
 
-async function json(url, options = {}) {
+export async function json(url, options = {}) {
   const response = await fetch(url, { ...options, signal: AbortSignal.timeout(20000) });
   if (!response.ok) throw Object.assign(new Error(`Directory setup HTTP ${response.status}`), { status: response.status });
   const text = await response.text();
   return text ? JSON.parse(text) : null;
 }
 
-async function adminApi(env) {
+export async function adminApi(env) {
   const base = env.KEYCLOAK_PUBLIC_URL;
   const token = await json(base + '/realms/master/protocol/openid-connect/token', { method: 'POST', body: new URLSearchParams({
     client_id: 'admin-cli', grant_type: 'password', username: env.KEYCLOAK_ADMIN, password: env.KEYCLOAK_ADMIN_PASSWORD,

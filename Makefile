@@ -5,7 +5,7 @@
 ROOT    := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 COMPOSE := docker compose --env-file $(ROOT).env -f $(ROOT)infra/compose/docker-compose.yml
 
-.PHONY: help up down reset ps logs config release migrate seed test test-stack n8n-reload
+.PHONY: help up down reset ps logs config release migrate seed import-nhan-vien test test-stack n8n-reload
 
 help:
 	@echo "make up       - dựng Tầng 1 và web/API (cần .env)"
@@ -16,6 +16,7 @@ help:
 	@echo "make release VERSION=x.y.z - tạo gói .tar.gz bằng git archive"
 	@echo "make migrate  - áp dụng migration mới, giữ dữ liệu"
 	@echo "make seed     - sinh dữ liệu demo (dry-run; dùng SEED_ARGS để thêm tham số)"
+	@echo "make import-nhan-vien CSV=tệp.csv - nhập nhân viên vào Keycloak (chạy thử; NV_ARGS=--thuc-hien ... để ghi)"
 	@echo "make test     - build và kiểm thử API/web"
 	@echo "make test-stack - kiểm chứng Keycloak/APISIX/API/PostgREST/n8n thật"
 
@@ -30,6 +31,9 @@ migrate: $(ROOT).env
 
 seed:
 	node "$(ROOT)scripts/dxdesk.mjs" seed $(SEED_ARGS)
+
+import-nhan-vien: $(ROOT).env
+	node "$(ROOT)scripts/dxdesk.mjs" import-nhan-vien "$(CSV)" $(NV_ARGS)
 
 test:
 	npm --prefix $(ROOT)apps/api ci

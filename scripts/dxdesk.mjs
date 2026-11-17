@@ -10,12 +10,13 @@ import { renderGateway } from './render-gateway.mjs';
 import { demoSeedIdentities, prepareAutomation, setupIdentity, setupChannelsAndRoster } from './setup-automation.mjs';
 import { seedMain } from './seed-synthetic.mjs';
 import { setupDepartments, setupDeviceClient } from './setup-directory.mjs';
+import { importMain, loadEnv } from './import-nhan-vien.mjs';
 import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled, wikiIndexEnabled } from './setup-wiki.mjs';
 import { configureMetabaseReader, metabaseEnabled, prepareMetabase, setupMetabase } from './setup-metabase.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
-const help = 'node scripts/dxdesk.mjs <up|down|ps|config|migrate|verify|seed|n8n-reload|credentials-import>';
+const help = 'node scripts/dxdesk.mjs <up|down|ps|config|migrate|verify|seed|import-nhan-vien|n8n-reload|credentials-import>';
 if (action === 'help') { console.log(help); process.exit(0); }
 if (action === 'seed') {
   try {
@@ -23,6 +24,17 @@ if (action === 'seed') {
       const local = parseEnv(await readFile(resolve(root, '.env'), 'utf8'));
       return demoSeedIdentities(local);
     });
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+  process.exit(process.exitCode ?? 0);
+}
+// W6-15: nhập nhân viên từ CSV; mặc định chạy thử, xem `import-nhan-vien --help`.
+if (action === 'import-nhan-vien') {
+  try {
+    const args = process.argv.slice(3);
+    process.exitCode = await importMain(args, args.includes('--offline') || args.includes('--help') ? {} : await loadEnv(root));
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
