@@ -90,6 +90,13 @@
   --color-edge: #383838;
   --color-edge-subtle: #2e2e2e;
   --color-edge-strong: #525252;
+
+  /* Tint, viền và chữ nhấn phải tối theo nền; tính từ màu chủ đạo đang chọn.
+     !important để thắng cả màu tint tùy chỉnh được gán inline. */
+  --color-primary-tint: color-mix(in srgb, var(--color-primary) 24%, #1e1e1e) !important;
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary) 12%, #1e1e1e);
+  --color-primary-border: color-mix(in srgb, var(--color-primary) 50%, #1e1e1e);
+  --color-primary-text: color-mix(in srgb, var(--color-primary), white 55%);
 }
 
 /* UI Presets */

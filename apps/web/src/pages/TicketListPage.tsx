@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -32,6 +32,20 @@ const MOBILE_GRID = 'grid-cols-[auto_minmax(0,1fr)_auto]';
 
 const FOCUS_RING =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]';
+
+const VALID_PRIORITIES = ['all', 'critical', 'high', 'normal', 'low'];
+const VALID_STATUSES = [
+  'all',
+  'new',
+  'triaged',
+  'assigned',
+  'cancelled',
+  'in_progress',
+  'waiting_user',
+  'pending_approval',
+  'resolved',
+  'closed',
+];
 
 interface DateParts {
   date: string;
@@ -68,17 +82,55 @@ const shortTicketId = (id: string) => id.slice(0, 8);
 
 export const TicketListPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { roles } = useAuth();
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<Record<string, Category>>({});
-  const [offset, setOffset] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<unknown>(null);
 
-  // Search & filter states (client-side, current page only)
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterPriority, setFilterPriority] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  // URL query parameter synchronization
+  const qParam = searchParams.get('q') ?? '';
+  const rawPriority = searchParams.get('priority') ?? 'all';
+  const filterPriority = VALID_PRIORITIES.includes(rawPriority) ? rawPriority : 'all';
+  const rawStatus = searchParams.get('status') ?? 'all';
+  const filterStatus = VALID_STATUSES.includes(rawStatus) ? rawStatus : 'all';
+  const pageParam = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
+  const offset = (pageParam - 1) * PAGE_SIZE;
+
+  // Local state for immediate zero-latency search input responsiveness
+  const [searchQuery, setSearchQuery] = useState<string>(qParam);
+
+  useEffect(() => {
+    setSearchQuery(qParam);
+  }, [qParam]);
+
+  const updateSearchParams = useCallback(
+    (updates: Record<string, string | number | undefined | null>, replace = true) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, value] of Object.entries(updates)) {
+            if (
+              value === undefined ||
+              value === null ||
+              value === '' ||
+              value === 'all' ||
+              (key === 'page' && Number(value) <= 1)
+            ) {
+              next.delete(key);
+            } else {
+              next.set(key, String(value));
+            }
+          }
+          return next;
+        },
+        { replace }
+      );
+    },
+    [setSearchParams]
+  );
 
   const isStaff = roles.includes('Agent') || roles.includes('Manager');
 
@@ -139,25 +191,38 @@ export const TicketListPage: React.FC = () => {
 
   const resetFilters = () => {
     setSearchQuery('');
-    setFilterPriority('all');
-    setFilterStatus('all');
+    // Chỉ xoá bộ lọc; giữ nguyên trang đang xem.
+    updateSearchParams({ q: undefined, priority: undefined, status: undefined });
   };
 
-  const pageNumber = Math.floor(offset / PAGE_SIZE) + 1;
   const isFirstPage = offset === 0;
   const isLastPage = tickets.length < PAGE_SIZE;
   const canPaginate = tickets.length > 0 || offset > 0;
 
   const handlePrevPage = () => {
     if (!isLoading && offset >= PAGE_SIZE) {
-      setOffset(offset - PAGE_SIZE);
+      const prevPage = pageParam - 1;
+      updateSearchParams({ page: prevPage > 1 ? prevPage : undefined }, false);
     }
   };
 
   const handleNextPage = () => {
     if (!isLoading && tickets.length === PAGE_SIZE) {
-      setOffset(offset + PAGE_SIZE);
+      updateSearchParams({ page: pageParam + 1 }, false);
     }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    updateSearchParams({ q: value || undefined });
+  };
+
+  const handlePriorityChange = (value: string) => {
+    updateSearchParams({ priority: value === 'all' ? undefined : value });
+  };
+
+  const handleStatusChange = (value: string) => {
+    updateSearchParams({ status: value === 'all' ? undefined : value });
   };
 
   const resultSummary = hasActiveFilters
@@ -232,13 +297,13 @@ export const TicketListPage: React.FC = () => {
                 aria-label="Tìm trong trang hiện tại"
                 placeholder="Tìm theo mã hoặc tiêu đề trong trang này..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] py-2 pl-9 pr-10 text-xs text-[var(--color-content)] placeholder:text-[var(--color-content-subtle)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px]"
               />
               {searchQuery !== '' && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => handleSearchChange('')}
                   aria-label="Xóa từ khóa tìm kiếm"
                   className={`absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[4px] text-[var(--color-content-subtle)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] ${FOCUS_RING}`}
                 >
@@ -260,7 +325,7 @@ export const TicketListPage: React.FC = () => {
                 id="ticket-filter-priority"
                 aria-label="Mức ưu tiên"
                 value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
+                onChange={(e) => handlePriorityChange(e.target.value)}
                 className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] px-3 py-1.5 text-xs text-[var(--color-content)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[168px]"
               >
                 <option value="all">Tất cả ưu tiên</option>
@@ -282,7 +347,7 @@ export const TicketListPage: React.FC = () => {
                 id="ticket-filter-status"
                 aria-label="Trạng thái"
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => handleStatusChange(e.target.value)}
                 className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] px-3 py-1.5 text-xs text-[var(--color-content)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[176px]"
               >
                 <option value="all">Tất cả trạng thái</option>
@@ -369,7 +434,7 @@ export const TicketListPage: React.FC = () => {
           {/* Sticky column header (desktop only, sticks below the app header) */}
           <div
             aria-hidden="true"
-            className={`dx-ticket-list-header sticky top-14 z-20 hidden border-b border-[var(--color-edge-subtle)] bg-[color-mix(in_srgb,var(--color-primary-tint)_35%,#f7f6f3)] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)] lg:grid lg:gap-x-4 ${TABLE_GRID}`}
+            className={`dx-ticket-list-header sticky top-14 z-20 hidden border-b border-[var(--color-edge-subtle)] bg-[color-mix(in_srgb,var(--color-primary-tint)_35%,var(--color-surface-warm))] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)] lg:grid lg:gap-x-4 ${TABLE_GRID}`}
           >
             <span>Mã phiếu</span>
             <span>Tiêu đề</span>
@@ -493,11 +558,11 @@ export const TicketListPage: React.FC = () => {
                   {offset + 1}–{offset + tickets.length}
                 </span>{' '}
                 phiếu · Trang{' '}
-                <span className="font-semibold text-[var(--color-content)]">{pageNumber}</span>
+                <span className="font-semibold text-[var(--color-content)]">{pageParam}</span>
               </>
             ) : (
               <>
-                Trang <span className="font-semibold text-[var(--color-content)]">{pageNumber}</span> · Không
+                Trang <span className="font-semibold text-[var(--color-content)]">{pageParam}</span> · Không
                 có phiếu nào
               </>
             )}
