@@ -48,6 +48,7 @@ export async function streamAssistant(question: string, signal: AbortSignal, rec
   }
 }
 
-export function decideAssistantProposal(id: string, approve: boolean, signal: AbortSignal) {
-  return requestResponse('/assistant/confirm', { method: 'POST', body: JSON.stringify({ id, approve }), signal });
+export async function decideAssistantProposal(id: string, approve: boolean, signal: AbortSignal) {
+  const response = await requestResponse('/assistant/confirm', { method: 'POST', body: JSON.stringify({ id, approve }), signal });
+  return await response.json() as { status: 'applied' | 'cancelled'; result?: { id: string; ticket_id: string | null } };
 }

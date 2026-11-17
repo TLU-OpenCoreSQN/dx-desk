@@ -5,7 +5,7 @@ import { decideAssistantProposal, streamAssistant, type AssistantEvent, type Pro
 
 interface Answer {
   id: number; question: string; text: string; steps: string[]; sources: WikiSource[];
-  proposal?: Proposal; status?: string; error?: string;
+  proposal?: Proposal; status?: string; error?: string; ticketId?: string;
 }
 const fieldLabels: Record<string, string> = { category: 'Danh mục', title: 'Tiêu đề', description: 'Nội dung' };
 const button = 'min-h-10 rounded border border-edge px-3 py-1.5 text-sm font-semibold disabled:opacity-50';
@@ -64,8 +64,11 @@ export function AssistantPage() {
     controller.current = request;
     setBusy(true);
     try {
-      await decideAssistantProposal(answer.proposal.id, approve, request.signal);
-      update(answer.id, item => ({ ...item, proposal: undefined, status: approve ? 'Đã thực hiện.' : 'Đã hủy đề xuất.' }));
+      const decision = await decideAssistantProposal(answer.proposal.id, approve, request.signal);
+      const result = decision.result;
+      update(answer.id, item => ({ ...item, proposal: undefined, ticketId: result?.ticket_id ?? undefined,
+        status: decision.status === 'cancelled' ? 'Đã hủy đề xuất.' : result?.ticket_id ? 'Đã tạo phiếu.' :
+          result ? `Đã tạo công việc ${result.id}.` : 'Đã thực hiện.' }));
     } catch (error) {
       if (!request.signal.aborted) update(answer.id, item => ({ ...item, error: (error as Error).message, proposal: undefined }));
     } finally {
@@ -108,6 +111,7 @@ export function AssistantPage() {
             </div>
           </section>}
           {answer.status && <p role="status">{answer.status}</p>}
+          {answer.ticketId && <a className="text-primary underline" href={`/tickets/${encodeURIComponent(answer.ticketId)}`}>Xem phiếu vừa tạo</a>}
           {answer.error && <p role="alert" className="text-danger">{answer.error}</p>}
         </li>)}
       </ol>

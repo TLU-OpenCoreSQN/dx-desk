@@ -19,7 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { assistantManifest } from '../../modules/desk/assistantManifest';
+import { assistantManifest } from '../../modules/desk/manifest';
 
 interface SidebarProps {
   isOpen: boolean;

@@ -4,6 +4,7 @@ import { MessagesSquare } from 'lucide-react';
 import type { UserRole } from '../../types/api';
 
 export const assistantManifest = {
+  module: 'desk',
   to: '/tro-ly',
   label: 'Trợ lý AI',
   icon: MessagesSquare,

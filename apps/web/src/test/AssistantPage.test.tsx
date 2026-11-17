@@ -21,7 +21,7 @@ it.each([[true, 'Xác nhận', 'Đã thực hiện.'], [false, 'Hủy đề xu�
       emit({ type: 'proposal', id: 'proposal-1', label: 'Tạo phiếu', fields: { title: 'VPN bị lỗi' } });
       emit({ type: 'done' });
     });
-    vi.mocked(decideAssistantProposal).mockResolvedValue(new Response(null, { status: 200 }));
+    vi.mocked(decideAssistantProposal).mockResolvedValue({ status: approve ? 'applied' : 'cancelled' });
     render(<AssistantPage />);
     fireEvent.change(screen.getByLabelText('Câu hỏi hỗ trợ IT'), { target: { value: 'VPN không kết nối' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gửi câu hỏi' }));

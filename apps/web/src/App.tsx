@@ -10,7 +10,7 @@ import { Layout } from './components/layout/Layout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { LogIn, ShieldAlert } from 'lucide-react';
-import { assistantManifest } from './modules/desk/assistantManifest';
+import { assistantManifest } from './modules/desk/manifest';
 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const DataCatalogPage = lazy(() => import('./pages/DataCatalogPage').then((m) => ({ default: m.DataCatalogPage })));
