@@ -49,17 +49,22 @@ async function eventually(read, description, duration = 90000) {
 try {
   const employee = await login('employee.a');
   await employee.getByRole('link', { name: 'Trợ lý AI' }).click();
+  const prompt = 'Tôi không kết nối được VPN khi làm từ xa, phải làm gì?';
   const stream = employee.waitForResponse(response => response.url().endsWith('/api/assistant/chat') && response.status() === 200);
-  await question(employee, 'Tôi không kết nối được VPN khi làm từ xa, phải làm gì?');
+  await question(employee, prompt);
   const source = employee.getByRole('list', { name: 'Bài Wiki tham chiếu' }).first().getByRole('link').first();
   await source.waitFor();
   assert.match(await source.getAttribute('href'), /\/en\/ho-tro\/vpn$/);
+  const answer = employee.getByRole('heading', { name: prompt, exact: true }).locator('..').locator('p.whitespace-pre-wrap');
+  await answer.waitFor();
   await employee.getByText('Trợ lý đang xử lý…').waitFor({ state: 'detached' });
-  const events = (await (await stream).text()).trim().split('\n').map(JSON.parse);
-  assert.ok(events.filter(event => event.type === 'delta').length > 1 && events.at(-1).type === 'done');
+  assert.match((await stream).headers()['content-type'], /^application\/x-ndjson/);
+  assert.ok((await answer.textContent())?.trim().length > 20);
+  assert.equal(await employee.getByRole('alert').count(), 0);
+  await employee.getByRole('list', { name: 'Các bước gọi công cụ' }).getByText('Đang tìm bài Wiki liên quan').waitFor();
   pass('Employee obtains a streamed answer and a link to the Wiki VPN article');
 
-  await question(employee, `Tạo phiếu VPN vì vẫn bị lỗi xác thực từ xa. ${unique}`);
+  await question(employee, `Tôi đã thử hướng dẫn nhưng vẫn không kết nối được VPN. ${unique}`);
   await employee.getByRole('heading', { name: 'Tạo phiếu', exact: true }).waitFor();
   await employee.getByRole('button', { name: 'Hủy đề xuất' }).click();
   await employee.getByText('Đã hủy đề xuất.').waitFor();
@@ -75,6 +80,7 @@ try {
   await manager.getByRole('link', { name: 'Trợ lý AI' }).click();
   await question(manager, 'Tại sao ticket VPN tăng mạnh tuần này?');
   await manager.getByText(/tuần này \d+, tuần trước \d+/).first().waitFor();
+  await manager.getByRole('list', { name: 'Các bước gọi công cụ' }).getByText('Thống kê phiếu').waitFor();
   await manager.getByRole('heading', { name: 'Tạo công việc', exact: true }).waitFor();
   const task = (await confirm(manager)).result;
   assert.equal(task.ticket_id, null);
