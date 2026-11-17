@@ -19,6 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { assistantManifest } from '../../modules/desk/assistantManifest';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -87,6 +88,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       ? [
           { to: '/tickets', label: 'Danh sách phiếu', icon: Ticket },
           { to: '/tickets/new', label: 'Tạo phiếu hỗ trợ', icon: PlusCircle },
+          ...(roles.some(role => assistantManifest.roles.includes(role)) ? [assistantManifest] : []),
           { to: '/device-requests', label: 'Yêu cầu cấp thiết bị', icon: Laptop },
           ...(roles.includes('Agent') || roles.includes('Manager') ? [
             { to: '/work-queue', label: 'Bảng việc kỹ thuật viên', icon: ClipboardList },
