@@ -6,6 +6,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { knowledgePaths } from '../apps/assistant/knowledge.mjs';
 
 export const WIKI_STRATEGY_KEY = 'keycloak';
 export const WIKI_CLIENT_ID = 'wikijs';
@@ -20,6 +21,40 @@ const ATTRIBUTION = '\n\n---\n\n*Nội dung theo giấy phép [CC BY 4.0](https:
 export function wikiEnabled(env) {
   return String(env.COMPOSE_PROFILES ?? '').split(',').map(value => value.trim())
     .some(profile => profile === 'full' || profile === 'demo-light');
+}
+
+export function wikiIndexEnabled(env) {
+  return String(env.COMPOSE_PROFILES ?? '').split(',').some(profile => profile.trim() === 'full');
+}
+
+async function setupWikiIndex(root, env, gql, ensure, groupList, updateGroup) {
+  const name = 'DX-Desk Wiki Index';
+  const permissions = ['read:pages', 'read:source', 'manage:pages'];
+  let group = (await groupList()).find(item => item.name === name);
+  if (!group) {
+    group = ensure((await gql('mutation($name:String!){groups{create(name:$name){responseResult{succeeded message} group{id}}}}',
+      { name })).groups.create, 'Tạo nhóm đồng bộ Wiki').group;
+  }
+  await updateGroup(group.id, name, permissions, knowledgePaths.map((path, index) => ({
+    id: 'dxdesk-index-' + index, path, deny: false, match: 'EXACT', roles: permissions, locales: ['en'],
+  })));
+  const { authentication } = await gql('{authentication{apiState apiKeys{id name expiration isRevoked keyShort}}}');
+  if (!authentication.apiState) {
+    ensure((await gql('mutation{authentication{setApiState(enabled:true){responseResult{succeeded message}}}}'))
+      .authentication.setApiState, 'Bật Wiki API');
+  }
+  const previous = authentication.apiKeys.find(key => key.name === name && !key.isRevoked &&
+    Date.parse(key.expiration) > Date.now() + 86400000 && key.keyShort === '...' + env.WIKI_INDEX_TOKEN?.slice(-20));
+  if (previous) return;
+  const result = ensure((await gql(`mutation($name:String!,$group:Int!){authentication{
+    createApiKey(name:$name,expiration:"90d",fullAccess:false,group:$group){responseResult{succeeded message} key}}}`,
+  { name, group: group.id })).authentication.createApiKey, 'Tạo khóa đồng bộ Wiki');
+  if (!result.key) throw new Error('Wiki.js did not return the index token');
+  const envFile = resolve(root, '.env');
+  const text = await readFile(envFile, 'utf8');
+  const line = 'WIKI_INDEX_TOKEN=' + result.key;
+  await writeFile(envFile, /^WIKI_INDEX_TOKEN=.*$/m.test(text) ? text.replace(/^WIKI_INDEX_TOKEN=.*$/m, line) : text.trimEnd() + '\n' + line + '\n');
+  env.WIKI_INDEX_TOKEN = result.key;
 }
 
 /** Bổ sung mặc định và sinh secret còn trống vào .env (đã nằm trong .gitignore). */
@@ -221,5 +256,6 @@ export async function setupWiki(root, env) {
   }
   // An old page can contain operator edits or be linked from outside DX-Desk.
   // The database and home page reference the replacement without deleting that content.
+  if (wikiIndexEnabled(env)) await setupWikiIndex(root, env, gql, ensure, groupList, updateGroup);
   console.log(`Wiki.js: SSO Keycloak, nhóm theo vai trò; bài mới ${created}, cập nhật ${updated}.`);
 }

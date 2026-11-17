@@ -286,3 +286,20 @@ Không tự xóa volume Keycloak để cập nhật cấu hình.
 `node scripts/dxdesk.mjs down` dừng và giữ volume.
 Mọi cổng được bind localhost cho phát triển. Triển khai Internet, TLS, OTP bắt buộc
 và hardening gateway là các mốc sau; không dùng cấu hình dev để công bố trực tiếp.
+### Chỉ mục ngữ nghĩa Wiki (W6-01)
+
+Hồ sơ `full` chạy Qdrant và tiến trình `wiki-index` trong mạng Compose. Chọn
+`COMPOSE_PROFILES=full` trong `.env`, chạy `make up` rồi tải mô hình nhúng một lần.
+BGE-M3 567M hỗ trợ truy vấn đa ngôn ngữ, gồm truy vấn tiếng Việt. Trọng số mô hình
+được tải riêng và giữ trong volume Ollama.
+
+```sh
+docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull bge-m3:567m
+docker compose --env-file .env -f infra/compose/docker-compose.yml logs wiki-index
+```
+
+Tiến trình đọc sáu bài hỗ trợ đã xuất bản qua GraphQL Wiki.js, kiểm tra thay đổi mỗi
+60 giây và thay thế đoạn cũ trong Qdrant. Bài bị ẩn hoặc xóa sẽ mất khỏi kết quả tìm kiếm.
+`make up` cấp khóa Wiki cho nhóm giới hạn ở sáu đường dẫn này trong hồ sơ `full`.
+Wiki.js 2.5 yêu cầu quyền quản lý ở cấp trang để API đọc nội dung nguồn.
+Nếu khóa hết hạn, chạy lại `make up`. Qdrant và tiến trình đồng bộ chỉ có địa chỉ nội bộ.
