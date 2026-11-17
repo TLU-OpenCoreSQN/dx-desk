@@ -15,6 +15,7 @@ Kho mã này không chứa, không sửa và không đóng gói lẫn mã nguồ
 | Mattermost Team Edition | 12.0.1 | [Giấy phép binary do Mattermost phát hành và các điều khoản nguồn](https://github.com/mattermost/mattermost/blob/v12.0.1/LICENSE.txt) | Kênh thông báo nhóm hỗ trợ, hồ sơ `full`/`demo-light` (W4-04); Team Edition, không thay bằng Enterprise |
 | Wiki.js | 2.5.315 | [AGPL-3.0](https://github.com/requarks/wiki/blob/v2.5.315/LICENSE) | Tri thức tự phục vụ, hồ sơ `full`/`demo-light` (W5-08); chạy image chính thức không sửa, giao tiếp qua GraphQL |
 | Metabase OSS | v0.64.3 | [AGPL cho binary OSS; Enterprise có giấy phép khác](https://github.com/metabase/metabase/blob/v0.64.3/LICENSE.txt) | Dashboard Manager, hồ sơ `full` (W5-06); tài khoản nội bộ và static embedding |
+| Qdrant | v1.20.1 | [Apache-2.0](https://github.com/qdrant/qdrant/blob/v1.20.1/LICENSE) | Chỉ mục véc-tơ Wiki, hồ sơ `full` (W6-01) |
 
 ## Image PoC, benchmark và build/runtime ứng dụng
 
@@ -24,8 +25,9 @@ Metabase như bảng trên; profile benchmark không tự tải mô hình.
 
 | Image / phiên bản | Metadata giấy phép upstream | Phạm vi |
 |---|---|---|
-| `ollama/ollama:0.12.6` | [MIT](https://github.com/ollama/ollama/blob/v0.12.6/LICENSE) | Công cụ benchmark tùy chọn; mô hình có giấy phép riêng |
-| `node:22.22.0-alpine` | Node.js MIT và notices thành phần đi kèm | Build web và runtime API |
+| `ollama/ollama:0.12.6` | [MIT](https://github.com/ollama/ollama/blob/v0.12.6/LICENSE) | Benchmark và embedding Wiki; mô hình có giấy phép riêng |
+| `bge-m3:567m` | [MIT](https://ollama.com/library/bge-m3:567m) | Mô hình nhúng đa ngôn ngữ tải riêng qua Ollama (W6-01) |
+| `node:22.22.0-alpine` | Node.js MIT và notices thành phần đi kèm | Build web, runtime API và đồng bộ Wiki |
 | `nginx:1.28.0-alpine` | Nginx BSD-2-Clause và notices thành phần đi kèm | Phục vụ static web |
 | `postgres:17.11-alpine` | PostgreSQL License và notices thành phần đi kèm | DB PoC |
 

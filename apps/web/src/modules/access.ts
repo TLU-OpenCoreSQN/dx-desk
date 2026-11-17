@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import type { UserRole } from '../types/api';
+import type { UserProfile, UserRole } from '../types/api';
 import type { ModuleAccess } from './types';
 
 /** Hạng của từng mức truy cập; vai trò cao hơn bao hàm vai trò thấp hơn. */
@@ -10,6 +10,7 @@ const RANK: Record<ModuleAccess, number> = { public: 0, authenticated: 1, Employ
 export interface Viewer {
   isAuthenticated: boolean;
   roles: readonly UserRole[];
+  profile?: UserProfile | null;
 }
 
 /** Người xem có đạt mức truy cập tối thiểu không. Vai trò cao hơn bao hàm vai trò thấp hơn. */

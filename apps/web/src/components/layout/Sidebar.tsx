@@ -14,7 +14,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { isAuthenticated, roles } = useAuth();
+  const { isAuthenticated, profile, roles } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -70,7 +70,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // W6-11: mục menu dựng từ sổ đăng ký module, lọc theo module bật và vai trò Keycloak.
   const { modules } = useModules();
-  const links = navEntries(modules, { isAuthenticated, roles });
+  const links = navEntries(modules, { isAuthenticated, roles, profile });
 
   const renderContent = (isMobile = false) => {
     const isCompact = !isMobile && collapsed;

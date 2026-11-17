@@ -28,6 +28,7 @@ export function retryDelay(attempts: number, jitter = Math.random()): number {
   return Math.min(60, 2 ** Math.min(6, Math.max(0, attempts - 1))) + Math.floor(Math.max(0, Math.min(1, jitter)) * 3);
 }
 export function notificationText(envelope: Envelope): string {
+  if (envelope.event_type === 'assistant.task_created') return `[DX-Desk] Đã tạo công việc điều tra — ${envelope.event_id}`;
   const kinds: Record<string, string> = {
     'ticket.assignment_changed': 'Đã giao nhóm / nhận xử lý',
     'ticket.status_changed': 'Cập nhật trạng thái',
@@ -120,28 +121,8 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       const item = batch[0];
       if (!item) break;
       try {
-        const response = await fetch(required(item.destination === 'device_request' ? 'DEVICE_REQUEST_WEBHOOK_URL' : 'AUTOMATION_WEBHOOK_URL'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-DXDesk-Webhook-Key': required('AUTOMATION_WEBHOOK_KEY') },
-          body: JSON.stringify(item.envelope), signal: AbortSignal.timeout(10000),
-        });
-        if (!response.ok) {
-          await response.body?.cancel();
-          // n8n can answer 404 between HTTP readiness and webhook activation.
-          // Keep this, timeout and rate-limit responses in the bounded retry path.
-          throw Object.assign(new Error('consumer_http'), { terminal:
-            response.status >= 400 && response.status < 500 && ![404,408,425,429].includes(response.status) });
-        }
-        const ack = await response.json() as Ack;
-        if (!validAck(item, ack)) throw new Error('invalid_durable_ack');
-        if (ack.result === 'unresolved') throw new Error('routing_unresolved');
-        if (item.destination !== 'automation' && ack.result === 'notification') {
-          const key = item.destination === 'device_request'
-            ? await this.db.asAutomation(identity.claims, async client => (await client.query<{ channel_key: string | null }>(
-              'SELECT private.device_notice_channel($1,$2) AS channel_key', [item.event_id, item.lease_token],
-            )).rows[0]?.channel_key)
-            : ack.notification?.team_id ?? ack.team_id ?? 'default';
-          await this.notify(item, key);
-        }
+        if (item.destination === 'assistant_task') await this.notify(item, 'default');
+        else await this.deliverWorkflow(item, identity.claims);
         const completed = await this.db.asAutomation(identity.claims, async client => (await client.query(
           'SELECT private.complete_outbox($1,$2) AS completed', [item.event_id, item.lease_token],
         )).rows[0]?.completed === true);
@@ -154,6 +135,31 @@ export class OutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         )).rows[0]?.deferred === true);
         console.error(deferred ? 'Outbox delivery deferred' : 'Outbox lease no longer owned', { event_id: item.event_id, attempts: item.attempts, terminal });
       }
+    }
+  }
+
+  private async deliverWorkflow(item: Delivery, claims: AutomationClaims) {
+    const response = await fetch(required(item.destination === 'device_request' ? 'DEVICE_REQUEST_WEBHOOK_URL' : 'AUTOMATION_WEBHOOK_URL'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-DXDesk-Webhook-Key': required('AUTOMATION_WEBHOOK_KEY') },
+      body: JSON.stringify(item.envelope), signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      await response.body?.cancel();
+      // n8n can answer 404 between HTTP readiness and webhook activation.
+      // Keep this, timeout and rate-limit responses in the bounded retry path.
+      throw Object.assign(new Error('consumer_http'), { terminal:
+        response.status >= 400 && response.status < 500 && ![404,408,425,429].includes(response.status) });
+    }
+    const ack = await response.json() as Ack;
+    if (!validAck(item, ack)) throw new Error('invalid_durable_ack');
+    if (ack.result === 'unresolved') throw new Error('routing_unresolved');
+    if (item.destination !== 'automation' && ack.result === 'notification') {
+      const key = item.destination === 'device_request'
+        ? await this.db.asAutomation(claims, async client => (await client.query<{ channel_key: string | null }>(
+          'SELECT private.device_notice_channel($1,$2) AS channel_key', [item.event_id, item.lease_token],
+        )).rows[0]?.channel_key)
+        : ack.notification?.team_id ?? ack.team_id ?? 'default';
+      await this.notify(item, key);
     }
   }
 

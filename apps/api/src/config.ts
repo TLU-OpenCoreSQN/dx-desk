@@ -13,3 +13,7 @@ export function authConfig() {
     jwksUrl: required('OIDC_JWKS_URL'),
   };
 }
+
+export function assistantEnabled() {
+  return (process.env.ASSISTANT_PROFILE ?? '').split(',').some(profile => profile.trim() === 'full');
+}

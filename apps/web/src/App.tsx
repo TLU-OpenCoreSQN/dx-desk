@@ -13,12 +13,12 @@ import { LogIn, ShieldAlert } from 'lucide-react';
 import { ModuleProvider, useModules } from './modules/ModuleContext';
 import { moduleRoutes } from './modules/registry';
 import { canAccess } from './modules/access';
-import type { ModuleAccess } from './modules/types';
+import type { ModuleAccess, ModulePage } from './modules/types';
 
 const NotFoundPage = lazy(() => import('./modules/core/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 
-const AccessGuard: React.FC<{ access: ModuleAccess; children: React.ReactNode }> = ({ access, children }) => {
-  const { isAuthenticated, isLoading, login, isKeycloakOffline, roles } = useAuth();
+const AccessGuard: React.FC<{ access: ModuleAccess; when?: ModulePage['when']; children: React.ReactNode }> = ({ access, when, children }) => {
+  const { isAuthenticated, isLoading, login, isKeycloakOffline, roles, profile } = useAuth();
 
   if (access === 'public') return <>{children}</>;
 
@@ -74,6 +74,8 @@ const AccessGuard: React.FC<{ access: ModuleAccess; children: React.ReactNode }>
     );
   }
 
+  if (when && !when(profile)) return <NotFoundPage />;
+
   return <>{children}</>;
 };
 
@@ -88,7 +90,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/" element={<Layout />}>
         {moduleRoutes(modules).map((route) => {
           const element = (
-            <AccessGuard access={route.access}>
+            <AccessGuard access={route.access} when={route.when}>
               <route.component />
             </AccessGuard>
           );

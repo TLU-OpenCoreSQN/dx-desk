@@ -65,6 +65,14 @@ describe('W6-11: quyền theo vai trò', () => {
     ]);
   });
 
+  it('trợ lý AI chỉ hiện khi /api/me bật assistant_enabled', () => {
+    const profile = (assistant_enabled: boolean) => ({ id: 'u-1', username: 'u', roles: ['Employee' as UserRole], assistant_enabled });
+    const viewer = (enabled: boolean) => ({ ...as('Employee'), profile: profile(enabled) });
+    expect(navEntries(enabledModules(null), viewer(false)).map((e) => e.label)).not.toContain('Trợ lý AI');
+    const labels = navEntries(enabledModules(null), viewer(true)).map((e) => e.label);
+    expect(labels.indexOf('Trợ lý AI')).toBe(labels.indexOf('Tạo phiếu hỗ trợ') + 1);
+  });
+
   it('mỗi module có manifest đủ mã, tên, biểu tượng, vai trò và đường dẫn không trùng', () => {
     const paths = MODULES.flatMap((m) => m.pages.map((p) => p.path));
     expect(new Set(paths).size).toBe(paths.length);

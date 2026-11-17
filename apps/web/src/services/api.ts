@@ -40,13 +40,13 @@ export function getAnalyticsEmbed(signal: AbortSignal) {
   return request<{ url: string }>('/analytics/embed', { signal });
 }
 
-async function request<T>(
+export async function requestResponse(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit,
   isPublic = false
-): Promise<T> {
+): Promise<Response> {
   const headers = new Headers(options.headers);
-  headers.set('Accept', 'application/json');
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
 
   if (!isPublic) {
     // Refresh token if within 30 seconds of expiry
@@ -101,6 +101,11 @@ async function request<T>(
     throw new ApiClientError(response.status, defaultMsg);
   }
 
+  return response;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, isPublic = false): Promise<T> {
+  const response = await requestResponse(path, options, isPublic);
   if (response.status === 204) {
     return {} as T;
   }

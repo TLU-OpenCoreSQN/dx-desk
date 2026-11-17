@@ -3,7 +3,7 @@
 
 import type { ComponentType, LazyExoticComponent } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import type { UserRole } from '../types/api';
+import type { UserProfile, UserRole } from '../types/api';
 
 /**
  * Mức truy cập tối thiểu của một module hoặc một mục trong module.
@@ -32,6 +32,9 @@ export interface ModulePage {
   access: ModuleAccess;
   /** Tên trang trên breadcrumb khi trang không có mục menu (mặc định lấy `nav.label`). */
   title?: string;
+  /** Điều kiện bật thêm theo hồ sơ người dùng (ví dụ cờ `assistant_enabled` từ /api/me).
+   *  Không đạt thì trang ẩn khỏi menu và route trả 404. */
+  when?: (profile: UserProfile | null) => boolean;
   /** Có thì hiện trên Sidebar; trang chi tiết thường không có. */
   nav?: ModuleNavItem;
 }

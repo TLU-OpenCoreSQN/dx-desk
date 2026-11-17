@@ -143,6 +143,10 @@ services:
     environment:
       PORT: "3000"
       DATABASE_URL: postgres://api_login:${API_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ASSISTANT_ACTION_KEY: ${ASSISTANT_ACTION_KEY:-}
+      ASSISTANT_PROFILE: ${COMPOSE_PROFILES:-}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-qwen3:4b}
+      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
       OIDC_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
       OIDC_AUDIENCE: ${OIDC_AUDIENCE}
@@ -304,12 +308,62 @@ services:
     profiles: ["benchmark", "full"]
     <<: *restart
     ports:
-      - "127.0.0.1:11434:11434"
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ollama-data:/root/.ollama
     environment:
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_NUM_PARALLEL: "1"
+
+  qdrant:
+    image: qdrant/qdrant:${QDRANT_VERSION:-v1.20.1}
+    profiles: ["full"]
+    <<: *restart
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  wiki-index:
+    image: node:${ASSISTANT_NODE_VERSION:-22.22.0-alpine}
+    profiles: ["full"]
+    <<: *restart
+    depends_on:
+      - qdrant
+      - ollama
+      - wikijs
+    user: node
+    working_dir: /app
+    volumes:
+      - ../../apps/assistant:/app:ro
+    environment:
+      WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
+      WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
+      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-bge-m3:567m}
+      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
+    command: ["node", "index-wiki.mjs"]
+
+  assistant:
+    image: node:${ASSISTANT_NODE_VERSION:-22.22.0-alpine}
+    profiles: ["full"]
+    <<: *restart
+    depends_on:
+      - wiki-index
+    user: node
+    working_dir: /app
+    volumes:
+      - ../../apps/assistant:/app:ro
+    environment:
+      WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
+      WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
+      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-bge-m3:567m}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-qwen3:4b}
+      ASSISTANT_ACTION_KEY: ${ASSISTANT_ACTION_KEY:-}
+      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
+    command: ["node", "start.mjs"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   mattermost-db:
     image: postgres:${POSTGRES_VERSION}
@@ -443,6 +497,7 @@ volumes:
   postgres-data:
   clamav-db:
   ollama-data:
+  qdrant-data:
   seaweedfs-data:
   mattermost-db-data:
   mattermost-data:

@@ -305,3 +305,37 @@ Không tự xóa volume Keycloak để cập nhật cấu hình.
 `node scripts/dxdesk.mjs down` dừng và giữ volume.
 Mọi cổng được bind localhost cho phát triển. Triển khai Internet, TLS, OTP bắt buộc
 và hardening gateway là các mốc sau; không dùng cấu hình dev để công bố trực tiếp.
+### Chỉ mục ngữ nghĩa Wiki (W6-01)
+
+Hồ sơ `full` chạy Qdrant và tiến trình `wiki-index` trong mạng Compose. Chọn
+`COMPOSE_PROFILES=full` trong `.env`, chạy `make up` rồi tải mô hình nhúng một lần.
+BGE-M3 567M hỗ trợ truy vấn đa ngôn ngữ, gồm truy vấn tiếng Việt. Trọng số mô hình
+được tải riêng và giữ trong volume Ollama.
+
+```sh
+docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull bge-m3:567m
+docker compose --env-file .env -f infra/compose/docker-compose.yml logs wiki-index
+```
+
+Tiến trình đọc sáu bài hỗ trợ đã xuất bản qua GraphQL Wiki.js, kiểm tra thay đổi mỗi
+60 giây và thay thế đoạn cũ trong Qdrant. Bài bị ẩn hoặc xóa sẽ mất khỏi kết quả tìm kiếm.
+`make up` cấp khóa Wiki cho nhóm giới hạn ở sáu đường dẫn này trong hồ sơ `full`.
+Wiki.js 2.5 yêu cầu quyền quản lý ở cấp trang để API đọc nội dung nguồn.
+Nếu khóa hết hạn, chạy lại `make up`. Qdrant và tiến trình đồng bộ chỉ có địa chỉ nội bộ.
+
+### Cảnh 4 với trợ lý IT (W6-03, W6-04, W6-09)
+
+Trong hồ sơ `full`, tải model chat sau khi tải model nhúng. Khi chỉ mục Wiki đã
+sẵn sàng, mở **Trợ lý AI** từ menu Desk. Bật Mattermost và outbox demo để kiểm tra
+thông báo task của quản lý.
+
+```sh
+docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull qwen3:4b
+npm ci --prefix tools/testing
+npx --prefix tools/testing playwright install chromium
+node tools/testing/week6-assistant.mjs
+```
+
+Bài nghiệm thu tạo phiếu và task trên stack demo. Employee hỏi về VPN, thử hủy
+và xác nhận phiếu. Manager đối chiếu số phiếu VPN theo hai khoảng thời gian tương
+ứng rồi xác nhận task. Agent mở phiếu mới, sửa đề xuất và kiểm tra lịch sử.

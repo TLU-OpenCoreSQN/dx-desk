@@ -70,7 +70,7 @@ export function navEntries(modules: readonly ModuleManifest[], viewer: Viewer): 
   for (const m of modules) {
     if (!canAccess(m.access, viewer)) continue;
     for (const page of m.pages) {
-      if (page.nav && canAccess(page.access, viewer)) {
+      if (page.nav && canAccess(page.access, viewer) && (page.when?.(viewer.profile ?? null) ?? true)) {
         entries.push({ ...page.nav, moduleId: m.id, to: page.nav.to ?? `/${page.path}`, external: false });
       }
     }
