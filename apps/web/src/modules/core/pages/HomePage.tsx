@@ -112,10 +112,10 @@ export function HomePage() {
     : 'Chưa nhận được phản hồi từ máy chủ. Bạn vẫn có thể thử kiểm tra lại.';
 
   const dotClass = checking
-    ? 'bg-[#8c8a85] ring-4 ring-[#8c8a85]/10'
+    ? 'bg-status-neutral ring-4 ring-status-neutral/20'
     : health
-    ? 'bg-[#448361] ring-4 ring-[#448361]/15'
-    : 'bg-[#cb912f] ring-4 ring-[#cb912f]/15';
+    ? 'bg-status-success ring-4 ring-status-success/20'
+    : 'bg-status-warning ring-4 ring-status-warning/20';
 
   const lastCheckedLabel = lastCheckedAt
     ? lastCheckedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
@@ -206,7 +206,7 @@ export function HomePage() {
                       className="flex items-start gap-2.5 text-xs leading-relaxed text-[var(--color-content)] sm:text-sm"
                     >
                       <CheckCircle2
-                        className="mt-0.5 h-4 w-4 shrink-0 text-[#448361]"
+                        className="mt-0.5 h-4 w-4 shrink-0 text-status-success"
                         aria-hidden="true"
                       />
                       <span>{benefit}</span>
@@ -218,10 +218,10 @@ export function HomePage() {
                   <div
                     id="sso-offline-note"
                     role="status"
-                    className="mt-4 flex items-start gap-2.5 rounded-[6px] border border-[#f5ddb2] bg-[#fbf3db] p-3 text-xs text-[#7c5108]"
+                    className="mt-4 flex items-start gap-2.5 rounded-md border border-status-warning-border bg-status-warning-bg p-3 text-xs text-status-warning"
                   >
                     <AlertTriangle
-                      className="mt-0.5 h-4 w-4 shrink-0 text-[#cb912f]"
+                      className="mt-0.5 h-4 w-4 shrink-0 text-status-warning"
                       aria-hidden="true"
                     />
                     <div className="min-w-0">
@@ -277,7 +277,7 @@ export function HomePage() {
               <div className="flex items-start gap-3">
                 <span className="relative flex h-3 w-3 mt-0.5">
                   {health && !checking && (
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#448361] opacity-60"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-success opacity-60"></span>
                   )}
                   <span
                     aria-hidden="true"
@@ -294,7 +294,7 @@ export function HomePage() {
 
               <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--color-edge-subtle)] pt-3">
                 {health && !checking ? (
-                  <span className="rounded-[4px] border border-[#b8dcce] bg-[#edf3ec] px-2 py-0.5 font-mono text-[11px] font-semibold text-[#2c6246]">
+                  <span className="rounded-sm border border-status-success-border bg-status-success-bg px-2 py-0.5 font-mono text-[11px] font-semibold text-status-success">
                     {health.version}
                   </span>
                 ) : (
@@ -325,7 +325,7 @@ export function HomePage() {
           </div>
         </div>
         <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[6px] bg-[#edf3ec] text-[#448361] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-md bg-status-success-bg text-status-success flex items-center justify-center shrink-0">
             <Ticket className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -334,7 +334,7 @@ export function HomePage() {
           </div>
         </div>
         <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[6px] bg-[#fbf3db] text-[#cb912f] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-md bg-status-warning-bg text-status-warning flex items-center justify-center shrink-0">
             <Laptop className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -343,7 +343,7 @@ export function HomePage() {
           </div>
         </div>
         <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[6px] bg-[#f4eeff] text-[#9065b0] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-md bg-status-pending-bg text-status-pending flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -399,12 +399,12 @@ export function HomePage() {
           </ul>
 
           <div className="mt-5 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-4 text-xs leading-relaxed text-[var(--color-content-muted)] shadow-2xs flex items-center gap-3">
-            <div className="w-8 h-8 rounded-[6px] bg-[#fbe4e4] flex items-center justify-center text-[#d44c47] shrink-0 font-bold">
+            <div className="w-8 h-8 rounded-md bg-status-danger-bg flex items-center justify-center text-status-danger shrink-0 font-bold">
               !
             </div>
             <div>
               Sự cố ảnh hưởng nhiều người? Hãy tạo phiếu với mức ưu tiên{' '}
-              <span className="font-bold text-[#d44c47]">Khẩn cấp</span> để được xử lý trước.
+              <span className="font-bold text-status-danger">Khẩn cấp</span> để được xử lý trước.
             </div>
           </div>
         </section>

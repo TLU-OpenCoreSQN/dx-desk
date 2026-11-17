@@ -120,10 +120,10 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
           <div className="space-y-5">
             {eventGroups.map((group) => (
               <section key={group.key} aria-label={`Sự kiện ngày ${group.label}`}>
-                <h3 className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#8c8a85]">
+                <h3 className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted">
                   <Calendar className="h-3 w-3" aria-hidden="true" />
                   <span>{group.label}</span>
-                  <span className="rounded-[4px] bg-[var(--color-surface-warm)] px-1.5 py-0.5 font-mono text-[10px] normal-case tracking-normal text-[var(--color-content-muted)]">
+                  <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] normal-case tracking-normal text-content-muted">
                     {group.items.length} sự kiện
                   </span>
                 </h3>
@@ -160,15 +160,15 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                               </p>
                               <time
                                 dateTime={evt.created_at}
-                                className="shrink-0 font-mono text-[11px] text-[#8c8a85]"
+                                className="shrink-0 font-mono text-[11px] text-content-subtle"
                               >
                                 {formatTimeOnly(evt.created_at)}
                               </time>
                             </div>
 
-                            <p className="mt-0.5 text-[11px] text-[var(--color-content-muted)]">
+                            <p className="mt-0.5 text-[11px] text-content-muted">
                               Thực hiện bởi{' '}
-                              <span className="break-all font-mono font-semibold text-[var(--color-content)]">
+                              <span className="break-all font-mono font-semibold text-content">
                                 {evt.actor_type === 'system' || evt.actor_type === 'ai'
                                   ? `${evt.actor_type === 'ai' ? 'AI' : 'Hệ thống'}${evt.actor_name ? ` (${evt.actor_name})` : ''}`
                                   : evt.actor_name || evt.actor_id || 'Không có thông tin tác nhân'}
@@ -180,7 +180,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                                 {summary.from && <StatusBadge status={summary.from} />}
                                 {summary.from && (
                                   <ArrowRight
-                                    className="h-3 w-3 shrink-0 text-[#8c8a85]"
+                                    className="h-3 w-3 shrink-0 text-content-subtle"
                                     aria-hidden="true"
                                   />
                                 )}
@@ -189,21 +189,21 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                             )}
 
                             {summary.note && (
-                              <div className="mt-2 rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)]/80 px-3 py-2">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#8c8a85]">
+                              <div className="mt-2 rounded-md border border-edge-subtle bg-surface-muted/80 px-3 py-2">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-content-muted">
                                   Ghi chú
                                 </p>
-                                <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-content)]">
+                                <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-content">
                                   {summary.note}
                                 </p>
                               </div>
                             )}
                             {summary.resolutionNote && (
-                              <div className="mt-2 rounded-[4px] border border-[#b8dcce] bg-[#e8f3ed] px-3 py-2">
-                                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#27553c]">
+                              <div className="mt-2 rounded-md border border-status-success-border bg-status-success-bg px-3 py-2">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-status-success">
                                   Cách giải quyết
                                 </p>
-                                <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-[#27553c]">
+                                <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-status-success">
                                   {summary.resolutionNote}
                                 </p>
                               </div>

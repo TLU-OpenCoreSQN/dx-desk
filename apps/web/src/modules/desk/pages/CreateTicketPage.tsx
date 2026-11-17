@@ -406,7 +406,7 @@ export const CreateTicketPage: React.FC = () => {
             <button
               type="button"
               onClick={clearDraftAndReset}
-              className="font-semibold text-danger underline hover:text-[#962824]"
+              className="font-semibold text-status-danger underline hover:text-status-danger/80"
             >
               Xóa nháp
             </button>
@@ -423,8 +423,8 @@ export const CreateTicketPage: React.FC = () => {
       )}
 
       {successTicketId ? (
-        <div className="mx-auto max-w-2xl space-y-4 rounded-[8px] border border-[#b8dcce] bg-surface p-6 text-center shadow-xs sm:p-10">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[8px] border border-[#b8dcce] bg-[#edf3ec] text-[#448361] shadow-2xs">
+        <div className="mx-auto max-w-2xl space-y-4 rounded-lg border border-status-success-border bg-surface p-6 text-center shadow-xs sm:p-10">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg border border-status-success-border bg-status-success-bg text-status-success shadow-2xs">
             <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
           </div>
           <h2 className="text-lg font-bold tracking-tight text-[var(--color-content)] sm:text-xl">
@@ -670,7 +670,7 @@ export const CreateTicketPage: React.FC = () => {
                               className={`text-xs font-bold ${
                                 isSelected
                                   ? isCritical
-                                    ? 'text-[#962824]'
+                                    ? 'text-status-danger'
                                     : 'text-primary'
                                   : 'text-content'
                               }`}
@@ -688,7 +688,7 @@ export const CreateTicketPage: React.FC = () => {
                             className={`mt-1 block text-[11px] leading-snug ${
                               isSelected
                                 ? isCritical
-                                  ? 'text-[#962824]'
+                                  ? 'text-status-danger'
                                   : 'text-[var(--color-primary-text)]'
                                 : 'text-content-muted'
                             }`}
@@ -721,7 +721,7 @@ export const CreateTicketPage: React.FC = () => {
                   <div
                     id="missing-fields-summary"
                     aria-live="polite"
-                    className="rounded-[4px] border border-warning-border bg-warning-tint p-3 text-xs text-[#7c5108]"
+                    className="rounded-md border border-status-warning-border bg-status-warning-bg p-3 text-xs text-status-warning"
                   >
                     <p className="flex items-start gap-1.5 font-semibold">
                       <AlertCircle

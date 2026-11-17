@@ -58,14 +58,14 @@ const DEVICE_META: Record<DeviceType, DeviceMeta> = {
   keyboard: {
     label: 'Bàn phím làm việc (Keyboard)',
     icon: Keyboard,
-    tint: 'bg-[#f3ebf8]',
-    iconColor: 'text-[#6d28d9]',
+    tint: 'bg-status-pending-bg',
+    iconColor: 'text-status-pending',
   },
   mouse: {
     label: 'Chuột máy tính (Mouse)',
     icon: Mouse,
-    tint: 'bg-[#e8f3ed]',
-    iconColor: 'text-[#448361]',
+    tint: 'bg-status-success-bg',
+    iconColor: 'text-status-success',
   },
   other: {
     label: 'Thiết bị khác (Other)',
@@ -124,8 +124,8 @@ const RequestListSkeleton: React.FC = () => (
               <div className="h-3 w-40 max-w-[60%] rounded-[2px] bg-[var(--color-surface-muted)]" />
               <div className="h-5 w-20 rounded-[4px] bg-[var(--color-surface-muted)]" />
             </div>
-            <div className="h-2.5 w-full rounded-[2px] bg-[#f6f5f3]" />
-            <div className="h-2.5 w-2/3 rounded-[2px] bg-[#f6f5f3]" />
+            <div className="h-2.5 w-full rounded-xs bg-surface-muted" />
+            <div className="h-2.5 w-2/3 rounded-xs bg-surface-muted" />
             <div className="h-2.5 w-44 max-w-[70%] rounded-[2px] bg-[var(--color-surface-muted)]" />
           </div>
         </div>
@@ -341,7 +341,7 @@ export const DeviceRequestPage: React.FC = () => {
                 {/* Device Type - icon cards */}
                 <fieldset className="min-w-0">
                   <legend className="block text-xs font-bold text-[var(--color-content)] uppercase tracking-wider mb-2">
-                    Loại thiết bị <span className="text-[#d44c47]" aria-hidden="true">*</span>
+                    Loại thiết bị <span className="text-status-danger" aria-hidden="true">*</span>
                   </legend>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {DEVICE_ORDER.map((type) => {
@@ -386,7 +386,7 @@ export const DeviceRequestPage: React.FC = () => {
                     htmlFor="device-quantity"
                     className="block text-xs font-bold text-[var(--color-content)] uppercase tracking-wider mb-2"
                   >
-                    Số lượng <span className="text-[#d44c47]" aria-hidden="true">*</span>
+                    Số lượng <span className="text-status-danger" aria-hidden="true">*</span>
                   </label>
                   <div className="flex items-stretch gap-2">
                     <button
@@ -412,7 +412,7 @@ export const DeviceRequestPage: React.FC = () => {
                       aria-describedby={quantityError ? 'device-quantity-error' : 'device-quantity-hint'}
                       className={`w-16 h-11 text-center text-sm font-semibold rounded-[6px] border bg-[var(--color-surface-sidebar)] text-[var(--color-content)] focus:bg-surface focus:outline-none focus:ring-2 ${
                         quantityError
-                          ? 'border-[#f6c3c1] focus:ring-[#d44c47]'
+                          ? 'border-status-danger focus:ring-status-danger'
                           : 'border-[var(--color-edge-subtle)] focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]'
                       }`}
                     />
@@ -431,7 +431,7 @@ export const DeviceRequestPage: React.FC = () => {
                   </p>
                   <div aria-live="polite">
                     {quantityError && (
-                      <p id="device-quantity-error" className="text-xs text-[#d44c47] mt-1 font-medium">
+                      <p id="device-quantity-error" className="text-xs text-status-danger mt-1 font-medium">
                         {quantityError}
                       </p>
                     )}
@@ -445,13 +445,13 @@ export const DeviceRequestPage: React.FC = () => {
                       htmlFor="device-reason"
                       className="block text-xs font-bold text-[var(--color-content)] uppercase tracking-wider"
                     >
-                      Lý do đề xuất <span className="text-[#d44c47]" aria-hidden="true">*</span>
+                      Lý do đề xuất <span className="text-status-danger" aria-hidden="true">*</span>
                     </label>
                     <span
                       className={`text-[11px] font-mono ${
                         reasonLength > MAX_REASON_LENGTH ||
                         (reasonLength > 0 && reasonLength < MIN_REASON_LENGTH)
-                          ? 'text-[#d44c47] font-semibold'
+                          ? 'text-status-danger font-semibold'
                           : 'text-[var(--color-content-muted)]'
                       }`}
                     >
@@ -470,7 +470,7 @@ export const DeviceRequestPage: React.FC = () => {
                     aria-describedby={reasonError ? 'device-reason-error' : 'device-reason-hint'}
                     className={`w-full text-base sm:text-sm border rounded-[6px] p-3 focus:outline-none focus:ring-2 leading-relaxed bg-[var(--color-surface-sidebar)] focus:bg-surface text-[var(--color-content)] transition-all ${
                       reasonError
-                        ? 'border-[#f6c3c1] focus:ring-[#d44c47]'
+                        ? 'border-status-danger focus:ring-status-danger'
                         : 'border-[var(--color-edge-subtle)] focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)]'
                     }`}
                   />
@@ -479,7 +479,7 @@ export const DeviceRequestPage: React.FC = () => {
                   </p>
                   <div aria-live="polite">
                     {reasonError && (
-                      <p id="device-reason-error" className="text-xs text-[#d44c47] mt-1 font-medium">
+                      <p id="device-reason-error" className="text-xs text-status-danger mt-1 font-medium">
                         {reasonError}
                       </p>
                     )}
@@ -642,10 +642,10 @@ export const DeviceRequestPage: React.FC = () => {
               type="button"
               onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_SIZE))}
               disabled={offset === 0}
-              className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-[4px] border text-xs font-semibold min-h-[44px] transition-colors ${
+              className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-md border text-xs font-semibold min-h-[44px] transition-colors ${
                 offset === 0
-                  ? 'border-[var(--color-edge)] text-[#8c8a85] cursor-not-allowed bg-surface/50'
-                  : 'border-[var(--color-edge)] text-[var(--color-content)] bg-surface hover:bg-[var(--color-surface-muted)]'
+                  ? 'border-edge text-content-subtle cursor-not-allowed bg-surface/50'
+                  : 'border-edge text-content bg-surface hover:bg-surface-muted'
               }`}
             >
               <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
@@ -656,10 +656,10 @@ export const DeviceRequestPage: React.FC = () => {
               type="button"
               onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
               disabled={requests.length < PAGE_SIZE}
-              className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-[4px] border text-xs font-semibold min-h-[44px] transition-colors ${
+              className={`inline-flex items-center justify-center gap-1 px-3 py-2 rounded-md border text-xs font-semibold min-h-[44px] transition-colors ${
                 requests.length < PAGE_SIZE
-                  ? 'border-[var(--color-edge)] text-[#8c8a85] cursor-not-allowed bg-surface/50'
-                  : 'border-[var(--color-edge)] text-[var(--color-content)] bg-surface hover:bg-[var(--color-surface-muted)]'
+                  ? 'border-edge text-content-subtle cursor-not-allowed bg-surface/50'
+                  : 'border-edge text-content bg-surface hover:bg-surface-muted'
               }`}
             >
               <span>Trang sau</span>
