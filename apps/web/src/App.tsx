@@ -24,6 +24,11 @@ const DeviceRequestPage = lazy(() => import('./pages/DeviceRequestPage').then((m
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const AssistantPage = lazy(assistantManifest.route);
 
+function AssistantRoute() {
+  const { profile } = useAuth();
+  return assistantManifest.enabled(profile) ? <AssistantPage /> : <NotFoundPage />;
+}
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, login, isKeycloakOffline } = useAuth();
 
@@ -92,7 +97,7 @@ export const App: React.FC = () => {
                     element={<ProtectedRoute><ManagerApprovalsPage /></ProtectedRoute>}
                   />
                   <Route path="bao-cao" element={<ProtectedRoute><ManagerAnalyticsPage /></ProtectedRoute>} />
-                  <Route path={assistantManifest.to} element={<ProtectedRoute><AssistantPage /></ProtectedRoute>} />
+                  <Route path={assistantManifest.to} element={<ProtectedRoute><AssistantRoute /></ProtectedRoute>} />
                   <Route
                     path="tickets"
                     element={

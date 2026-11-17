@@ -206,6 +206,7 @@ paths:
                 properties:
                   id: { type: string, format: uuid }
                   username: { type: string }
+                  assistant_enabled: { type: boolean, description: Tính năng trợ lý AI được bật trong hồ sơ full }
                   roles:
                     type: array
                     items: { type: string, enum: [ Employee, Agent, Manager ] }

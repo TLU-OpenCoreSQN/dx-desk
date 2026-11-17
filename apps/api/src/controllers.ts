@@ -10,6 +10,7 @@ import type { PoolClient } from 'pg';
 import { AuthRequest, JwtGuard, type UserClaims } from './auth';
 import { Database } from './database';
 import { scanWithClamd } from './clamd';
+import { assistantEnabled } from './config';
 import { deleteObject, putObject } from './seaweedfs';
 import {
   ALLOWED_CONTENT_TYPES, CreateDeviceRequest, CreateTicket, ListQuery,
@@ -123,6 +124,7 @@ export class DeskController {
     return {
       id: request.claims.sub, username: request.claims.preferred_username ?? '',
       roles: request.claims.realm_access.roles.filter(r => ['Employee', 'Agent', 'Manager'].includes(r)),
+      assistant_enabled: assistantEnabled(),
     };
   }
   @Get('categories')

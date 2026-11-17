@@ -22,7 +22,7 @@ import {
 export const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { roles } = useAuth();
+  const { profile, roles } = useAuth();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [events, setEvents] = useState<TicketEvent[]>([]);
@@ -146,7 +146,7 @@ export const TicketDetailPage: React.FC = () => {
         onRefresh={() => void loadTicketData(true)}
         onBack={() => navigate('/tickets')}
       />
-      {roles.some(role => role === 'Agent' || role === 'Manager') && (
+      {profile?.assistant_enabled && roles.some(role => role === 'Agent' || role === 'Manager') && (
         <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} categories={categories} refresh={() => loadTicketData(true)} />
       )}
 

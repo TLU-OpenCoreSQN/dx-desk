@@ -4,6 +4,7 @@ import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpCod
   Param, ParseUUIDPipe, Post, Req, Res, ServiceUnavailableException, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthRequest, JwtGuard } from './auth';
+import { assistantEnabled } from './config';
 import { Database } from './database';
 import { checkRequirementFields } from './rules';
 
@@ -60,7 +61,7 @@ export class TicketAiSuggestionController {
     @Res({ passthrough: true }) response: Response) {
     staff(request);
     response.setHeader('Cache-Control', 'no-store');
-    if (!(process.env.ASSISTANT_PROFILE ?? '').split(',').some(value => value.trim() === 'full')) {
+    if (!assistantEnabled()) {
       response.status(204);
       return;
     }
