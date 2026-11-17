@@ -14,10 +14,10 @@ export const Layout: React.FC = () => {
   const { isKeycloakOffline } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[var(--color-surface-sidebar)] text-[var(--color-content)] flex flex-col font-sans selection:bg-[var(--color-primary-tint)] selection:text-[var(--color-primary-text)]">
+    <div className="min-h-screen bg-background text-content flex flex-col font-sans selection:bg-primary-tint selection:text-primary-text">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-[6px] focus:bg-[var(--color-primary)] focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg"
       >
         Bỏ qua điều hướng, tới nội dung chính
       </a>
@@ -29,13 +29,13 @@ export const Layout: React.FC = () => {
       {isKeycloakOffline && (
         <div
           role="alert"
-          className="bg-[#fbf3db] border-b border-[#f5ddb2] text-[#7c5108] px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-2 flex-wrap shadow-2xs"
+          className="bg-status-warning-bg border-b border-status-warning-border text-status-warning px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-2 flex-wrap shadow-2xs"
         >
-          <AlertTriangle className="w-4 h-4 text-[#cb912f] shrink-0" aria-hidden="true" />
+          <AlertTriangle className="w-4 h-4 text-status-warning shrink-0" aria-hidden="true" />
           <span>Dịch vụ đăng nhập hiện không thể kết nối.</span>
           <button
             type="button"
-            className="inline-flex items-center gap-1 font-semibold underline hover:text-[var(--color-content)] transition-colors ml-1 focus:outline-none focus:ring-2 focus:ring-[#cb912f] rounded-[4px] px-1"
+            className="inline-flex items-center gap-1 font-semibold underline hover:text-content transition-colors ml-1 focus:outline-none focus:ring-2 focus:ring-status-warning rounded-sm px-1"
             onClick={() => window.location.reload()}
           >
             <RefreshCw className="w-3 h-3" />

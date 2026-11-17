@@ -60,7 +60,7 @@ export const KnowledgeSuggestions: React.FC<{ categoryId: string }> = ({ categor
         Các bài hướng dẫn dưới đây thường giải quyết được sự cố thuộc danh mục này.
       </p>
       {recordedFor ? (
-        <p role="status" className="mt-3 flex items-start gap-1.5 text-xs font-semibold text-[#448361]">
+        <p role="status" className="mt-3 flex items-start gap-1.5 text-xs font-semibold text-status-success">
           <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           Đã ghi nhận bạn tự xử lý được. Không cần gửi phiếu — cảm ơn bạn!
         </p>
