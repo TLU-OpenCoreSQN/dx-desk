@@ -47,6 +47,7 @@ function eventSummary(evt: TicketEvent): {
     routing_unresolved: 'Chưa xác định được nhóm xử lý',
     sla_warning: 'SLA đã sử dụng 80%',
     sla_breached: 'Đã vi phạm SLA',
+    ai_suggestion_applied: 'Đã xác nhận đề xuất AI',
   };
   let heading = headings[evt.event_type] || evt.event_type;
   if (evt.event_type === 'created') heading = 'Đã tiếp nhận phiếu';
@@ -168,8 +169,8 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                             <p className="mt-0.5 text-[11px] text-[var(--color-content-muted)]">
                               Thực hiện bởi{' '}
                               <span className="break-all font-mono font-semibold text-[var(--color-content)]">
-                                {evt.actor_type === 'system'
-                                  ? `Hệ thống${evt.actor_name ? ` (${evt.actor_name})` : ''}`
+                                {evt.actor_type === 'system' || evt.actor_type === 'ai'
+                                  ? `${evt.actor_type === 'ai' ? 'AI' : 'Hệ thống'}${evt.actor_name ? ` (${evt.actor_name})` : ''}`
                                   : evt.actor_name || evt.actor_id || 'Không có thông tin tác nhân'}
                               </span>
                             </p>
