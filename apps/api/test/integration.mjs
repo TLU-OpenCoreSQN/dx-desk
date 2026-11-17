@@ -65,7 +65,7 @@ async function call(base, path, key = 'a', body, customToken) {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(10000),
   });
-  return { status: response.status, body: await response.json() };
+  return { status: response.status, body: response.status === 204 ? null : await response.json() };
 }
 async function patch(base, path, key, body, headers = {}) {
   const response = await fetch(base + path, {
