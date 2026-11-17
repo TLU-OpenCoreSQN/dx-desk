@@ -3,7 +3,7 @@
 Hệ thống tiếp nhận và tự động xử lý yêu cầu IT nội bộ, xây dựng trên nền tảng DX-OS Open-Core theo mô hình H-P-D-I.
 Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung Phần mềm nguồn mở (đội TLU-OpenCoreSQN, Trường Đại học Thủy lợi).
 
-> Trạng thái: **v0.1.0**, bàn giao kỹ thuật tuần 4. Có auto-route VPN,
+> Trạng thái: **v0.5.0** (mốc M4): thêm Wiki.js, Metabase, ứng dụng 2 "Xin cấp thiết bị", biên bản PDF, JSON-LD/DCAT; nền tảng từ v0.1.0 có auto-route VPN,
 > outbox/retry, kênh Mattermost, bảng việc Agent và queue phê duyệt Manager,
 > cùng nền tảng/RLS, OTP và tệp quét virus/URL ký của tuần 3.
 > Xem [CHANGELOG](CHANGELOG.md), [hợp đồng API](docs/api/contract.md), các lệnh kiểm thử bên dưới và CI đúng SHA.

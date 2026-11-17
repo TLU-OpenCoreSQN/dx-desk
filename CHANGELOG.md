@@ -4,6 +4,8 @@
 
 ## [Chưa phát hành]
 
+## [0.5.0] - 2026-11-17
+
 ### Thêm
 - W5-08: Wiki.js 2.5.315 trong hồ sơ `full`/`demo-light`, đăng nhập bằng Keycloak (client `wikijs`, OIDC, nhóm theo vai trò), cấu hình tự động bằng `scripts/setup-wiki.mjs`; 6 bài tri thức CC BY 4.0 và trang chủ mục lục (`docs/wiki/home.md`, tránh màn "Welcome to your wiki" khi vào `/`) trong `docs/wiki/`.
 - W5-08: migration 012 — bài tri thức, ánh xạ danh mục → bài, lượt "Đã tự xử lý được" (RLS chỉ chủ sở hữu đọc) và view `reporting.self_service_weekly` cho Metabase; endpoint `GET /api/categories/:id/articles`, `POST /api/self-service`; biểu mẫu tạo phiếu hiện bài gợi ý theo danh mục.
@@ -80,5 +82,6 @@
 - `scripts/check-apisix.sh` và job CI `kiểm tra apisix.yaml`: nạp `apisix.yaml` bằng image APISIX, báo lỗi nếu thiếu `#END`, sai cú pháp, sai schema route hoặc route không được nạp.
 - ADR 0001 (APISIX standalone).
 
-[Chưa phát hành]: https://github.com/TLU-OpenCoreSQN/dx-desk/compare/v0.1.0...HEAD
+[Chưa phát hành]: https://github.com/TLU-OpenCoreSQN/dx-desk/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/TLU-OpenCoreSQN/dx-desk/compare/v0.1.0...v0.5.0
 [0.1.0]: https://github.com/TLU-OpenCoreSQN/dx-desk/releases/tag/v0.1.0

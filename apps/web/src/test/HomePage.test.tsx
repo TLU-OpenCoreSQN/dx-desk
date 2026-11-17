@@ -38,7 +38,7 @@ describe('HomePage Component', () => {
     vi.spyOn(apiService, 'getHealth').mockResolvedValue({
       status: 'ok',
       service: 'dx-desk-api',
-      version: '0.1.0',
+      version: '0.5.0',
     });
 
     renderComponent();
@@ -50,7 +50,7 @@ describe('HomePage Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Dịch vụ đang hoạt động bình thường')).toBeInTheDocument();
-      expect(screen.getByText('0.1.0')).toBeInTheDocument();
+      expect(screen.getByText('0.5.0')).toBeInTheDocument();
     });
   });
 
@@ -72,7 +72,7 @@ describe('HomePage Component', () => {
     vi.spyOn(apiService, 'getHealth').mockResolvedValue({
       status: 'ok',
       service: 'dx-desk-api',
-      version: '0.1.0',
+      version: '0.5.0',
     });
 
     renderComponent();
@@ -86,7 +86,7 @@ describe('HomePage Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Dịch vụ đang hoạt động bình thường')).toBeInTheDocument();
-      expect(screen.getByText('0.1.0')).toBeInTheDocument();
+      expect(screen.getByText('0.5.0')).toBeInTheDocument();
     });
   });
 
@@ -108,7 +108,7 @@ describe('HomePage Component', () => {
     vi.spyOn(apiService, 'getHealth').mockResolvedValue({
       status: 'ok',
       service: 'dx-desk-api',
-      version: '0.1.0',
+      version: '0.5.0',
     });
 
     renderComponent();
@@ -121,7 +121,7 @@ describe('HomePage Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Dịch vụ đang hoạt động bình thường')).toBeInTheDocument();
-      expect(screen.getByText('0.1.0')).toBeInTheDocument();
+      expect(screen.getByText('0.5.0')).toBeInTheDocument();
     });
   });
 });
