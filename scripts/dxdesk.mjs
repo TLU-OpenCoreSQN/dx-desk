@@ -16,7 +16,7 @@ import { validateWorkflowDirectory } from '../infra/n8n/validate-workflows.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
-const help = 'node scripts/dxdesk.mjs <up|down|ps|config|migrate|verify|seed|n8n-reload|credentials-import>';
+const help = 'node scripts/dxdesk.mjs <up|down|ps|config|migrate|verify|seed|import-nhan-vien|n8n-reload|credentials-import>';
 if (action === 'help') { console.log(help + '\nnode scripts/dxdesk.mjs config <validate|apply> [cau-hinh.json]'); process.exit(0); }
 if (action === 'config' && process.argv.length > 3) {
   try {
@@ -39,6 +39,15 @@ if (action === 'seed') {
     process.exitCode = 1;
   }
   process.exit(process.exitCode ?? 0);
+}
+// W6-15: nhập nhân viên từ CSV; mặc định chạy thử, xem `import-nhan-vien --help`.
+if (action === 'import-nhan-vien') {
+  // Tiến trình con tự thoát khi hết việc: gọi process.exit() lúc socket fetch còn đang đóng làm Node trên
+  // Windows dừng bằng lỗi libuv và mất mã thoát.
+  const result = spawnSync(process.execPath, [resolve(root, 'scripts/import-nhan-vien.mjs'), ...process.argv.slice(3)], {
+    stdio: 'inherit', windowsHide: true,
+  });
+  process.exit(result.status ?? 1);
 }
 const allowed = ['up', 'down', 'ps', 'config', 'migrate', 'verify', 'n8n-reload', 'credentials-import'];
 if (!allowed.includes(action)) throw new Error(help);

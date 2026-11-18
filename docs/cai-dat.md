@@ -164,6 +164,76 @@ bất kỳ lỗi quyền/xác nhận đều fail. Triage standalone chỉ gọi 
 không thay nghiệm thu DB/audit/duyệt đề xuất. RAM host không thay RAM container/WSL; full-stack peak,
 OOM, máy 16 GB và QĐ-5 vẫn cần số đo và xác nhận riêng.
 
+### Nhập nhân viên từ CSV (W6-15)
+
+Doanh nghiệp mới cấp tài khoản hàng loạt bằng `scripts/import-nhan-vien.mjs`. Tệp CSV (UTF-8, dấu phẩy) có
+tiêu đề `tai_khoan,ho_ten,email,vai_tro,nhom_xu_ly` và cột tùy chọn `don_vi`:
+
+| Cột | Ý nghĩa |
+| --- | --- |
+| `tai_khoan` | Tên đăng nhập Keycloak: chữ thường không dấu, số, `.`, `-`, `_` |
+| `ho_ten` | Họ tên; từ đầu thành họ (`lastName`), phần còn lại thành tên (`firstName`) |
+| `email` | Không trùng trong tệp và không trùng tài khoản Keycloak khác |
+| `vai_tro` | `Employee`, `Agent` hoặc `Manager` (realm role) |
+| `nhom_xu_ly` | Tên nhóm xử lý (ví dụ `Network Team`) hoặc UUID; nhiều nhóm cách nhau bằng `;`. Chỉ Agent và Manager |
+| `don_vi` | Mã đơn vị (W5-02), ví dụ `phong-ke-toan`; chỉ gán khi tài khoản chưa có đơn vị |
+
+Mẫu: `config/doanh-nghiep/nhan-vien.mau.csv`. Tệp `config/doanh-nghiep/nhan-vien.gia-lap-50.csv` là
+**dữ liệu giả lập** 50 người (40 Employee, 7 Agent, 3 Manager, email `@gia-lap.dxdesk.local`) để thử trên stack demo.
+
+```sh
+# 1. Kiểm tra tệp, không cần stack
+node scripts/dxdesk.mjs import-nhan-vien config/doanh-nghiep/nhan-vien.gia-lap-50.csv --offline
+# 2. Chạy thử: đối chiếu Keycloak và danh sách nhóm, in kế hoạch từng dòng, không ghi gì
+node scripts/dxdesk.mjs import-nhan-vien config/doanh-nghiep/nhan-vien.gia-lap-50.csv
+# 3. Chạy thật; mật khẩu tạm của người mới tạo ghi ra tệp NGOÀI thư mục kho
+node scripts/dxdesk.mjs import-nhan-vien config/doanh-nghiep/nhan-vien.gia-lap-50.csv \
+  --thuc-hien --xuat-mat-khau ../mat-khau-tam.csv
+# Hoặc: make import-nhan-vien CSV=config/doanh-nghiep/nhan-vien.gia-lap-50.csv NV_ARGS="--thuc-hien --xuat-mat-khau ../mk.csv"
+```
+
+Khi chạy thật, mỗi người mới có mật khẩu tạm 20 ký tự sinh ngẫu nhiên (CSPRNG), credential `temporary` và
+required action `UPDATE_PASSWORD`, nên lần đăng nhập đầu phải đổi mật khẩu. Mật khẩu không in ra màn hình;
+`--xuat-mat-khau` bắt buộc khi có người cần tạo, tệp phải nằm ngoài kho, không được tồn tại trước và được
+tạo với quyền 600. Giao riêng cho từng người rồi xóa tệp. Agent/Manager có `nhom_xu_ly` được đưa vào nhóm qua
+`POST /api/system/roster` bằng token dịch vụ `dxdesk-automation` (cần `AUTOMATION_ENABLED=true` và
+`AUTOMATION_CLIENT_SECRET` trong `.env`), lô tối đa 100 người. Roster chỉ thêm hoặc cập nhật, không xóa thành
+viên đang có của nhóm. Thông tin Keycloak lấy từ `.env` (`KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_REALM`,
+`KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`); biến môi trường cùng tên ghi đè `.env`, `DXDESK_GATEWAY_URL`
+đổi địa chỉ cổng (mặc định `http://localhost:$APISIX_PORT`).
+
+Chạy lại an toàn: tài khoản đã có thì không tạo lại, không đổi mật khẩu, chỉ bổ sung vai trò hoặc thành viên
+nhóm còn thiếu. Báo lỗi theo dòng: thiếu cột, tài khoản/email sai dạng, vai trò sai, Employee có nhóm, nhóm
+không tồn tại hoặc ngừng hoạt động, tài khoản hoặc email trùng trong tệp, email đã thuộc tài khoản Keycloak
+khác, tài khoản đã có vai trò DX-Desk khác (script không tự đổi vai trò, sửa tay trong Keycloak Admin). Chạy thử
+có dòng lỗi trả mã thoát 1; chạy thật từ chối ghi khi còn dòng lỗi, trừ khi thêm `--bo-qua-dong-loi` để chỉ
+ghi các dòng hợp lệ. Người dùng mới phải đăng nhập lại để token mang vai trò; Agent thấy hàng đợi của nhóm
+ngay khi roster được ghi.
+
+Đưa một kỹ thuật viên có sẵn vào nhóm bằng tay (khi không dùng CSV): lấy `id` người dùng trong Keycloak Admin
+→ Users, `id` nhóm từ `GET /api/system/teams`, rồi gọi roster bằng token dịch vụ:
+
+```sh
+TOKEN=$(curl -s -d grant_type=client_credentials -d client_id=dxdesk-automation \
+  -d client_secret="$AUTOMATION_CLIENT_SECRET" \
+  http://localhost:8080/realms/dxdesk/protocol/openid-connect/token | jq -r .access_token)
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:9080/api/system/teams | jq '.data[] | {id, name}'
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"members":[{"team_id":"<id nhóm>","user_id":"<id Keycloak>","display_name":"Họ tên","active":true}]}' \
+  http://localhost:9080/api/system/roster
+```
+
+Phương án thay thế có sẵn trong Keycloak (không qua script, không đưa người vào nhóm xử lý):
+
+- **Partial import**: Keycloak Admin → realm `dxdesk` → Realm settings → Action → **Partial import**, chọn tệp
+  JSON dạng `{"users":[{"username":"...","email":"...","firstName":"...","lastName":"...","enabled":true,
+  "realmRoles":["Employee"],"requiredActions":["UPDATE_PASSWORD"],"credentials":[{"type":"password",
+  "value":"...","temporary":true}]}]}`, chọn xử lý khi trùng *Skip*. Phải tự sinh mật khẩu tạm và tự giữ kín tệp.
+- **Đồng bộ LDAP/Active Directory**: Realm settings → User federation → Add LDAP providers, khai báo URL máy
+  chủ, Bind DN, Users DN; chế độ `READ_ONLY` hoặc `UNSYNCED`; thêm mapper *role-ldap-mapper* hoặc
+  *group-ldap-mapper* để ánh xạ nhóm AD sang `Employee`/`Agent`/`Manager`, rồi *Sync all users*. Mật khẩu do
+  AD quản lý nên không cần mật khẩu tạm. Nhóm xử lý vẫn đưa vào bằng roster như trên.
+
 ### Wiki.js tri thức (W5-08)
 
 Hồ sơ `demo-light` và `full` có Wiki.js 2.5.315 tại `http://localhost:18030` (đổi bằng `WIKI_PORT`,
