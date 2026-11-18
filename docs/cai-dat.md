@@ -59,20 +59,110 @@ Phát triển riêng: `npm ci --prefix apps/device-request && npm run dev --pref
 
 Giao diện DX-Desk chia thành bốn module: `core` (trang chủ, luôn bật), `desk` (phiếu hỗ trợ, bảng việc,
 phê duyệt), `devices` (yêu cầu cấp thiết bị và liên kết ứng dụng 2) và `data` (danh mục dữ liệu, báo cáo).
-Danh sách module bật nằm trong `config/doanh-nghiep/modules.json`, container `web` mount tệp này vào
-`/config/modules.json` và trình duyệt đọc lúc tải trang:
+Nguồn chuẩn là `modules.enabled` trong `config/doanh-nghiep/cau-hinh.json`. Lệnh `config apply` sinh
+`config/doanh-nghiep/modules.json`; không sửa độc lập projection này. Container `web` mount thư mục
+cấu hình vào `/etc/dxdesk/enterprise` bên ngoài web root; Nginx chỉ công bố đúng `modules.json` qua
+`/config/modules.json`, không công bố cấu hình doanh nghiệp hoặc workflow. Trình duyệt đọc lúc tải trang:
 
 ```json
 { "enabled": ["core", "desk", "devices", "data"] }
 ```
 
-Bỏ một mã khỏi danh sách rồi tải lại trang: menu, lối tắt ở trang chủ và route của module đó biến mất,
-không cần build lại image hay khởi động lại container. Tệp thiếu hoặc sai dạng thì giao diện bật tất cả
-module. Tắt module chỉ ẩn giao diện; quyền truy cập dữ liệu vẫn do RLS quyết định.
+Bỏ một mã khỏi danh sách nguồn, chạy `config apply` rồi tải lại trang: menu, lối tắt ở trang chủ và route
+của module đó biến mất, không cần build lại image hay khởi động lại container. Tệp thiếu, sai dạng hoặc
+request/body vượt 5 giây thì giao diện dùng fallback bật tất cả module, không giữ màn hình tải vô hạn.
+Tắt module chỉ ẩn giao diện; quyền truy cập dữ liệu vẫn do RLS quyết định.
 
 Mỗi module khai báo trong `apps/web/src/modules/<mã>/manifest.ts` (mã, tên, biểu tượng, đường dẫn, vai trò
 Keycloak tối thiểu). Menu chỉ hiện mục đúng vai trò; vai trò cao hơn bao hàm vai trò thấp hơn
 (Employee < Agent < Manager).
+
+### Cấu hình doanh nghiệp (W6-12)
+
+Cài dependency kiểm schema rồi kiểm tra nguồn cấu hình, không cần `.env` hoặc DB cho bước validate:
+
+```bash
+npm ci --prefix tools/testing
+node scripts/dxdesk.mjs config validate
+```
+
+`config/schema.json` định nghĩa phiên bản 1: `teams`, `categories`/`requirement_fields`, `routing`,
+`sla_policies` theo priority và `modules.enabled`. Trường động hiện hỗ trợ chuỗi. Bắt buộc giữ module
+`core`; mã trùng, trường lạ, JSON trùng khóa hoặc policy sai bị từ chối. Validate offline chưa xác nhận
+tham chiếu tới nhóm/danh mục hiện có trong DB; kiểm tra đó chạy trong apply.
+
+Sau khi stack thử đã khởi động, quản trị viên được phép áp dụng bằng tài khoản PostgreSQL quản trị
+trong `.env`; lệnh này **ghi cấu hình DB**, không dùng trên dữ liệu vận hành khi chưa được đồng ý:
+
+```bash
+node scripts/dxdesk.mjs config apply
+```
+
+Có thể truyền đường dẫn JSON sau `validate`/`apply`; file mặc định là `config/doanh-nghiep/cau-hinh.json`.
+Giữ một nguồn chuẩn khi quản lý triển khai. `node scripts/dxdesk.mjs config` không có subcommand vẫn
+chỉ kiểm Compose như trước.
+
+Apply upsert theo mã nghiệp vụ trong một transaction, không xóa mục vắng trong JSON; thay đổi vô hiệu
+hóa phải tường minh. SLA mới áp cho ticket mới, không viết lại clock lịch sử. Chạy hai lần không đổi
+row version nếu nội dung không đổi. Quyền ứng dụng bình thường không được áp cấu hình.
+
+Khóa `.config-apply.lock` được giữ từ trước ghi DB đến khi publish projection; lệnh cạnh tranh dừng
+trước khi ghi. Nếu tiến trình chết, kiểm PID trong file và xác minh đã dừng trước khi quản trị viên
+xử lý khóa; không tự xóa khóa đang tồn tại. DB và filesystem không có transaction chung: lỗi publish
+sau commit báo `CONFIG_PROJECTION_FAILED`, giữ projection cũ khi rename chưa thành công; sửa quyền
+hoặc mount rồi chạy lại cùng cấu hình để phục hồi idempotent. Không dùng rollback migration để
+sửa lỗi projection.
+
+Nghiệm thu TN-07: thêm danh mục `peripheral` tên “Cấp thiết bị ngoại vi”, field `asset_code` bắt buộc,
+routing tới nhóm active và đổi một policy; validate/apply, tải lại form rồi tạo ticket mới. Kiểm thiếu
+field bị chặn, định tuyến/deadline đúng, apply lần hai không trùng và ticket cũ không đổi deadline.
+Harness `node tools/testing/enterprise-config.mjs` chạy trên PostgreSQL dùng một lần, không dùng DB
+hiện tại; browser fixture riêng không được gọi là nghiệm thu Compose/PostgREST trọn luồng.
+
+### Workflow doanh nghiệp (W6-13)
+
+Nguồn workflow duy nhất nằm trong `config/doanh-nghiep/workflows/`. Cả importer và publisher mount
+vào `/import/workflows`; ID workflow cũ giữ nguyên. Kiểm toàn bộ JSON, ID duy nhất và cấu trúc trước
+khi `up`/`n8n-reload` thay đổi dịch vụ:
+
+```bash
+node infra/n8n/validate-workflows.mjs
+node scripts/dxdesk.mjs n8n-reload
+```
+
+`n8n-reload` chỉ chạy trên stack được phép; lỗi preflight xảy ra trước bước dừng n8n. Publisher vẫn
+chỉ bật workflow hello khi automation tắt, không tự xóa workflow vắng trong thư mục. Kiểm restart
+trên stack thật bằng `node scripts/stack-test.mjs --restart-n8n`; unit test không thay bằng chứng này.
+
+### Bộ đánh giá AI tuần 6 (W6-05, W6-08, W6-14)
+
+`config/evaluation/assistant-questions.json` có 10 câu lõi tổng quát và 5 câu mở rộng, trong đó hai
+luồng VPN cố định chỉ chấm flow, không được cộng vào ngưỡng model 8/10. `ticket-triage.json` có 20
+ticket giả tiếng Việt với nhãn/rubric; nhãn cần reviewer độc lập xác nhận trước nghiệm thu.
+
+```bash
+node tools/testing/week6-evaluate.mjs --help
+node tools/testing/week6-evaluate.mjs --timeout-ms 3000
+```
+
+Mặc định chỉ preflight GET: kiểm gateway, role token và model đã có trong Ollama; không pull model,
+không sinh câu trả lời hoặc xác nhận hành động. Runtime/token thiếu trả exit khác 0 và
+`completed:false`, không coi thiếu máy là kết quả đạt. Token của ba người dùng thử nhập từ biến môi
+trường `WEEK6_EMPLOYEE_TOKEN`, `WEEK6_AGENT_TOKEN`, `WEEK6_MANAGER_TOKEN`, không đặt trong command line,
+file Git, chat hoặc ảnh.
+
+Chỉ dùng `--run-assistant`/`--run-triage` sau khi có môi trường giả lập được phép; xem `--help` để
+cung cấp model, người chạy, phiên bản dữ liệu và đường dẫn output tuyệt đối có thư mục cha sẵn có.
+Runner không tự đổi model trên gateway: mỗi lượt phải cấu hình model ở server và ghi nhận đối chiếu
+model/digest; `--gateway-model` là xác nhận của người vận hành, không phải bằng chứng protocol.
+
+Report có raw answer, trace công khai, TTFT tính từ delta nội dung đầu, model digest, SHA/hash cấu
+hình và mẫu RAM host. Sao reviewTemplate thành file ngoài repo rồi reviewer khác người chạy điền
+đúng/sai, privacy/consent, facts/summary và ghi chú; dùng `--score`/`--reviews` để chấm offline. Không tự
+đổi keyword match thành đánh giá không bịa. Điểm model ≥8/10 và category ≥16/20 tính từng lượt;
+bất kỳ lỗi quyền/xác nhận đều fail. Triage standalone chỉ gọi phân loại và rút gọn chuỗi như API,
+không thay nghiệm thu DB/audit/duyệt đề xuất. RAM host không thay RAM container/WSL; full-stack peak,
+OOM, máy 16 GB và QĐ-5 vẫn cần số đo và xác nhận riêng.
 
 ### Wiki.js tri thức (W5-08)
 

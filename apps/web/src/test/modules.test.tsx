@@ -10,7 +10,7 @@ import { ToastProvider } from '../contexts/ToastContext';
 import { AppRoutes } from '../App';
 import { Sidebar } from '../components/layout/Sidebar';
 import { canAccess } from '../modules/access';
-import { loadModulesConfig, parseModulesConfig } from '../modules/config';
+import { loadModulesConfig, MODULES_CONFIG_TIMEOUT_MS, parseModulesConfig } from '../modules/config';
 import { ModuleProvider } from '../modules/ModuleContext';
 import { breadcrumbsFor, enabledModules, MODULES, navEntries } from '../modules/registry';
 import type { ModuleId } from '../modules/types';
@@ -121,6 +121,64 @@ describe('W6-11: bật tắt module bằng /config/modules.json', () => {
     expect(await loadModulesConfig(offline)).toBeNull();
     expect(await loadModulesConfig(ok)).toEqual(new Set(['desk']));
     expect(ok).toHaveBeenCalledWith('/config/modules.json', expect.objectContaining({ cache: 'no-store' }));
+  });
+
+  it('hết deadline khi request chưa trả header, hủy request và bật hết module', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const stalled = vi.fn(() => new Promise<Response>(() => {}));
+    try {
+      const configuration = loadModulesConfig(stalled);
+      const signal = (stalled.mock.calls[0] as unknown as [string, RequestInit])[1].signal;
+      await vi.advanceTimersByTimeAsync(MODULES_CONFIG_TIMEOUT_MS);
+      expect(await configuration).toBeNull();
+      expect(signal?.aborted).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('deadline bao trùm việc đọc JSON body dù header đã trả thành công', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const response = new Response('{}', { status: 200 });
+    vi.spyOn(response, 'json').mockImplementation(() => new Promise(() => {}));
+    const stalledBody = vi.fn().mockResolvedValue(response);
+    try {
+      const configuration = loadModulesConfig(stalledBody);
+      await vi.advanceTimersByTimeAsync(MODULES_CONFIG_TIMEOUT_MS);
+      expect(await configuration).toBeNull();
+      expect(stalledBody.mock.calls[0][1].signal.aborted).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('dọn timer khi cấu hình đọc được trước deadline', async () => {
+    vi.useFakeTimers();
+    const valid = vi.fn().mockResolvedValue(new Response(JSON.stringify({ enabled: ['desk'] })));
+    try {
+      expect(await loadModulesConfig(valid)).toEqual(new Set(['desk']));
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(MODULES_CONFIG_TIMEOUT_MS);
+      expect(valid.mock.calls[0][1].signal.aborted).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('HTTP 500 và JSON lỗi dùng fallback, không giữ timer', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(await loadModulesConfig(vi.fn().mockResolvedValue(new Response('', { status: 500 })))).toBeNull();
+      expect(await loadModulesConfig(vi.fn().mockResolvedValue(new Response('{')))).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

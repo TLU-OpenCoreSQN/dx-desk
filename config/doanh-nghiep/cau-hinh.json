@@ -1,0 +1,90 @@
+{
+  "$schema": "../schema.json",
+  "$comment": "SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN\nSPDX-License-Identifier: Apache-2.0",
+  "schema_version": 1,
+  "modules": { "enabled": ["core", "desk", "devices", "data"] },
+  "teams": [
+    { "code": "network", "name": "Network Team", "active": true },
+    { "code": "identity", "name": "Identity Team", "active": true },
+    { "code": "support", "name": "IT Support", "active": true }
+  ],
+  "categories": [
+    {
+      "code": "vpn",
+      "name": "Kết nối VPN",
+      "description": "Không kết nối được mạng nội bộ từ xa",
+      "active": true,
+      "requirement_fields": [
+        { "key": "client_version", "label": "Phiên bản client VPN", "required": true },
+        { "key": "error_message", "label": "Dòng lỗi hiển thị", "required": true },
+        { "key": "device_os", "label": "Hệ điều hành", "required": false }
+      ]
+    },
+    {
+      "code": "account",
+      "name": "Tài khoản",
+      "description": "Đăng nhập và quyền truy cập",
+      "active": true,
+      "requirement_fields": [
+        { "key": "account_name", "label": "Tên tài khoản", "required": true },
+        { "key": "issue_type", "label": "Loại sự cố tài khoản", "required": true }
+      ]
+    },
+    {
+      "code": "hardware",
+      "name": "Thiết bị",
+      "description": "Sự cố máy tính và thiết bị ngoại vi",
+      "active": true,
+      "requirement_fields": [
+        { "key": "device_code", "label": "Mã thiết bị", "required": true },
+        { "key": "location", "label": "Vị trí làm việc", "required": true }
+      ]
+    },
+    {
+      "code": "software",
+      "name": "Phần mềm",
+      "description": "Cài đặt và lỗi phần mềm",
+      "active": true,
+      "requirement_fields": [
+        { "key": "software_name", "label": "Tên phần mềm", "required": true },
+        { "key": "error_message", "label": "Dòng lỗi hiển thị", "required": false }
+      ]
+    },
+    {
+      "code": "access",
+      "name": "Cấp quyền hệ thống",
+      "description": "Yêu cầu cấp/thay đổi quyền truy cập hệ thống nội bộ (cần phê duyệt)",
+      "active": true,
+      "requirement_fields": [
+        { "key": "system_name", "label": "Tên hệ thống", "required": true },
+        { "key": "permission_level", "label": "Cấp quyền yêu cầu", "required": true },
+        { "key": "valid_until", "label": "Thời hạn sử dụng quyền", "required": true }
+      ]
+    },
+    {
+      "code": "system-error",
+      "name": "Lỗi hệ thống",
+      "description": "Sự cố ảnh hưởng hệ thống dùng chung nhiều người dùng",
+      "active": true,
+      "requirement_fields": [
+        { "key": "system_name", "label": "Tên hệ thống", "required": true },
+        { "key": "error_message", "label": "Dòng lỗi hiển thị", "required": true },
+        { "key": "occurred_at", "label": "Thời điểm xảy ra", "required": false }
+      ]
+    }
+  ],
+  "routing": [
+    { "category": "vpn", "team": "network", "active": true },
+    { "category": "account", "team": "identity", "active": true },
+    { "category": "hardware", "team": "support", "active": true },
+    { "category": "software", "team": "support", "active": true },
+    { "category": "access", "team": "identity", "active": true },
+    { "category": "system-error", "team": "support", "active": true }
+  ],
+  "sla_policies": {
+    "low": { "response_minutes": 480, "resolution_minutes": 2880 },
+    "normal": { "response_minutes": 240, "resolution_minutes": 1440 },
+    "high": { "response_minutes": 60, "resolution_minutes": 480 },
+    "critical": { "response_minutes": 15, "resolution_minutes": 120 }
+  }
+}
