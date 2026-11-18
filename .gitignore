@@ -16,4 +16,6 @@ work/
 .local/
 test-results/
 *.tsbuildinfo
+config/doanh-nghiep/.config-apply.lock
+config/doanh-nghiep/.modules.json.*.tmp
 .agents/

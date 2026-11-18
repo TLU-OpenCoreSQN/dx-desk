@@ -8,6 +8,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
+import { createServer as createHttpServer } from 'node:http';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const reportDir = resolve(root, '.local/reports');
@@ -46,6 +47,42 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: resolve(reportDir, 'web-desktop-offline.png'), fullPage: true });
   });
+  await check('Module config without headers times out and public routes remain usable', async () => {
+    await page.route('**/config/modules.json', () => {});
+    try {
+      await page.goto(origin);
+      await page.getByRole('navigation', { name: 'Điều hướng chính' }).waitFor({ timeout: 12000 });
+      assert.equal(await page.getByText('Đang tải cấu hình module...').count(), 0);
+      await page.getByRole('link', { name: 'Danh mục dữ liệu', exact: true }).click();
+      await page.getByRole('heading', { name: 'Danh mục dữ liệu DX-Desk' }).waitFor();
+      await page.screenshot({ path: resolve(reportDir, 'web-config-header-timeout.png'), fullPage: true });
+    } finally {
+      await page.unroute('**/config/modules.json');
+    }
+  });
+  await check('Module config HTTP 200 with an unfinished body also times out', async () => {
+    const stalledBody = createHttpServer((request, response) => {
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      response.write('{"enabled":');
+      request.on('error', () => {});
+    });
+    await new Promise(resolve => stalledBody.listen(0, '127.0.0.1', resolve));
+    await page.route('**/config/modules.json', route => route.continue({
+      url: `http://127.0.0.1:${stalledBody.address().port}/config/modules.json`,
+    }));
+    try {
+      await page.goto(origin);
+      await page.getByRole('navigation', { name: 'Điều hướng chính' }).waitFor({ timeout: 12000 });
+      assert.equal(await page.getByText('Đang tải cấu hình module...').count(), 0);
+      await page.screenshot({ path: resolve(reportDir, 'web-config-body-timeout.png'), fullPage: true });
+    } finally {
+      await page.unroute('**/config/modules.json');
+      stalledBody.closeAllConnections();
+      await new Promise(resolve => stalledBody.close(resolve));
+    }
+  });
+  await page.goto(origin);
+  await page.getByRole('navigation', { name: 'Điều hướng chính' }).waitFor();
   await check('Mobile menu: open, Escape closes and restores focus', async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const trigger = page.getByRole('button', { name: 'Mở menu điều hướng' });
@@ -104,6 +141,7 @@ try {
       { key: 'device_os', label: 'Hệ điều hành', required: false },
     ],
   };
+  const categories = [category];
   const tickets = [], devices = [], writes = [];
   let rejectSession = false;
   await page.route('**/api/**', async route => {
@@ -112,7 +150,7 @@ try {
     if (rejectSession && path !== '/api/health') { status = 401; json = { message: 'Expired fixture' }; }
     else if (path === '/api/health') json = { status: 'ok', service: 'dx-desk-api', version: '0.5.0' };
     else if (path === '/api/me') json = { id: '00000000-0000-4000-8000-000000000001', username: 'employee.fixture', roles: ['Employee'] };
-    else if (path === '/api/categories') json = { data: [category] };
+    else if (path === '/api/categories') json = { data: categories };
     else if (request.method() === 'POST') {
       const body = request.postDataJSON(); writes.push({ path, body }); status = 201;
       json = { ...body, id: `00000000-0000-4000-8000-00000000000${writes.length + 1}`, requester_id: '00000000-0000-4000-8000-000000000001', assigned_to: null,
@@ -123,6 +161,41 @@ try {
     else if (path.startsWith('/api/tickets/')) json = tickets.find(row => path.endsWith(row.id));
     else json = { data: path === '/api/tickets' ? tickets : devices, limit: 25, offset: 0 };
     await route.fulfill({ status, json: json ?? {} });
+  });
+  await check('Runtime modules hide disabled device routes and restore them after reload', async () => {
+    await page.route('**/config/modules.json', route => route.fulfill({ json: { enabled: ['core', 'desk', 'data'] } }));
+    try {
+      await page.goto(origin + '/device-requests');
+      await page.getByRole('heading', { name: '404', exact: true }).waitFor();
+      assert.equal(await page.getByRole('link', { name: 'Yêu cầu cấp thiết bị', exact: true }).count(), 0);
+      assert.equal(await page.getByRole('link', { name: 'Xin cấp thiết bị (ứng dụng 2)', exact: true }).count(), 0);
+      await page.screenshot({ path: resolve(reportDir, 'web-module-devices-disabled.png'), fullPage: true });
+    } finally {
+      await page.unroute('**/config/modules.json');
+    }
+    await page.goto(origin + '/device-requests');
+    await page.getByRole('button', { name: 'Gửi yêu cầu mới', exact: true }).waitFor();
+  });
+  await check('Enterprise category and required asset field appear from runtime API data without rebuilding', async () => {
+    const peripheral = { id: '10000000-0000-4000-8000-000000000099', code: 'peripheral', name: 'Cấp thiết bị ngoại vi',
+      requirement_fields: [{ key: 'asset_code', label: 'Mã tài sản', required: true }] };
+    categories.push(peripheral);
+    try {
+      await page.goto(origin + '/tickets/new');
+      await page.getByRole('combobox', { name: 'Danh mục sự cố' }).selectOption(peripheral.id);
+      await page.getByLabel(/Tiêu đề/).fill('Cấp bàn phím cho máy văn phòng');
+      await page.getByLabel(/Mô tả/).fill('Bàn phím cần được thay thế cho máy thử nghiệm.');
+      const submit = page.getByRole('button', { name: /Gửi phiếu/ });
+      assert.equal(await submit.getAttribute('aria-disabled'), 'true');
+      const fields = page.getByRole('group', { name: 'Thông tin bổ sung theo danh mục' });
+      await fields.getByLabel(/Mã tài sản/).fill('PC-TEST-01');
+      assert.equal(await submit.getAttribute('aria-disabled'), null);
+      assert.equal(writes.length, 0);
+      await page.screenshot({ path: resolve(reportDir, 'web-enterprise-category.png'), fullPage: true });
+    } finally {
+      categories.pop();
+      await page.evaluate(() => localStorage.clear());
+    }
   });
   await check('Employee ticket form: Poka-yoke theo danh mục, no Critical, exact create payload', async () => {
     await page.goto(origin + '/tickets/new');

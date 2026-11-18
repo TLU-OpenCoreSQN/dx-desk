@@ -6,6 +6,7 @@ import type { ModuleId } from './types';
 
 /** Tệp cấu hình đọc lúc chạy; nginx phục vụ, compose mount từ config/doanh-nghiep/modules.json. */
 export const MODULES_CONFIG_URL = '/config/modules.json';
+export const MODULES_CONFIG_TIMEOUT_MS = 5000;
 
 /**
  * Đọc danh sách module bật từ nội dung `{"enabled": ["desk", "devices", ...]}`.
@@ -36,17 +37,32 @@ export function preloadModulesConfig(): Promise<Set<ModuleId> | null> {
 }
 
 export async function loadModulesConfig(fetcher: typeof fetch = fetch): Promise<Set<ModuleId> | null> {
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error('Hết thời gian tải cấu hình module.'));
+    }, MODULES_CONFIG_TIMEOUT_MS);
+  });
   try {
-    const response = await fetcher(MODULES_CONFIG_URL, { cache: 'no-store', headers: { Accept: 'application/json' } });
-    if (!response.ok) {
-      console.warn(`Không đọc được ${MODULES_CONFIG_URL} (HTTP ${response.status}); bật tất cả module.`);
-      return null;
-    }
-    const parsed = parseModulesConfig(await response.json());
-    if (parsed === null) console.warn(`${MODULES_CONFIG_URL} sai dạng; bật tất cả module.`);
-    return parsed;
+    const configuration = (async () => {
+      const response = await fetcher(MODULES_CONFIG_URL, {
+        cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal,
+      });
+      if (!response.ok) {
+        console.warn(`Không đọc được ${MODULES_CONFIG_URL} (HTTP ${response.status}); bật tất cả module.`);
+        return null;
+      }
+      const parsed = parseModulesConfig(await response.json());
+      if (parsed === null) console.warn(`${MODULES_CONFIG_URL} sai dạng; bật tất cả module.`);
+      return parsed;
+    })();
+    return await Promise.race([configuration, deadline]);
   } catch (err) {
     console.warn(`Không đọc được ${MODULES_CONFIG_URL}; bật tất cả module.`, err);
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

@@ -60,7 +60,7 @@ export function withDepartment(profile) {
 }
 
 async function json(url, options = {}) {
-  const response = await fetch(url, { ...options, signal: AbortSignal.timeout(20000) });
+  const response = await fetch(url, { ...options, redirect: 'error', signal: AbortSignal.timeout(20000) });
   if (!response.ok) throw Object.assign(new Error(`Directory setup HTTP ${response.status}`), { status: response.status });
   const text = await response.text();
   return text ? JSON.parse(text) : null;

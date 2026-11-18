@@ -71,3 +71,28 @@ test('setup adds profile, mapper and demo units once and never overwrites an ass
   await setupDepartments(env, ['dxdesk-web']);
   assert.deepEqual(writes, ['PUT /clients/c-web/protocol-mappers/models/m-1'], 'Lần chạy sau chỉ đồng bộ lại mapper');
 });
+
+test('directory token requests never forward credentials through redirects', async t => {
+  let forwarded = 0;
+  const destination = createServer((request, response) => {
+    forwarded++;
+    request.resume();
+    response.end('{}');
+  });
+  destination.listen(0, '127.0.0.1');
+  await once(destination, 'listening');
+  t.after(() => destination.close());
+  const redirector = createServer((request, response) => {
+    request.resume();
+    response.writeHead(307, { Location: `http://127.0.0.1:${destination.address().port}/credentials` });
+    response.end();
+  });
+  redirector.listen(0, '127.0.0.1');
+  await once(redirector, 'listening');
+  t.after(() => redirector.close());
+  await assert.rejects(setupDepartments({
+    KEYCLOAK_PUBLIC_URL: `http://127.0.0.1:${redirector.address().port}`,
+    KEYCLOAK_REALM: 'dxdesk', KEYCLOAK_ADMIN: 'fixture', KEYCLOAK_ADMIN_PASSWORD: 'fixture-only',
+  }));
+  assert.equal(forwarded, 0);
+});

@@ -12,11 +12,22 @@ import { seedMain } from './seed-synthetic.mjs';
 import { setupDepartments, setupDeviceClient } from './setup-directory.mjs';
 import { prepareWiki, setupWiki, setupWikiClient, wikiEnabled, wikiIndexEnabled } from './setup-wiki.mjs';
 import { configureMetabaseReader, metabaseEnabled, prepareMetabase, setupMetabase } from './setup-metabase.mjs';
+import { validateWorkflowDirectory } from '../infra/n8n/validate-workflows.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const action = process.argv[2] ?? 'help';
 const help = 'node scripts/dxdesk.mjs <up|down|ps|config|migrate|verify|seed|n8n-reload|credentials-import>';
-if (action === 'help') { console.log(help); process.exit(0); }
+if (action === 'help') { console.log(help + '\nnode scripts/dxdesk.mjs config <validate|apply> [cau-hinh.json]'); process.exit(0); }
+if (action === 'config' && process.argv.length > 3) {
+  try {
+    const { enterpriseConfigMain } = await import('./enterprise-config.mjs');
+    await enterpriseConfigMain(process.argv.slice(3));
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+  process.exit(process.exitCode ?? 0);
+}
 if (action === 'seed') {
   try {
     await seedMain(process.argv.slice(3), process.env, async () => {
@@ -71,6 +82,7 @@ async function syncKeys() {
   ));
 }
 if (action === 'up') {
+  await validateWorkflowDirectory(resolve(root, 'config/doanh-nghiep/workflows'));
   await prepareAutomation(root, env);
   await prepareWiki(root, env);
   await prepareMetabase(root, env);
@@ -125,6 +137,7 @@ if (action === 'up') {
   });
   process.exitCode = result.status ?? 1;
 } else if (action === 'n8n-reload') {
+  await validateWorkflowDirectory(resolve(root, 'config/doanh-nghiep/workflows'));
   compose('stop', 'n8n');
   compose('run', '--rm', '--no-deps', 'n8n-import');
   compose('run', '--rm', '--no-deps', 'n8n-publish');

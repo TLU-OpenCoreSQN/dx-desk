@@ -1330,11 +1330,28 @@ test('confirmed assistant writes keep requester scope, avoid duplicates and enqu
     });
   };
   const args = { category: 'vpn', title: 'VPN assistant fixture ' + randomUUID(), description: 'Máy báo lỗi kết nối VPN tại văn phòng.' };
+  const otherStatistics = (await call(apiUrl, '/api/assistant-tools/ticket_statistics', 'b', { category: 'vpn' })).body;
+  assert.equal((await call(apiUrl, '/api/assistant-tools/ticket_statistics', 'a', { category: "vpn' OR true --" })).status, 400);
+  assert.equal((await call(apiUrl, '/api/assistant-tools/similar_tickets', 'a', { query: 'VPN', sql: 'SELECT * FROM tickets' })).status, 400);
+  const employeeTools = (await call(apiUrl, '/api/assistant-tools', 'a')).body.tools;
+  const managerTools = (await call(apiUrl, '/api/assistant-tools', 'manager')).body.tools;
+  assert.ok(employeeTools.includes('create_ticket'));
+  assert.ok(!employeeTools.includes('create_task'));
+  assert.ok(managerTools.includes('create_task'));
   const id = randomUUID();
   assert.equal((await write('create_ticket', 'a', id, args, false)).status, 403);
   const first = await write('create_ticket', 'a', id, args);
   assert.equal(first.status, 200, 'Assistant proof allows the explicit user-confirmed action');
   const created = await first.json();
+  assert.deepEqual((await call(apiUrl, '/api/assistant-tools/ticket_statistics', 'b', { category: 'vpn' })).body, otherStatistics);
+  const canonical = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b)));
+  const originalProof = createHmac('sha256', signingKey).update(JSON.stringify([users.a.sub, 'create_ticket', id, canonical])).digest('hex');
+  const tampered = await fetch(apiUrl + '/api/assistant-tools/create_ticket', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + tokens.a, 'Content-Type': 'application/json',
+      'Idempotency-Key': id, 'X-DXDesk-Assistant-Proof': originalProof },
+    body: JSON.stringify({ ...args, title: args.title + ' bị đổi' }),
+  });
+  assert.equal(tampered.status, 403);
   assert.deepEqual(await (await write('create_ticket', 'a', id, args)).json(), created);
   assert.equal((await write('create_ticket', 'b', id, args)).status, 409);
   const log = (await call(apiUrl, '/api/tickets/' + created.ticket_id + '/events', 'a')).body.data[0];
