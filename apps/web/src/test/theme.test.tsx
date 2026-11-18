@@ -23,7 +23,7 @@ describe('theme preferences', () => {
     render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
     expect(screen.getByRole('button', { name: 'Tùy biến giao diện và màu sắc' })).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute('data-theme', 'modern');
-    expect(document.documentElement).toHaveAttribute('data-accent', 'blue');
+    expect(document.documentElement).toHaveAttribute('data-accent', 'corporate-blue');
   });
 
   it('validates stored values and derives the tint from a valid custom color', () => {

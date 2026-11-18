@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { AiTriageDiff } from '../../components/workflow';
 import { getTeams } from '../../services/api';
-import type { Category, Team } from '../../types/api';
+import type { Category, Team, Ticket } from '../../types/api';
 import { decideAiSuggestion, getAiSuggestion, type AiSuggestion, type SuggestionValues } from './aiSuggestionApi';
 
 const priorities = { low: 'Thấp', normal: 'Bình thường', high: 'Cao' };
@@ -14,9 +14,11 @@ interface Props {
   ticketId: string;
   categories: Category[];
   refresh: () => Promise<void>;
+  /** Giá trị hiện tại của phiếu để so sánh với đề xuất. */
+  ticket?: Pick<Ticket, 'category_id' | 'priority' | 'assigned_team_id' | 'team_name'>;
 }
 
-export function TicketAiSuggestion({ ticketId, categories, refresh }: Props) {
+export function TicketAiSuggestion({ ticketId, categories, refresh, ticket }: Props) {
   const heading = useId();
   const [suggestion, setSuggestion] = useState<AiSuggestion | null>(null);
   const [draft, setDraft] = useState<SuggestionValues | null>(null);
@@ -69,20 +71,23 @@ export function TicketAiSuggestion({ ticketId, categories, refresh }: Props) {
   if (!suggestion && !error && !notice) return null;
   const categoryName = categories.find(item => item.id === suggestion?.category_id)?.name;
   const teamName = teams.find(item => item.id === suggestion?.team_id)?.name;
+  const currentCategory = categories.find(item => item.id === ticket?.category_id)?.name ?? 'Chưa phân loại';
+  const currentTeam = ticket?.team_name
+    ?? teams.find(item => item.id === ticket?.assigned_team_id)?.name
+    ?? 'Chưa gán nhóm';
+  const proposedPriority = suggestion && Object.hasOwn(priorities, suggestion.priority) ? suggestion.priority : 'Không hợp lệ';
 
   return (
     <div className="space-y-3">
       {suggestion && !draft && (
         <AiTriageDiff
-          currentCategory="Chưa phân loại"
-          currentPriority="normal"
-          currentTeam="Chưa gán nhóm"
-          proposedCategory={categoryName ?? suggestion.category_id}
-          proposedPriority={suggestion.priority}
-          proposedTeam={teamName ?? suggestion.team_id}
-          confidenceScore={94}
+          currentCategory={currentCategory}
+          currentPriority={ticket?.priority ?? 'Chưa phân loại'}
+          currentTeam={currentTeam}
+          proposedCategory={categoryName ?? 'Không xác định'}
+          proposedPriority={proposedPriority}
+          proposedTeam={teamName ?? 'Không xác định'}
           summary={suggestion.summary}
-          rationale="AI phân tích nội dung dựa trên quy tắc SLA và cơ sở tri thức (KB)."
           onAccept={() => void decide(true)}
           onCustomize={edit}
           onReject={() => void decide(false)}

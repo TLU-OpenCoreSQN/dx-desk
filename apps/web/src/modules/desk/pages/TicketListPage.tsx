@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -17,7 +17,7 @@ import {
   UserCheck,
   X,
 } from 'lucide-react';
-import { getTickets, getCategories, claimTicket } from '../../../services/api';
+import { getTickets, getCategories, claimTicket, ApiClientError } from '../../../services/api';
 import { Ticket, Category } from '../../../types/api';
 import { PriorityBadge, StatusBadge } from '../../../components/common/Badge';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
@@ -92,6 +92,11 @@ export const TicketListPage: React.FC = () => {
   const [categories, setCategories] = useState<Record<string, Category>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<unknown>(null);
+  // Trạng thái thao tác "Nhận xử lý" trên Kanban.
+  const [claimBusyId, setClaimBusyId] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<unknown>(null);
+  const [claimNotice, setClaimNotice] = useState<string | null>(null);
+  const claimInFlight = useRef(false);
 
   // URL query parameter synchronization
   const qParam = searchParams.get('q') ?? '';
@@ -173,6 +178,29 @@ export const TicketListPage: React.FC = () => {
   useEffect(() => {
     void loadData(offset);
   }, [loadData, offset]);
+
+  const handleClaim = async (ticket: Ticket) => {
+    if (claimInFlight.current) return;
+    claimInFlight.current = true;
+    setClaimBusyId(ticket.id);
+    setClaimError(null);
+    setClaimNotice(null);
+    try {
+      await claimTicket(ticket.id);
+      setClaimNotice('Đã nhận phiếu. Phiếu có trong hàng đợi Đang phụ trách.');
+      await loadData(offset);
+    } catch (err) {
+      if (err instanceof ApiClientError && err.statusCode === 409) {
+        setClaimNotice('Phiếu vừa được người khác cập nhật. Danh sách đã được tải lại; hãy kiểm tra trước khi thao tác tiếp.');
+        await loadData(offset);
+      } else {
+        setClaimError(err);
+      }
+    } finally {
+      claimInFlight.current = false;
+      setClaimBusyId(null);
+    }
+  };
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -465,15 +493,21 @@ export const TicketListPage: React.FC = () => {
           />
         )
       ) : viewMode === 'kanban' ? (
-        <TicketKanbanBoard
-          tickets={filteredTickets}
-          onTicketClick={(t) => navigate(`/tickets/${encodeURIComponent(t.id)}`)}
-          canClaim={(t) => isStaff && t.status === 'assigned' && !t.assigned_to}
-          onClaimTicket={async (t) => {
-            await claimTicket(t.id);
-            await loadData(offset);
-          }}
-        />
+        <div className="space-y-3">
+          {claimNotice && (
+            <p role="status" className="rounded-md border border-status-success-border bg-status-success-bg p-3 text-sm text-status-success">
+              {claimNotice}
+            </p>
+          )}
+          {claimError != null && <ErrorMessage error={claimError} title="Không nhận được phiếu" />}
+          <TicketKanbanBoard
+            tickets={filteredTickets}
+            onTicketClick={(t) => navigate(`/tickets/${encodeURIComponent(t.id)}`)}
+            canClaim={(t) => isStaff && t.status === 'assigned' && !t.assigned_to}
+            busyTicketId={claimBusyId}
+            onClaimTicket={handleClaim}
+          />
+        </div>
       ) : (
         <div className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs overflow-hidden">
           {/* Sticky column header (desktop only, sticks below the app header) */}

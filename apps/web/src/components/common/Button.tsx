@@ -31,9 +31,10 @@ const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
 };
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
-  sm: 'h-[32px] min-h-[44px] px-3 py-1.5 text-xs gap-1.5 lg:min-h-8',
-  md: 'h-[38px] min-h-[44px] md:min-h-[38px] px-3.5 py-2 text-sm font-semibold gap-2 lg:min-h-10',
-  lg: 'h-[44px] min-h-[44px] px-5 py-2.5 text-sm gap-2.5 lg:min-h-11',
+  // Chỉ dùng min-h: giữ vùng chạm 44px tới breakpoint lg và cho nhãn dài xuống dòng không bị cắt.
+  sm: 'min-h-[44px] px-3 py-1.5 text-xs gap-1.5 lg:min-h-8',
+  md: 'min-h-[44px] px-3.5 py-2 text-sm font-semibold gap-2 lg:min-h-10',
+  lg: 'min-h-[44px] px-5 py-2.5 text-sm gap-2.5 lg:min-h-11',
 };
 
 const spinnerSizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {

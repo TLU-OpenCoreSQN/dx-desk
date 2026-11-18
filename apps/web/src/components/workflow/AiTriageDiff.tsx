@@ -19,7 +19,8 @@ export interface AiTriageDiffProps {
   proposedCategory?: string;
   proposedPriority?: string;
   proposedTeam?: string;
-  confidenceScore?: number; // e.g. 94 (percent)
+  /** Chỉ truyền khi mô hình thực sự trả về độ tin cậy; bỏ trống thì không hiển thị. */
+  confidenceScore?: number;
   rationale?: string;
   summary?: string;
   onAccept: () => void | Promise<void>;
@@ -51,7 +52,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
   proposedCategory,
   proposedPriority,
   proposedTeam,
-  confidenceScore = 92,
+  confidenceScore,
   rationale,
   summary,
   onAccept,
@@ -109,7 +110,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
             </h3>
             <p className="text-[11px] text-content-muted">
-              Hệ thống AI phân tích nội dung dựa trên quy tắc SLA và cơ sở tri thức (KB)
+              Đề xuất do AI tạo, cần người xử lý xác nhận trước khi áp dụng
             </p>
           </div>
         </div>

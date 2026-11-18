@@ -20,7 +20,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { getDeviceRequests, createDeviceRequest } from '../../../services/api';
+import { getDeviceRequests, createDeviceRequest, getDeviceHandoverDownload } from '../../../services/api';
 import { DeviceRequest, DeviceType } from '../../../types/api';
 import { StatusBadge } from '../../../components/common/Badge';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
@@ -150,6 +150,10 @@ export const DeviceRequestPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<unknown>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Liên kết tải biên bản là liên kết đã ký, ngắn hạn; chỉ xin khi người dùng bấm tải.
+  const [handoverLinks, setHandoverLinks] = useState<Record<string, string>>({});
+  const [handoverBusyId, setHandoverBusyId] = useState<string | null>(null);
+  const [handoverError, setHandoverError] = useState<unknown>(null);
 
   const formTriggerRef = useRef<HTMLButtonElement>(null);
   const formHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -172,6 +176,19 @@ export const DeviceRequestPage: React.FC = () => {
   useEffect(() => {
     void loadRequests(offset);
   }, [loadRequests, offset]);
+
+  const requestHandoverLink = async (id: string) => {
+    setHandoverBusyId(id);
+    setHandoverError(null);
+    try {
+      const { url } = await getDeviceHandoverDownload(id);
+      setHandoverLinks((prev) => ({ ...prev, [id]: url }));
+    } catch (err) {
+      setHandoverError(err);
+    } finally {
+      setHandoverBusyId(null);
+    }
+  };
 
   useEffect(() => {
     if (showForm) formHeadingRef.current?.focus();
@@ -564,6 +581,12 @@ export const DeviceRequestPage: React.FC = () => {
             )}
           </>
         ) : (
+          <>
+          {handoverError != null && (
+            <div className="mb-3">
+              <ErrorMessage error={handoverError} title="Không lấy được biên bản bàn giao" />
+            </div>
+          )}
           <ul className="space-y-3">
             {requests.map((req) => {
               const meta = DEVICE_META[req.device_type] ?? DEVICE_META.other;
@@ -611,10 +634,9 @@ export const DeviceRequestPage: React.FC = () => {
                       <div className="pt-2">
                         <DeviceWorkflowStepper
                           request={req}
-                          handoverUrl={`/api/device-requests/${req.id}/handover`}
-                          onDownloadHandover={() => {
-                            window.open(`/api/device-requests/${req.id}/handover`, '_blank');
-                          }}
+                          handoverUrl={handoverLinks[req.id]}
+                          isDownloading={handoverBusyId === req.id}
+                          onDownloadHandover={() => void requestHandoverLink(req.id)}
                         />
                       </div>
                     </div>
@@ -623,6 +645,7 @@ export const DeviceRequestPage: React.FC = () => {
               );
             })}
           </ul>
+          </>
         )}
       </section>
 

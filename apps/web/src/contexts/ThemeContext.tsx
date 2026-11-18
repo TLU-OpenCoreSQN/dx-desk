@@ -69,6 +69,7 @@ export interface ThemeContextType {
 
 export const STORAGE_KEY = 'dx-desk-theme';
 export const MIGRATION_VERSION = 'v2-corporate';
+const DEFAULT_ACCENT: AccentKey = 'corporate-blue';
 
 export interface ThemePreferences {
   version?: string;
@@ -89,9 +90,10 @@ function deriveLightTint(hex: string): string {
 }
 
 function runMigrationGuard(): void {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return;
+  // Mọi truy cập localStorage đều nằm trong try: trình duyệt chặn bộ nhớ có thể ném SecurityError.
   try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
     const parsed: unknown = JSON.parse(saved);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       const record = parsed as Record<string, unknown>;
@@ -100,7 +102,7 @@ function runMigrationGuard(): void {
         const isCustom = record.accent === 'custom' && typeof record.customAccentHex === 'string' && /^#[\da-f]{6}$/i.test(record.customAccentHex);
         const migrated: ThemePreferences = {
           mode: record.mode === 'dark' ? 'dark' : 'light',
-          accent: isCustom ? 'custom' : 'corporate-blue',
+          accent: isCustom ? 'custom' : DEFAULT_ACCENT,
           theme: typeof record.theme === 'string' && THEME_PRESETS.some(p => p.key === record.theme) ? (record.theme as ThemeKey) : 'modern',
           customAccentHex: isCustom ? (record.customAccentHex as string) : '#0a78be',
           customAccentBgHex: isCustom && typeof record.customAccentBgHex === 'string' ? (record.customAccentBgHex as string) : deriveLightTint(isCustom ? (record.customAccentHex as string) : '#0a78be'),
@@ -113,7 +115,11 @@ function runMigrationGuard(): void {
       localStorage.removeItem(STORAGE_KEY);
     }
   } catch {
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Bộ nhớ không dùng được: bỏ qua, dùng giá trị mặc định.
+    }
   }
 }
 
@@ -134,7 +140,7 @@ function readPreferences(): ThemePreferences {
     version: MIGRATION_VERSION,
     mode: saved.mode === 'dark' ? 'dark' : 'light',
     theme: THEME_PRESETS.find(preset => preset.key === saved.theme)?.key ?? 'modern',
-    accent: saved.accent === 'custom' ? 'custom' : (ACCENT_PRESETS.find(preset => preset.key === saved.accent)?.key ?? 'blue'),
+    accent: saved.accent === 'custom' ? 'custom' : (ACCENT_PRESETS.find(preset => preset.key === saved.accent)?.key ?? DEFAULT_ACCENT),
     customAccentHex,
     customAccentBgHex: deriveLightTint(customAccentHex),
     tableGridLines: typeof saved.tableGridLines === 'boolean' ? saved.tableGridLines : true,
@@ -157,11 +163,17 @@ function applyThemeToDOM(state: ThemePreferences) {
 
   if (state.accent === 'custom' && state.customAccentHex) {
     root.style.setProperty('--color-primary', state.customAccentHex);
-    root.style.setProperty('--color-primary-hover', 'color-mix(in srgb, var(--color-primary), black 20%)');
-    root.style.setProperty(
-      '--color-primary-tint',
-      state.customAccentBgHex || deriveLightTint(state.customAccentHex)
-    );
+    if (state.mode === 'dark') {
+      // Chế độ tối: để quy tắc :root.dark[data-accent] trong index.css dẫn xuất hover/nền nhấn.
+      root.style.removeProperty('--color-primary-hover');
+      root.style.removeProperty('--color-primary-tint');
+    } else {
+      root.style.setProperty('--color-primary-hover', 'color-mix(in srgb, var(--color-primary), black 20%)');
+      root.style.setProperty(
+        '--color-primary-tint',
+        state.customAccentBgHex || deriveLightTint(state.customAccentHex)
+      );
+    }
   } else {
     root.style.removeProperty('--color-primary');
     root.style.removeProperty('--color-primary-hover');

@@ -320,6 +320,15 @@
 :root[data-accent='pink']    { --color-primary: #db2777; --color-primary-hover: #be185d; --color-primary-tint: #fdf2f8; }
 :root[data-accent='red']     { --color-primary: #dc2626; --color-primary-hover: #b91c1c; --color-primary-tint: #fef2f2; }
 
+/* Chế độ tối: các preset ở trên chỉ có nền nhạt cho chế độ sáng và cùng độ ưu tiên với :root.dark,
+   nên ở đây dẫn xuất lại nền/viền/chữ nhấn từ màu chủ đạo (độ ưu tiên cao hơn). */
+:root.dark[data-accent] {
+  --color-primary-tint: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  --color-primary-border: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  --color-primary-text: color-mix(in srgb, var(--color-primary), white 45%);
+  --color-primary-hover: color-mix(in srgb, var(--color-primary), white 15%);
+}
+
 /* UI Presets */
 [data-theme='clear'] {
   --radius: 2px;

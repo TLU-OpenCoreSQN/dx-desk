@@ -153,7 +153,7 @@ export const TicketDetailPage: React.FC = () => {
       <TicketStageTracker ticket={ticket} events={events} />
 
       {profile?.assistant_enabled && roles.some(role => role === 'Agent' || role === 'Manager') && (
-        <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} categories={categories} refresh={() => loadTicketData(true)} />
+        <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} ticket={ticket} categories={categories} refresh={() => loadTicketData(true)} />
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">

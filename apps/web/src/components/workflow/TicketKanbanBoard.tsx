@@ -18,6 +18,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { Ticket, TicketPriority } from '../../types/api';
+import { computeSlaSnapshot, slaGaugeColor } from '../../lib/sla';
 
 export interface TicketKanbanBoardProps {
   tickets: Ticket[];
@@ -99,72 +100,63 @@ interface SlaStatus {
   remainingText: string;
   isBreached: boolean;
   isPaused: boolean;
+  isFinished: boolean;
   gaugeColor: string;
 }
 
-function computeSla(ticket: Ticket): SlaStatus {
-  if (!ticket.sla_due_at) {
+function formatMinutes(totalMinutes: number): string {
+  return totalMinutes >= 60
+    ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
+    : `${totalMinutes}m`;
+}
+
+function computeSla(ticket: Ticket, now: number): SlaStatus {
+  const sla = computeSlaSnapshot(ticket, now);
+  if (!sla.hasSla) {
     return {
       elapsedPercent: 0,
       remainingText: 'Không có SLA',
       isBreached: false,
       isPaused: false,
+      isFinished: sla.isFinished,
       gaugeColor: 'bg-edge',
     };
   }
 
-  const now = Date.now();
-  const created = new Date(ticket.created_at).getTime();
-  const originalDue = new Date(ticket.sla_due_at).getTime();
-  const pausedMs = Number(ticket.sla_paused_ms || 0);
-
-  let activePausedExtra = 0;
-  if (ticket.status === 'waiting_user' && ticket.waiting_since) {
-    activePausedExtra = Math.max(0, now - new Date(ticket.waiting_since).getTime());
+  // Phiếu đã kết thúc: chỉ phản ánh kết quả cuối (cờ sla_breached của máy chủ), không đếm tiếp.
+  if (sla.isFinished) {
+    return {
+      elapsedPercent: 100,
+      remainingText: sla.isBreached ? 'Trễ SLA' : 'Đạt SLA',
+      isBreached: sla.isBreached,
+      isPaused: false,
+      isFinished: true,
+      gaugeColor: sla.isBreached ? 'bg-status-danger' : 'bg-status-success',
+    };
   }
 
-  const effectiveDue = originalDue + pausedMs + activePausedExtra;
-  const remainingMs = effectiveDue - now;
-  const totalWindow = Math.max(1, originalDue - created);
-  const isBreached = ticket.sla_breached === true || remainingMs <= 0;
-  const isPaused = ticket.status === 'waiting_user';
-
-  const elapsedPercent = Math.min(
-    100,
-    Math.max(0, Math.round(((now - created - pausedMs - activePausedExtra) / totalWindow) * 100))
-  );
-
-  let remainingText = '';
-  if (isBreached) {
-    const overdueMinutes = Math.floor(Math.abs(remainingMs) / 60000);
-    remainingText = overdueMinutes >= 60
-      ? `Trễ ${Math.floor(overdueMinutes / 60)}h ${overdueMinutes % 60}m`
-      : `Trễ ${overdueMinutes}m`;
-  } else if (isPaused) {
+  let remainingText: string;
+  if (sla.isBreached) {
+    remainingText = `Trễ ${formatMinutes(Math.floor(Math.max(0, -sla.remainingMs) / 60000))}`;
+  } else if (sla.isPaused) {
     remainingText = '⏸ SLA Tạm dừng';
   } else {
-    const remainingMinutes = Math.floor(remainingMs / 60000);
-    remainingText = remainingMinutes >= 60
-      ? `${Math.floor(remainingMinutes / 60)}h ${remainingMinutes % 60}m còn lại`
-      : `${remainingMinutes}m còn lại`;
-  }
-
-  let gaugeColor = 'bg-emerald-500';
-  if (isBreached) {
-    gaugeColor = 'bg-rose-600';
-  } else if (elapsedPercent >= 80) {
-    gaugeColor = 'bg-orange-500 animate-pulse';
-  } else if (elapsedPercent >= 60) {
-    gaugeColor = 'bg-amber-500';
+    remainingText = `${formatMinutes(Math.floor(sla.remainingMs / 60000))} còn lại`;
   }
 
   return {
-    elapsedPercent: isBreached ? 100 : elapsedPercent,
+    elapsedPercent: sla.isBreached ? 100 : sla.elapsedPercent,
     remainingText,
-    isBreached,
-    isPaused,
-    gaugeColor,
+    isBreached: sla.isBreached,
+    isPaused: sla.isPaused,
+    isFinished: false,
+    gaugeColor: slaGaugeColor(sla.elapsedPercent, sla.isBreached),
   };
+}
+
+/** Làn khẩn cấp chỉ gồm phiếu còn mở: critical hoặc đã vi phạm SLA. */
+function isCriticalLane(ticket: Ticket, sla: SlaStatus): boolean {
+  return !sla.isFinished && (ticket.priority === 'critical' || sla.isBreached);
 }
 
 export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
@@ -195,19 +187,21 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
     });
   }, [tickets, priorityFilter, searchQuery]);
 
-  // Swimlanes partitioning:
-  // Critical swimlane: tickets with priority === 'critical' or sla_breached or critical SLA elapsed
-  const criticalTickets = useMemo(() => {
-    return filteredTickets.filter(
-      (t) => t.priority === 'critical' || t.sla_breached || computeSla(t).isBreached
-    );
+  // Tính SLA một lần cho mỗi phiếu và dùng chung cho phân làn lẫn thẻ.
+  const slaById = useMemo(() => {
+    const now = Date.now();
+    return new Map(filteredTickets.map((t) => [t.id, computeSla(t, now)] as const));
   }, [filteredTickets]);
 
-  const standardTickets = useMemo(() => {
-    return filteredTickets.filter(
-      (t) => !(t.priority === 'critical' || t.sla_breached || computeSla(t).isBreached)
-    );
-  }, [filteredTickets]);
+  const criticalTickets = useMemo(
+    () => filteredTickets.filter((t) => isCriticalLane(t, slaById.get(t.id)!)),
+    [filteredTickets, slaById]
+  );
+
+  const standardTickets = useMemo(
+    () => filteredTickets.filter((t) => !isCriticalLane(t, slaById.get(t.id)!)),
+    [filteredTickets, slaById]
+  );
 
   const renderKanbanGrid = (subset: Ticket[]) => {
     return (
@@ -240,7 +234,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                   </div>
                 ) : (
                   colTickets.map((ticket) => {
-                    const sla = computeSla(ticket);
+                    const sla = slaById.get(ticket.id)!;
                     const isClaimable =
                       canClaim ? canClaim(ticket) : !ticket.assigned_to && onClaimTicket;
                     const isBusy = busyTicketId === ticket.id;
@@ -252,6 +246,8 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                         className="group relative flex flex-col justify-between rounded-md border border-edge bg-surface p-3 shadow-2xs transition-all hover:border-primary hover:shadow-xs cursor-pointer"
                         tabIndex={0}
                         onKeyDown={(e) => {
+                          // Bỏ qua phím từ phần tử con (nút nhận phiếu) để không chặn kích hoạt của nút.
+                          if (e.target !== e.currentTarget) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             onTicketClick?.(ticket);
@@ -291,7 +287,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                             </span>
                           </span>
                           <span
-                            className={`rounded-xs px-1.5 py-0.2 font-semibold text-[10px] ${
+                            className={`rounded-xs px-1.5 py-0.5 font-semibold text-[10px] ${
                               ticket.priority === 'critical'
                                 ? 'bg-status-danger-bg text-status-danger'
                                 : ticket.priority === 'high'

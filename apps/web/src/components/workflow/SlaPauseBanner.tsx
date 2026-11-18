@@ -11,6 +11,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { Ticket } from '../../types/api';
+import { SLA_FINISHED_STATUSES, computeSlaSnapshot, slaGaugeColor } from '../../lib/sla';
 
 export interface SlaPauseBannerProps {
   ticket: Ticket;
@@ -53,7 +54,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
 
   // Tick every second for active tickets with SLA
   useEffect(() => {
-    if (!ticket.sla_due_at || ticket.status === 'resolved' || ticket.status === 'closed') {
+    if (!ticket.sla_due_at || SLA_FINISHED_STATUSES.has(ticket.status)) {
       return;
     }
     const timer = setInterval(() => {
@@ -74,36 +75,24 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
     );
   }
 
-  const originalDue = new Date(ticket.sla_due_at).getTime();
-  const created = new Date(ticket.created_at).getTime();
-  const pausedMs = Number(ticket.sla_paused_ms || 0);
+  const sla = computeSlaSnapshot(ticket, now);
+  const { originalDue, remainingMs, isBreached, isPaused, elapsedPercent } = sla;
+  const isResolved = sla.isFinished;
+  const effectiveDueDate = new Date(sla.effectiveDue);
+  const totalPausedMinutes = Math.floor(sla.totalPausedMs / 60000);
 
-  // Active pause extra: now - waiting_since when status === 'waiting_user'
-  let activePauseExtra = 0;
-  if (ticket.status === 'waiting_user' && ticket.waiting_since) {
-    const waitingSince = new Date(ticket.waiting_since).getTime();
-    if (!Number.isNaN(waitingSince) && now > waitingSince) {
-      activePauseExtra = now - waitingSince;
-    }
+  // Phiếu đã hủy: SLA không còn áp dụng, không báo đạt hay trễ.
+  if (ticket.status === 'cancelled') {
+    if (compact) return null;
+    return (
+      <div
+        className={`flex items-center gap-2 rounded-md border border-edge bg-surface-muted/60 px-3.5 py-2.5 text-xs text-content-muted ${className}`}
+      >
+        <Info className="h-4 w-4 text-content-subtle shrink-0" />
+        <span>Phiếu đã hủy, cam kết SLA không còn áp dụng.</span>
+      </div>
+    );
   }
-
-  const effectiveDueTime = originalDue + pausedMs + activePauseExtra;
-  const effectiveDueDate = new Date(effectiveDueTime);
-  const remainingMs = effectiveDueTime - now;
-  const totalWindow = Math.max(1000, originalDue - created);
-  const isBreached = ticket.sla_breached === true || remainingMs < 0;
-  const isPaused = ticket.status === 'waiting_user';
-  const isResolved = ticket.status === 'resolved' || ticket.status === 'closed';
-
-  const elapsedPercent = Math.min(
-    100,
-    Math.max(
-      0,
-      Math.round(((now - created - pausedMs - activePauseExtra) / totalWindow) * 100)
-    )
-  );
-
-  const totalPausedMinutes = Math.floor((pausedMs + activePauseExtra) / 60000);
 
   // Case 1: Resolved / Closed
   if (isResolved) {
@@ -169,7 +158,8 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
 
   // Case 3: Breached State (sla_breached or remainingMs < 0)
   if (isBreached) {
-    const overdueMinutes = Math.floor(Math.abs(remainingMs) / 60000);
+    // Cờ sla_breached của máy chủ có thể bật trước khi đồng hồ phía trình duyệt thấy quá hạn.
+    const overdueMinutes = Math.floor(Math.max(0, -remainingMs) / 60000);
     const overdueHours = Math.floor(overdueMinutes / 60);
     const overdueMinsRem = overdueMinutes % 60;
     const overdueText =
@@ -205,12 +195,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
   }
 
   // Case 4: Active Running State
-  let gaugeColor = 'bg-emerald-500';
-  if (elapsedPercent >= 80) {
-    gaugeColor = 'bg-orange-500 animate-pulse';
-  } else if (elapsedPercent >= 60) {
-    gaugeColor = 'bg-amber-500';
-  }
+  const gaugeColor = slaGaugeColor(elapsedPercent, false);
 
   return (
     <div
