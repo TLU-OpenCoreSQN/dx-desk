@@ -59,20 +59,180 @@ Phát triển riêng: `npm ci --prefix apps/device-request && npm run dev --pref
 
 Giao diện DX-Desk chia thành bốn module: `core` (trang chủ, luôn bật), `desk` (phiếu hỗ trợ, bảng việc,
 phê duyệt), `devices` (yêu cầu cấp thiết bị và liên kết ứng dụng 2) và `data` (danh mục dữ liệu, báo cáo).
-Danh sách module bật nằm trong `config/doanh-nghiep/modules.json`, container `web` mount tệp này vào
-`/config/modules.json` và trình duyệt đọc lúc tải trang:
+Nguồn chuẩn là `modules.enabled` trong `config/doanh-nghiep/cau-hinh.json`. Lệnh `config apply` sinh
+`config/doanh-nghiep/modules.json`; không sửa độc lập projection này. Container `web` mount thư mục
+cấu hình vào `/etc/dxdesk/enterprise` bên ngoài web root; Nginx chỉ công bố đúng `modules.json` qua
+`/config/modules.json`, không công bố cấu hình doanh nghiệp hoặc workflow. Trình duyệt đọc lúc tải trang:
 
 ```json
 { "enabled": ["core", "desk", "devices", "data"] }
 ```
 
-Bỏ một mã khỏi danh sách rồi tải lại trang: menu, lối tắt ở trang chủ và route của module đó biến mất,
-không cần build lại image hay khởi động lại container. Tệp thiếu hoặc sai dạng thì giao diện bật tất cả
-module. Tắt module chỉ ẩn giao diện; quyền truy cập dữ liệu vẫn do RLS quyết định.
+Bỏ một mã khỏi danh sách nguồn, chạy `config apply` rồi tải lại trang: menu, lối tắt ở trang chủ và route
+của module đó biến mất, không cần build lại image hay khởi động lại container. Tệp thiếu, sai dạng hoặc
+request/body vượt 5 giây thì giao diện dùng fallback bật tất cả module, không giữ màn hình tải vô hạn.
+Tắt module chỉ ẩn giao diện; quyền truy cập dữ liệu vẫn do RLS quyết định.
 
 Mỗi module khai báo trong `apps/web/src/modules/<mã>/manifest.ts` (mã, tên, biểu tượng, đường dẫn, vai trò
 Keycloak tối thiểu). Menu chỉ hiện mục đúng vai trò; vai trò cao hơn bao hàm vai trò thấp hơn
 (Employee < Agent < Manager).
+
+### Cấu hình doanh nghiệp (W6-12)
+
+Cài dependency kiểm schema rồi kiểm tra nguồn cấu hình, không cần `.env` hoặc DB cho bước validate:
+
+```bash
+npm ci --prefix tools/testing
+node scripts/dxdesk.mjs config validate
+```
+
+`config/schema.json` định nghĩa phiên bản 1: `teams`, `categories`/`requirement_fields`, `routing`,
+`sla_policies` theo priority và `modules.enabled`. Trường động hiện hỗ trợ chuỗi. Bắt buộc giữ module
+`core`; mã trùng, trường lạ, JSON trùng khóa hoặc policy sai bị từ chối. Validate offline chưa xác nhận
+tham chiếu tới nhóm/danh mục hiện có trong DB; kiểm tra đó chạy trong apply.
+
+Sau khi stack thử đã khởi động, quản trị viên được phép áp dụng bằng tài khoản PostgreSQL quản trị
+trong `.env`; lệnh này **ghi cấu hình DB**, không dùng trên dữ liệu vận hành khi chưa được đồng ý:
+
+```bash
+node scripts/dxdesk.mjs config apply
+```
+
+Có thể truyền đường dẫn JSON sau `validate`/`apply`; file mặc định là `config/doanh-nghiep/cau-hinh.json`.
+Giữ một nguồn chuẩn khi quản lý triển khai. `node scripts/dxdesk.mjs config` không có subcommand vẫn
+chỉ kiểm Compose như trước.
+
+Apply upsert theo mã nghiệp vụ trong một transaction, không xóa mục vắng trong JSON; thay đổi vô hiệu
+hóa phải tường minh. SLA mới áp cho ticket mới, không viết lại clock lịch sử. Chạy hai lần không đổi
+row version nếu nội dung không đổi. Quyền ứng dụng bình thường không được áp cấu hình.
+
+Khóa `.config-apply.lock` được giữ từ trước ghi DB đến khi publish projection; lệnh cạnh tranh dừng
+trước khi ghi. Nếu tiến trình chết, kiểm PID trong file và xác minh đã dừng trước khi quản trị viên
+xử lý khóa; không tự xóa khóa đang tồn tại. DB và filesystem không có transaction chung: lỗi publish
+sau commit báo `CONFIG_PROJECTION_FAILED`, giữ projection cũ khi rename chưa thành công; sửa quyền
+hoặc mount rồi chạy lại cùng cấu hình để phục hồi idempotent. Không dùng rollback migration để
+sửa lỗi projection.
+
+Nghiệm thu TN-07: thêm danh mục `peripheral` tên “Cấp thiết bị ngoại vi”, field `asset_code` bắt buộc,
+routing tới nhóm active và đổi một policy; validate/apply, tải lại form rồi tạo ticket mới. Kiểm thiếu
+field bị chặn, định tuyến/deadline đúng, apply lần hai không trùng và ticket cũ không đổi deadline.
+Harness `node tools/testing/enterprise-config.mjs` chạy trên PostgreSQL dùng một lần, không dùng DB
+hiện tại; browser fixture riêng không được gọi là nghiệm thu Compose/PostgREST trọn luồng.
+
+### Workflow doanh nghiệp (W6-13)
+
+Nguồn workflow duy nhất nằm trong `config/doanh-nghiep/workflows/`. Cả importer và publisher mount
+vào `/import/workflows`; ID workflow cũ giữ nguyên. Kiểm toàn bộ JSON, ID duy nhất và cấu trúc trước
+khi `up`/`n8n-reload` thay đổi dịch vụ:
+
+```bash
+node infra/n8n/validate-workflows.mjs
+node scripts/dxdesk.mjs n8n-reload
+```
+
+`n8n-reload` chỉ chạy trên stack được phép; lỗi preflight xảy ra trước bước dừng n8n. Publisher vẫn
+chỉ bật workflow hello khi automation tắt, không tự xóa workflow vắng trong thư mục. Kiểm restart
+trên stack thật bằng `node scripts/stack-test.mjs --restart-n8n`; unit test không thay bằng chứng này.
+
+### Bộ đánh giá AI tuần 6 (W6-05, W6-08, W6-14)
+
+`config/evaluation/assistant-questions.json` có 10 câu lõi tổng quát và 5 câu mở rộng, trong đó hai
+luồng VPN cố định chỉ chấm flow, không được cộng vào ngưỡng model 8/10. `ticket-triage.json` có 20
+ticket giả tiếng Việt với nhãn/rubric; nhãn cần reviewer độc lập xác nhận trước nghiệm thu.
+
+```bash
+node tools/testing/week6-evaluate.mjs --help
+node tools/testing/week6-evaluate.mjs --timeout-ms 3000
+```
+
+Mặc định chỉ preflight GET: kiểm gateway, role token và model đã có trong Ollama; không pull model,
+không sinh câu trả lời hoặc xác nhận hành động. Runtime/token thiếu trả exit khác 0 và
+`completed:false`, không coi thiếu máy là kết quả đạt. Token của ba người dùng thử nhập từ biến môi
+trường `WEEK6_EMPLOYEE_TOKEN`, `WEEK6_AGENT_TOKEN`, `WEEK6_MANAGER_TOKEN`, không đặt trong command line,
+file Git, chat hoặc ảnh.
+
+Chỉ dùng `--run-assistant`/`--run-triage` sau khi có môi trường giả lập được phép; xem `--help` để
+cung cấp model, người chạy, phiên bản dữ liệu và đường dẫn output tuyệt đối có thư mục cha sẵn có.
+Runner không tự đổi model trên gateway: mỗi lượt phải cấu hình model ở server và ghi nhận đối chiếu
+model/digest; `--gateway-model` là xác nhận của người vận hành, không phải bằng chứng protocol.
+
+Report có raw answer, trace công khai, TTFT tính từ delta nội dung đầu, model digest, SHA/hash cấu
+hình và mẫu RAM host. Sao reviewTemplate thành file ngoài repo rồi reviewer khác người chạy điền
+đúng/sai, privacy/consent, facts/summary và ghi chú; dùng `--score`/`--reviews` để chấm offline. Không tự
+đổi keyword match thành đánh giá không bịa. Điểm model ≥8/10 và category ≥16/20 tính từng lượt;
+bất kỳ lỗi quyền/xác nhận đều fail. Triage standalone chỉ gọi phân loại và rút gọn chuỗi như API,
+không thay nghiệm thu DB/audit/duyệt đề xuất. RAM host không thay RAM container/WSL; full-stack peak,
+OOM, máy 16 GB và QĐ-5 vẫn cần số đo và xác nhận riêng.
+
+### Nhập nhân viên từ CSV (W6-15)
+
+Doanh nghiệp mới cấp tài khoản hàng loạt bằng `scripts/import-nhan-vien.mjs`. Tệp CSV (UTF-8, dấu phẩy) có
+tiêu đề `tai_khoan,ho_ten,email,vai_tro,nhom_xu_ly` và cột tùy chọn `don_vi`:
+
+| Cột | Ý nghĩa |
+| --- | --- |
+| `tai_khoan` | Tên đăng nhập Keycloak: chữ thường không dấu, số, `.`, `-`, `_` |
+| `ho_ten` | Họ tên; từ đầu thành họ (`lastName`), phần còn lại thành tên (`firstName`) |
+| `email` | Không trùng trong tệp và không trùng tài khoản Keycloak khác |
+| `vai_tro` | `Employee`, `Agent` hoặc `Manager` (realm role) |
+| `nhom_xu_ly` | Tên nhóm xử lý (ví dụ `Network Team`) hoặc UUID; nhiều nhóm cách nhau bằng `;`. Chỉ Agent và Manager |
+| `don_vi` | Mã đơn vị (W5-02), ví dụ `phong-ke-toan`; chỉ gán khi tài khoản chưa có đơn vị |
+
+Mẫu: `config/doanh-nghiep/nhan-vien.mau.csv`. Tệp `config/doanh-nghiep/nhan-vien.gia-lap-50.csv` là
+**dữ liệu giả lập** 50 người (40 Employee, 7 Agent, 3 Manager, email `@gia-lap.dxdesk.local`) để thử trên stack demo.
+
+```sh
+# 1. Kiểm tra tệp, không cần stack
+node scripts/dxdesk.mjs import-nhan-vien config/doanh-nghiep/nhan-vien.gia-lap-50.csv --offline
+# 2. Chạy thử: đối chiếu Keycloak và danh sách nhóm, in kế hoạch từng dòng, không ghi gì
+node scripts/dxdesk.mjs import-nhan-vien config/doanh-nghiep/nhan-vien.gia-lap-50.csv
+# 3. Chạy thật; mật khẩu tạm của người mới tạo ghi ra tệp NGOÀI thư mục kho
+node scripts/dxdesk.mjs import-nhan-vien config/doanh-nghiep/nhan-vien.gia-lap-50.csv \
+  --thuc-hien --xuat-mat-khau ../mat-khau-tam.csv
+# Hoặc: make import-nhan-vien CSV=config/doanh-nghiep/nhan-vien.gia-lap-50.csv NV_ARGS="--thuc-hien --xuat-mat-khau ../mk.csv"
+```
+
+Khi chạy thật, mỗi người mới có mật khẩu tạm 20 ký tự sinh ngẫu nhiên (CSPRNG), credential `temporary` và
+required action `UPDATE_PASSWORD`, nên lần đăng nhập đầu phải đổi mật khẩu. Mật khẩu không in ra màn hình;
+`--xuat-mat-khau` bắt buộc khi có người cần tạo, tệp phải nằm ngoài kho, không được tồn tại trước và được
+tạo với quyền 600. Giao riêng cho từng người rồi xóa tệp. Agent/Manager có `nhom_xu_ly` được đưa vào nhóm qua
+`POST /api/system/roster` bằng token dịch vụ `dxdesk-automation` (cần `AUTOMATION_ENABLED=true` và
+`AUTOMATION_CLIENT_SECRET` trong `.env`), lô tối đa 100 người. Roster chỉ thêm hoặc cập nhật, không xóa thành
+viên đang có của nhóm. Thông tin Keycloak lấy từ `.env` (`KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_REALM`,
+`KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`); biến môi trường cùng tên ghi đè `.env`, `DXDESK_GATEWAY_URL`
+đổi địa chỉ cổng (mặc định `http://localhost:$APISIX_PORT`).
+
+Chạy lại an toàn: tài khoản đã có thì không tạo lại, không đổi mật khẩu, chỉ bổ sung vai trò hoặc thành viên
+nhóm còn thiếu. Báo lỗi theo dòng: thiếu cột, tài khoản/email sai dạng, vai trò sai, Employee có nhóm, nhóm
+không tồn tại hoặc ngừng hoạt động, tài khoản hoặc email trùng trong tệp, email đã thuộc tài khoản Keycloak
+khác, tài khoản đã có vai trò DX-Desk khác (script không tự đổi vai trò, sửa tay trong Keycloak Admin). Chạy thử
+có dòng lỗi trả mã thoát 1; chạy thật từ chối ghi khi còn dòng lỗi, trừ khi thêm `--bo-qua-dong-loi` để chỉ
+ghi các dòng hợp lệ. Người dùng mới phải đăng nhập lại để token mang vai trò; Agent thấy hàng đợi của nhóm
+ngay khi roster được ghi.
+
+Đưa một kỹ thuật viên có sẵn vào nhóm bằng tay (khi không dùng CSV): lấy `id` người dùng trong Keycloak Admin
+→ Users, `id` nhóm từ `GET /api/system/teams`, rồi gọi roster bằng token dịch vụ:
+
+```sh
+TOKEN=$(curl -s -d grant_type=client_credentials -d client_id=dxdesk-automation \
+  -d client_secret="$AUTOMATION_CLIENT_SECRET" \
+  http://localhost:8080/realms/dxdesk/protocol/openid-connect/token | jq -r .access_token)
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:9080/api/system/teams | jq '.data[] | {id, name}'
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"members":[{"team_id":"<id nhóm>","user_id":"<id Keycloak>","display_name":"Họ tên","active":true}]}' \
+  http://localhost:9080/api/system/roster
+```
+
+Phương án thay thế có sẵn trong Keycloak (không qua script, không đưa người vào nhóm xử lý):
+
+- **Partial import**: Keycloak Admin → realm `dxdesk` → Realm settings → Action → **Partial import**, chọn tệp
+  JSON dạng `{"users":[{"username":"...","email":"...","firstName":"...","lastName":"...","enabled":true,
+  "realmRoles":["Employee"],"requiredActions":["UPDATE_PASSWORD"],"credentials":[{"type":"password",
+  "value":"...","temporary":true}]}]}`, chọn xử lý khi trùng *Skip*. Phải tự sinh mật khẩu tạm và tự giữ kín tệp.
+- **Đồng bộ LDAP/Active Directory**: Realm settings → User federation → Add LDAP providers, khai báo URL máy
+  chủ, Bind DN, Users DN; chế độ `READ_ONLY` hoặc `UNSYNCED`; thêm mapper *role-ldap-mapper* hoặc
+  *group-ldap-mapper* để ánh xạ nhóm AD sang `Employee`/`Agent`/`Manager`, rồi *Sync all users*. Mật khẩu do
+  AD quản lý nên không cần mật khẩu tạm. Nhóm xử lý vẫn đưa vào bằng roster như trên.
 
 ### Wiki.js tri thức (W5-08)
 

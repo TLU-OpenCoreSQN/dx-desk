@@ -4,6 +4,9 @@
 
 ## [Chưa phát hành]
 
+### Thêm
+- W6-15: `scripts/import-nhan-vien.mjs` (lệnh `node scripts/dxdesk.mjs import-nhan-vien`, `make import-nhan-vien`) nhập nhân viên từ CSV vào Keycloak — mặc định chạy thử, `--thuc-hien` tạo người dùng với mật khẩu tạm ngẫu nhiên bắt đổi lần đầu, gán realm role, đưa Agent/Manager vào nhóm qua `POST /api/system/roster`; chạy lại không tạo trùng, báo lỗi theo dòng. Tệp mẫu `config/doanh-nghiep/nhan-vien.mau.csv`, 50 nhân viên giả lập `nhan-vien.gia-lap-50.csv`, kiểm thử `tests/import-nhan-vien.test.mjs`.
+
 ## [0.5.0] - 2026-11-17
 
 ### Thêm

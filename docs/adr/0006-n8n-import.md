@@ -8,8 +8,9 @@
 ## Quyết định
 
 Dùng image n8n ghim trong `.env.example`, không chép/sửa mã nguồn n8n vào repo.
-Workflow do đội viết ở `infra/n8n/workflows/`, được import rồi publish trước khi
-service n8n chính khởi động. Workflow hello không cần credentials.
+Workflow do đội viết ở `config/doanh-nghiep/workflows/` (nguồn cấu hình doanh nghiệp W6-13),
+được kiểm JSON/ID trước khi import rồi publish trước khi service n8n chính khởi động.
+Workflow hello không cần credentials.
 
 `node scripts/dxdesk.mjs n8n-reload` dừng service, import workflow, publish rồi bật lại.
 Nếu workflow cần credentials, đặt export trong `infra/n8n/credentials/credentials.json`

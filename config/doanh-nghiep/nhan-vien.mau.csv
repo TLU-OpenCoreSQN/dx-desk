@@ -1,0 +1,5 @@
+tai_khoan,ho_ten,email,vai_tro,nhom_xu_ly,don_vi
+nv.mau01,Nguyễn Văn Mẫu,nv.mau01@example.invalid,Employee,,phong-hanh-chinh
+ktv.mau01,Trần Thị Mẫu,ktv.mau01@example.invalid,Agent,Network Team,phong-cntt
+ktv.mau02,Lê Minh Mẫu,ktv.mau02@example.invalid,Agent,"Identity Team;IT Support",phong-cntt
+ql.mau01,Phạm Quốc Mẫu,ql.mau01@example.invalid,Manager,,phong-hanh-chinh
