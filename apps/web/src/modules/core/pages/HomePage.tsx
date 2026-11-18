@@ -78,7 +78,7 @@ export function HomePage() {
   const benefits = [
     'Gửi yêu cầu và theo dõi tiến độ ở cùng một nơi.',
     devicesEnabled ? 'Tra cứu lại lịch sử phiếu và thiết bị đã đề xuất.' : 'Tra cứu lại lịch sử phiếu đã gửi.',
-    'Không cần tài khoản riêng — dùng chung SSO của tổ chức.',
+    'Không cần tài khoản riêng - dùng chung SSO của tổ chức.',
   ];
 
   const steps = [

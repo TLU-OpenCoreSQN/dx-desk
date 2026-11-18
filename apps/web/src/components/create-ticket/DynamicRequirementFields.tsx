@@ -17,6 +17,74 @@ export interface DynamicRequirementFieldsProps {
 const isDateField = (field: RequirementField): boolean =>
   field.key.toLowerCase().includes('until');
 
+interface FieldGuide {
+  /** Ví dụ cụ thể hiển thị trong ô nhập. */
+  placeholder: string;
+  /** Giải thích ngắn cho người chưa quen thuật ngữ. */
+  hint: string;
+}
+
+/**
+ * Hướng dẫn theo khóa trường (khóa ổn định trong config/doanh-nghiep/cau-hinh.json).
+ * Trường mới chưa có ở đây sẽ dùng hướng dẫn chung bên dưới.
+ */
+const FIELD_GUIDES: Record<string, FieldGuide> = {
+  system_name: {
+    placeholder: 'VD: Phần mềm kế toán MISA, Email Outlook, Hệ thống nhân sự',
+    hint: 'Tên phần mềm hoặc trang web bạn đang dùng, đúng như tên hiển thị trên màn hình hoặc biểu tượng.',
+  },
+  permission_level: {
+    placeholder: 'VD: Chỉ xem báo cáo; Thêm và sửa chứng từ',
+    hint: 'Bạn cần làm được gì trong hệ thống. Nếu chưa rõ, ghi giống quyền của một đồng nghiệp cùng vị trí.',
+  },
+  valid_until: {
+    placeholder: '',
+    hint: 'Ngày cuối cùng bạn cần quyền này. Quyền sẽ được thu hồi sau ngày này.',
+  },
+  account_name: {
+    placeholder: 'VD: nguyen.van.a hoặc nguyen.van.a@congty.vn',
+    hint: 'Tên bạn dùng để đăng nhập máy tính hoặc email công ty.',
+  },
+  issue_type: {
+    placeholder: 'VD: Quên mật khẩu, tài khoản bị khóa, không nhận được mã xác thực',
+    hint: 'Mô tả ngắn chuyện gì đang xảy ra với tài khoản.',
+  },
+  client_version: {
+    placeholder: 'VD: FortiClient 7.2.4',
+    hint: 'Mở phần mềm VPN, vào mục Giới thiệu (About) để xem số phiên bản.',
+  },
+  error_message: {
+    placeholder: 'VD: "Không thể kết nối tới máy chủ (mã lỗi -14)"',
+    hint: 'Chép nguyên văn dòng thông báo lỗi trên màn hình, kể cả mã lỗi nếu có.',
+  },
+  device_os: {
+    placeholder: 'VD: Windows 11, macOS 14, Android 14',
+    hint: 'Hệ điều hành của máy đang gặp sự cố.',
+  },
+  device_code: {
+    placeholder: 'VD: LT-0123 (in trên tem dán ở mặt dưới máy)',
+    hint: 'Mã tài sản trên tem dán của thiết bị. Không thấy tem thì ghi tên và màu thiết bị.',
+  },
+  location: {
+    placeholder: 'VD: Tầng 3, phòng 305, bàn số 12',
+    hint: 'Nơi kỹ thuật viên có thể tìm đến bạn hoặc thiết bị.',
+  },
+  software_name: {
+    placeholder: 'VD: Microsoft Excel, Zoom, phần mềm chấm công',
+    hint: 'Tên phần mềm đang gặp lỗi hoặc cần cài đặt.',
+  },
+  occurred_at: {
+    placeholder: 'VD: Khoảng 9h sáng nay, sau khi khởi động lại máy',
+    hint: 'Thời điểm bạn thấy lỗi lần đầu và lỗi có lặp lại hay không.',
+  },
+};
+
+const fieldGuide = (field: RequirementField): FieldGuide =>
+  FIELD_GUIDES[field.key] ?? {
+    placeholder: isDateField(field) ? '' : `Nhập ${field.label.toLowerCase()}`,
+    hint: '',
+  };
+
 export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> = ({
   fields,
   fieldValues,
@@ -35,7 +103,7 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
         </span>
       </legend>
       <p className="mb-3 text-[11px] text-content-muted">
-        Các trường có dấu <span className="font-semibold text-danger">*</span> là bắt
+        Các trường có dấu <span className="font-semibold text-status-danger">*</span> là bắt
         buộc theo danh mục đã chọn.
       </p>
 
@@ -43,6 +111,10 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
         {fields.map((field) => {
           const value = fieldValues[field.key] || '';
           const invalid = isInvalid(field);
+          const guide = fieldGuide(field);
+          const hintId = guide.hint ? `requirement-${field.key}-hint` : undefined;
+          const errorId = invalid ? `requirement-${field.key}-error` : undefined;
+          const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
           return (
             <div key={field.key} className="min-w-0">
               <label
@@ -51,7 +123,7 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
               >
                 <span className="break-words">{field.label}</span>
                 {field.required ? (
-                  <span className="text-danger" aria-hidden="true">*</span>
+                  <span className="text-status-danger" aria-hidden="true">*</span>
                 ) : (
                   <span className="text-[10px] font-normal text-content-subtle">
                     (không bắt buộc)
@@ -68,10 +140,15 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
                 onBlur={() => onBlur(field.key)}
                 aria-required={field.required}
                 aria-invalid={invalid || undefined}
-                aria-describedby={invalid ? `requirement-${field.key}-error` : undefined}
-                placeholder={isDateField(field) ? '' : `VD: nội dung cho "${field.label}"`}
+                aria-describedby={describedBy}
+                placeholder={guide.placeholder}
                 className={fieldClass(invalid)}
               />
+              {guide.hint && (
+                <p id={hintId} className="mt-1 text-[11px] leading-snug text-content-muted">
+                  {guide.hint}
+                </p>
+              )}
               {invalid && (
                 <FieldError id={`requirement-${field.key}-error`}>
                   Vui lòng nhập “{field.label}” (trường bắt buộc của danh mục).

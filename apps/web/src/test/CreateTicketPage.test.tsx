@@ -3,7 +3,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { readDraft } from '../lib/ticketDraft';
 import { CreateTicketPage } from '../modules/desk/pages/CreateTicketPage';
 import * as apiService from '../services/api';
 import * as authContext from '../contexts/AuthContext';
@@ -13,6 +14,36 @@ const mockCategories = [
   { id: 'cat-1111-uuid', code: 'HW', name: 'Phần cứng máy tính', description: 'Sự cố thiết bị' },
   { id: 'cat-2222-uuid', code: 'NET', name: 'Mạng nội bộ', description: 'Kết nối mạng' },
 ];
+
+/** Render trong router có các trang đích để kiểm tra điều hướng sau khi hủy hoặc tự xử lý. */
+const renderWithRoutes = () => {
+  mockAuth();
+  return render(
+    <MemoryRouter initialEntries={['/tickets/new']}>
+      <Routes>
+        <Route path="/" element={<p>Trang chủ đích</p>} />
+        <Route path="/tickets" element={<p>Danh sách phiếu đích</p>} />
+        <Route path="/tickets/new" element={<CreateTicketPage />} />
+      </Routes>
+    </MemoryRouter>
+  );
+};
+
+const mockAuth = (roles: ('Employee' | 'Agent' | 'Manager')[] = ['Employee']) => {
+  vi.spyOn(authContext, 'useAuth').mockReturnValue({
+    isAuthenticated: true,
+    isLoading: false,
+    isKeycloakOffline: false,
+    token: 'jwt-token',
+    profile: { id: 'user-1', username: 'testuser', roles },
+    username: 'testuser',
+    roles,
+    hasRole: (r) => roles.includes(r),
+    login: vi.fn(),
+    logout: vi.fn(),
+    refreshToken: vi.fn(),
+  });
+};
 
 const mockRenderWithAuth = (roles: ('Employee' | 'Agent' | 'Manager')[] = ['Employee']) => {
   vi.spyOn(authContext, 'useAuth').mockReturnValue({
@@ -387,5 +418,66 @@ describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
     mockRenderWithAuth(['Employee']);
     await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
     expect(screen.queryByText('Thử tự xử lý trước khi gửi phiếu')).not.toBeInTheDocument();
+  });
+
+  it('"Hủy bỏ" khi form trống chuyển thẳng về danh sách phiếu, không hỏi lại', async () => {
+    renderWithRoutes();
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy bỏ' }));
+    expect(await screen.findByText('Danh sách phiếu đích')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('"Hủy bỏ" khi đã nhập hỏi lại; "Tiếp tục điền" giữ nguyên trang', async () => {
+    renderWithRoutes();
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/Tiêu đề phiếu/), { target: { value: 'Máy in không chạy' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy bỏ' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Hủy tạo phiếu?' });
+    expect(dialog).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Tiếp tục điền' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Tiêu đề phiếu/)).toHaveValue('Máy in không chạy');
+  });
+
+  it('"Giữ nháp và rời trang" lưu nháp; "Xóa nháp và rời trang" xóa nháp', async () => {
+    const first = renderWithRoutes();
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/Tiêu đề phiếu/), { target: { value: 'Nháp cần giữ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy bỏ' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Giữ nháp và rời trang' }));
+    expect(await screen.findByText('Danh sách phiếu đích')).toBeInTheDocument();
+    expect(readDraft('user-1')?.title).toBe('Nháp cần giữ');
+    first.unmount();
+
+    renderWithRoutes();
+    await waitFor(() => expect(screen.getByLabelText(/Tiêu đề phiếu/)).toHaveValue('Nháp cần giữ'));
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy bỏ' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Xóa nháp và rời trang' }));
+    expect(await screen.findByText('Danh sách phiếu đích')).toBeInTheDocument();
+    expect(readDraft('user-1')).toBeNull();
+  });
+
+  it('sau khi tự xử lý: "Về trang chủ" xóa nháp và chuyển trang, "Tôi vẫn cần gửi phiếu" ở lại', async () => {
+    vi.spyOn(apiService, 'recordSelfService').mockResolvedValue({
+      id: 'ss-1', category_id: 'cat-2222-uuid', article_id: 'art-vpn', created_at: '2026-11-04T00:00:00Z',
+    });
+    const first = renderWithRoutes();
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/Danh mục sự cố/), { target: { value: 'cat-2222-uuid' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Đã tự xử lý được' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Tôi vẫn cần gửi phiếu' }));
+    expect(await screen.findByText('Bạn có thể tiếp tục điền phiếu bên dưới.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Về trang chủ' })).not.toBeInTheDocument();
+    first.unmount();
+
+    renderWithRoutes();
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText(/Danh mục sự cố/), { target: { value: 'cat-2222-uuid' } });
+    fireEvent.change(screen.getByLabelText(/Tiêu đề phiếu/), { target: { value: 'VPN lỗi' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Đã tự xử lý được' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Về trang chủ' }));
+    expect(await screen.findByText('Trang chủ đích')).toBeInTheDocument();
+    expect(readDraft('user-1')).toBeNull();
   });
 });

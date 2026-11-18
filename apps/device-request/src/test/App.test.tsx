@@ -136,8 +136,8 @@ describe('IT', () => {
     await userEvent.click(within(card).getByRole('button', { name: 'Lịch sử' }));
     const history = await within(card).findByRole('list', { name: 'Lịch sử xử lý' });
     expect(within(history).getAllByRole('listitem')).toHaveLength(2);
-    expect(history).toHaveTextContent('Gửi đề nghị — employee.a');
-    expect(history).toHaveTextContent('Đã duyệt, chờ IT — manager.1');
+    expect(history).toHaveTextContent('Gửi đề nghị - employee.a');
+    expect(history).toHaveTextContent('Đã duyệt, chờ IT - manager.1');
   });
 });
 

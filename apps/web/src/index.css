@@ -301,7 +301,7 @@
   --color-primary-subtle: color-mix(in srgb, var(--color-primary-tint), transparent 30%);
 }
 
-/* Accent presets — data-accent on <html> */
+/* Accent presets - data-accent on <html> */
 :root[data-accent='corporate-blue'] {
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;

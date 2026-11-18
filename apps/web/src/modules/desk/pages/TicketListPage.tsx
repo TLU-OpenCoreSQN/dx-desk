@@ -278,7 +278,7 @@ export const TicketListPage: React.FC = () => {
           </div>
           <p className="mt-1 text-xs leading-relaxed text-[var(--color-content-muted)]">
             Mỗi trang hiển thị tối đa {PAGE_SIZE} phiếu. Tìm kiếm và bộ lọc chỉ áp dụng cho
-            trang đang xem — dùng phân trang để xem các phiếu còn lại.
+            trang đang xem - dùng phân trang để xem các phiếu còn lại.
           </p>
         </div>
 
@@ -623,7 +623,7 @@ export const TicketListPage: React.FC = () => {
         </button>
       )}
 
-      {/* Pagination — hidden when there is nothing to page through */}
+      {/* Pagination - hidden when there is nothing to page through */}
       {!isLoading && !error && canPaginate && (
         <nav
           aria-label="Phân trang danh sách phiếu"

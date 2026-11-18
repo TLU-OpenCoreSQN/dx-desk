@@ -125,9 +125,9 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
         <ul className="mt-3.5 grid gap-1.5 border-t border-edge pt-3 text-xs text-muted" aria-label="Lịch sử xử lý">
           {events.map(event => (
             <li key={event.id} className="rounded-md border border-edge-subtle bg-surface-warm/40 px-3 py-1.5">
-              {formatTime(event.created_at)} — {event.from_status ? STATUS_LABELS[event.to_status] : 'Gửi đề nghị'} —{' '}
+              {formatTime(event.created_at)} - {event.from_status ? STATUS_LABELS[event.to_status] : 'Gửi đề nghị'} -{' '}
               {event.actor_type === 'user' ? event.actor_name || 'Người dùng' : 'Hệ thống'}
-              {event.note ? ` — ${event.note}` : ''}
+              {event.note ? ` - ${event.note}` : ''}
             </li>
           ))}
         </ul>

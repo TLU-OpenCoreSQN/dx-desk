@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Clock,
   HelpCircle,
+  Paperclip,
   Send,
   ShieldAlert,
   Tag,
@@ -21,6 +22,7 @@ import { ATTACHMENT_TYPES, fileError } from '../../../lib/attachments';
 import { Category, RequirementField, TicketPriority } from '../../../types/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Alert } from '../../../components/common/Alert';
+import { Modal } from '../../../components/common/Modal';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
 import { FieldError, fieldClass } from '../../../components/common/FormField';
 import { CategorySelector } from '../../../components/create-ticket/CategorySelector';
@@ -104,6 +106,13 @@ export const CreateTicketPage: React.FC = () => {
   const [serverError, setServerError] = useState<unknown>(null);
   const [successTicketId, setSuccessTicketId] = useState<string | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const pickAttachment = (file: File | null) => {
+    const issue = file ? fileError(file) : null;
+    setAttachmentError(issue ? new Error(issue) : null);
+    setAttachmentFile(issue ? null : file);
+  };
   const [attachmentError, setAttachmentError] = useState<unknown>(null);
   const [attachmentUploaded, setAttachmentUploaded] = useState(false);
 
@@ -154,6 +163,36 @@ export const CreateTicketPage: React.FC = () => {
     },
     []
   );
+
+  // Hủy bỏ: chỉ hỏi lại khi người dùng đã nhập gì đó; luôn quay về danh sách phiếu
+  // (không dùng navigate(-1) vì trang có thể được mở trực tiếp, không có lịch sử).
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const hasUnsavedInput =
+    title.trim().length > 0 ||
+    description.trim().length > 0 ||
+    Object.values(fieldValues).some((v) => v.trim().length > 0) ||
+    attachmentFile !== null;
+
+  const leaveToTicketList = () => navigate('/tickets');
+
+  const handleCancel = () => {
+    if (hasUnsavedInput) setCancelDialogOpen(true);
+    else leaveToTicketList();
+  };
+
+  const discardDraftAndLeave = () => {
+    pendingSave.current = null;
+    removeDraft(draftUserId);
+    setCancelDialogOpen(false);
+    leaveToTicketList();
+  };
+
+  // Người dùng đã tự xử lý được qua bài hướng dẫn: không cần phiếu nữa nên bỏ nháp.
+  const resolvedBySelfService = () => {
+    pendingSave.current = null;
+    removeDraft(draftUserId);
+    navigate('/');
+  };
 
   const sendFile = async (ticketId: string) => {
     if (!attachmentFile) return;
@@ -523,7 +562,9 @@ export const CreateTicketPage: React.FC = () => {
                     error={baseErrors.categoryId}
                     showError={showBaseError('categoryId')}
                   />
-                  {categoryId && <KnowledgeInlineHelper categoryId={categoryId} />}
+                  {categoryId && (
+                    <KnowledgeInlineHelper categoryId={categoryId} onGoHome={resolvedBySelfService} />
+                  )}
                 </div>
 
                 {/* Dynamic requirement fields */}
@@ -725,16 +766,16 @@ export const CreateTicketPage: React.FC = () => {
                   >
                     <p className="flex items-start gap-1.5 font-semibold">
                       <AlertCircle
-                        className="mt-0.5 h-4 w-4 shrink-0 text-warning"
+                        className="mt-0.5 h-4 w-4 shrink-0 text-status-warning"
                         aria-hidden="true"
                       />
-                      <span>Chưa thể gửi phiếu — còn thiếu hoặc chưa hợp lệ:</span>
+                      <span>Chưa thể gửi phiếu - còn thiếu hoặc chưa hợp lệ:</span>
                     </p>
                     <ul className="mt-1.5 flex flex-wrap gap-1.5">
                       {missingFieldLabels.map((label) => (
                         <li
                           key={label}
-                          className="rounded-[4px] border border-warning-border bg-white/70 px-2 py-0.5"
+                          className="rounded-sm border border-status-warning-border bg-surface px-2 py-0.5 font-medium text-content"
                         >
                           {label}
                         </li>
@@ -744,27 +785,77 @@ export const CreateTicketPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="mx-4 mb-4 rounded-lg border border-edge bg-surface-muted p-3 text-xs sm:mx-6">
-                <label htmlFor="ticket-attachment" className="block font-semibold">
-                  Ảnh hoặc tệp đính kèm (không bắt buộc)
-                </label>
-                <p>
-                  PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu
-                  tệp.
-                </p>
-                <input
-                  id="ticket-attachment"
-                  type="file"
-                  className="block w-full min-w-0"
-                  accept={ATTACHMENT_TYPES.join(',')}
-                  disabled={isSubmitting}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    const issue = file ? fileError(file) : null;
-                    setAttachmentError(issue ? new Error(issue) : null);
-                    setAttachmentFile(issue ? null : file);
+              <div className="mx-4 mb-4 space-y-2 text-xs sm:mx-6">
+                <label
+                  htmlFor="ticket-attachment"
+                  onDragOver={(event) => {
+                    if (isSubmitting) return;
+                    event.preventDefault();
+                    setIsDraggingFile(true);
                   }}
-                />
+                  onDragLeave={() => setIsDraggingFile(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setIsDraggingFile(false);
+                    if (!isSubmitting) pickAttachment(event.dataTransfer.files?.[0] ?? null);
+                  }}
+                  className={`group flex items-center gap-3 rounded-lg border-2 border-dashed p-4 transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-surface ${
+                    isSubmitting
+                      ? 'cursor-not-allowed border-edge bg-surface-muted opacity-60'
+                      : isDraggingFile
+                        ? 'cursor-copy border-primary bg-primary-tint'
+                        : 'cursor-pointer border-edge bg-surface-muted hover:border-primary hover:bg-primary-tint'
+                  }`}
+                >
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-edge bg-surface text-content-muted transition-colors group-hover:border-primary-border group-hover:text-primary"
+                    aria-hidden="true"
+                  >
+                    <Paperclip className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-content">
+                      Ảnh hoặc tệp đính kèm (không bắt buộc)
+                    </span>
+                    <span className="mt-0.5 block text-content-muted">
+                      {attachmentFile ? (
+                        <>
+                          Đã chọn: <strong className="break-all text-content">{attachmentFile.name}</strong>
+                        </>
+                      ) : (
+                        'Bấm để chọn tệp hoặc kéo thả vào đây.'
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-content-subtle">
+                      PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.
+                    </span>
+                  </span>
+                  <span className="hidden shrink-0 rounded-md border border-edge bg-surface px-3 py-1.5 font-semibold text-content shadow-2xs transition-colors group-hover:border-primary group-hover:text-primary sm:inline-flex">
+                    {attachmentFile ? 'Đổi tệp' : 'Chọn tệp'}
+                  </span>
+                  <input
+                    ref={attachmentInputRef}
+                    id="ticket-attachment"
+                    type="file"
+                    className="sr-only"
+                    accept={ATTACHMENT_TYPES.join(',')}
+                    disabled={isSubmitting}
+                    onChange={(event) => pickAttachment(event.target.files?.[0] ?? null)}
+                  />
+                </label>
+                {attachmentFile && !isSubmitting && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pickAttachment(null);
+                      if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+                    }}
+                    className="inline-flex items-center gap-1 rounded-sm px-1 font-semibold text-content-muted hover:text-status-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                    Bỏ tệp đã chọn
+                  </button>
+                )}
                 {attachmentError != null && (
                   <ErrorMessage error={attachmentError} title="Tệp chưa hợp lệ" />
                 )}
@@ -777,7 +868,7 @@ export const CreateTicketPage: React.FC = () => {
                 </p>
                 <button
                   type="button"
-                  onClick={() => navigate(-1)}
+                  onClick={handleCancel}
                   className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[6px] border border-edge bg-surface px-4 text-xs font-semibold text-content-muted transition-all hover:bg-surface-warm hover:text-content focus:outline-none focus:ring-2 focus:ring-primary lg:min-h-[40px]"
                 >
                   Hủy bỏ
@@ -921,6 +1012,46 @@ export const CreateTicketPage: React.FC = () => {
           </aside>
         </div>
       )}
+      <Modal
+        isOpen={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+        title="Hủy tạo phiếu?"
+        description="Bạn đã nhập một số thông tin cho phiếu này."
+        size="md"
+        footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={discardDraftAndLeave}
+              className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-status-danger-border bg-status-danger-bg px-4 text-xs font-semibold text-status-danger transition-colors hover:bg-status-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
+            >
+              Xóa nháp và rời trang
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCancelDialogOpen(false);
+                leaveToTicketList();
+              }}
+              className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-edge bg-surface px-4 text-xs font-semibold text-content transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Giữ nháp và rời trang
+            </button>
+            <button
+              type="button"
+              onClick={() => setCancelDialogOpen(false)}
+              className="inline-flex min-h-[40px] items-center justify-center rounded-md bg-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Tiếp tục điền
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-content-muted">
+          Nháp (tiêu đề, mô tả và thông tin bổ sung) được lưu trên trình duyệt này và tự khôi phục khi
+          bạn quay lại. Tệp đính kèm đã chọn sẽ không được giữ.
+        </p>
+      </Modal>
     </div>
   );
 };

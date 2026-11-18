@@ -68,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isMobileNavOp
 
           <Link
             to="/"
-            aria-label="DX-Desk — Trang chủ"
+            aria-label="DX-Desk - Trang chủ"
             className="group flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary rounded-md p-1 -m-1 transition-all shrink-0"
           >
             <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center font-bold text-white text-sm shadow-xs shrink-0 group-hover:bg-primary-hover transition-colors">
