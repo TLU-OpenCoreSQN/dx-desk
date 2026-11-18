@@ -126,11 +126,12 @@ Tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env` (`M
 | Thư mục | Nội dung |
 |---|---|
 | `infra/compose` | `docker-compose.yml` của Tầng 1 |
-| `infra/keycloak`, `infra/apisix`, `infra/n8n`, `infra/postgres` | Cấu hình dạng mã: realm, route, workflow, khởi tạo CSDL |
+| `infra/keycloak`, `infra/apisix`, `infra/n8n`, `infra/postgres` | Realm, route, bộ nạp workflow và khởi tạo CSDL |
+| `config/doanh-nghiep` | Cấu hình doanh nghiệp, projection module và workflow n8n; kiểm bằng `node scripts/dxdesk.mjs config validate` |
 | `db/migrations`, `db/policies` | Lược đồ CSDL và chính sách RLS (chạy khi khởi tạo PostgreSQL) |
 | `apps/web`, `apps/api` | React và NestJS: ứng dụng 1 DX-Desk |
 | `apps/device-request` | Ứng dụng 2 "Xin cấp thiết bị" (React, không backend riêng) tại `/thiet-bi/` |
-| `apps/assistant` | Giữ chỗ cho mốc sau; không phải dịch vụ đã chạy |
+| `apps/assistant` | Trợ lý RAG Wiki/Qdrant/Ollama trong profile `full`, công cụ ghi chỉ chạy sau xác nhận; chất lượng mô hình cần nghiệm thu TN-05/TN-06 riêng |
 | `tools/testing` | Harness PostgreSQL portable + PostgREST và kiểm tra cấu hình |
 | `scripts/` | Script hỗ trợ `make up` |
 | `docs/` | Tài liệu và quyết định kiến trúc (`docs/adr/`) |

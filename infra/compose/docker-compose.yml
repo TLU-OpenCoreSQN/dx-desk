@@ -188,7 +188,7 @@ services:
     <<: *restart
     # W6-11: danh sách module bật, đọc lúc chạy. Sửa tệp rồi tải lại trang, không build lại image.
     volumes:
-      - ../../config/doanh-nghiep/modules.json:/usr/share/nginx/html/config/modules.json:ro
+      - ../../config/doanh-nghiep:/etc/dxdesk/enterprise:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
       interval: 5s
@@ -268,7 +268,7 @@ services:
       DXDESK_API_URL: http://api:3000
     command: ["import:workflow", "--separate", "--input=/import/workflows"]
     volumes:
-      - ../n8n/workflows:/import/workflows:ro
+      - ../../config/doanh-nghiep/workflows:/import/workflows:ro
 
   # Credentials của n8n (import:credentials) sẽ thêm ở tuần 4 khi workflow cần gọi API.
   n8n-publish:
@@ -278,11 +278,11 @@ services:
       n8n-import:
         condition: service_completed_successfully
     environment: *n8n-env
-    # Mã workflow mẫu cố định trong infra/n8n/workflows/hello.json
     entrypoint: ["node", "/import/publish-workflows.mjs"]
     volumes:
-      - ../n8n/workflows:/import/workflows:ro
+      - ../../config/doanh-nghiep/workflows:/import/workflows:ro
       - ../n8n/publish-workflows.mjs:/import/publish-workflows.mjs:ro
+      - ../n8n/validate-workflows.mjs:/import/validate-workflows.mjs:ro
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
