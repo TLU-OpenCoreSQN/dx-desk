@@ -16,7 +16,7 @@ export interface TicketDetailHeaderProps {
 }
 
 const formatDateTime = (isoString?: string): string => {
-  if (!isoString) return '—';
+  if (!isoString) return '-';
   const d = new Date(isoString);
   if (Number.isNaN(d.getTime())) return isoString;
   return d.toLocaleString('vi-VN', {

@@ -76,13 +76,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const isCompact = !isMobile && collapsed;
 
     return (
-      <div className="dx-sidebar h-full bg-[color-mix(in_srgb,var(--color-primary)_3%,var(--color-surface-sidebar))] flex flex-col text-[var(--color-content)] border-r border-[var(--color-edge-subtle)] select-none">
+      <div className="dx-sidebar h-full bg-surface-sidebar flex flex-col text-content border-r border-edge select-none">
         {/* Section title / header */}
         <div className="p-3 pb-2 flex items-center justify-between">
           {!isCompact && (
             <div className="flex items-center gap-1.5 px-2 mt-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
-              <p className="text-[11px] font-bold tracking-wider uppercase text-[var(--color-content-subtle)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <p className="text-xs font-bold tracking-wider uppercase text-content-subtle">
                 Hỗ trợ IT
               </p>
             </div>
@@ -93,7 +93,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClick={() => setCollapsed((prev) => !prev)}
               aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
               title={collapsed ? 'Mở rộng thanh bên (256px)' : 'Thu gọn thanh bên (56px)'}
-              className={`p-1.5 rounded-[6px] text-[var(--color-content-muted)] hover:text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-colors ${
+              className={`p-1.5 rounded-md text-content-muted hover:text-content hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-primary transition-colors ${
                 isCompact ? 'mx-auto' : ''
               }`}
             >
@@ -114,7 +114,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               href={to}
               title={isCompact ? label : undefined}
               aria-label={label}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm font-medium transition-all min-h-[40px] text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] ${
+              className={`group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all min-h-[40px] text-content-muted hover:bg-surface-muted hover:text-content ${
                 isCompact ? 'justify-center px-2' : ''
               }`}
             >
@@ -130,12 +130,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               title={isCompact ? label : undefined}
               aria-label={label}
               className={({ isActive }) =>
-                `group flex items-center gap-3 px-3 py-2.5 rounded-[6px] text-sm font-medium transition-all min-h-[40px] ${
+                `group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all min-h-[40px] ${
                   isCompact ? 'justify-center px-2' : ''
                 } ${
                   isActive
-                    ? 'bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] font-semibold shadow-2xs border border-[var(--color-primary-border)]/50'
-                    : 'text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)]'
+                    ? 'bg-primary-tint text-primary font-semibold shadow-2xs border-l-2 border-primary'
+                    : 'text-content-muted hover:bg-surface-muted hover:text-content'
                 }`
               }
             >
@@ -150,22 +150,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer info */}
-        <div className="mt-auto border-t border-[var(--color-edge-subtle)] p-3 text-xs text-[var(--color-content-muted)]">
+        <div className="mt-auto border-t border-edge p-3 text-xs text-content-muted">
           {!isCompact ? (
-            <div className="bg-surface/80 p-2.5 rounded-[6px] border border-[var(--color-edge-subtle)] shadow-2xs">
-              <div className="flex items-center gap-2 font-semibold text-[var(--color-content)]">
-                <div className="w-5 h-5 rounded-[4px] bg-[var(--color-primary-tint)] flex items-center justify-center text-[var(--color-primary)]">
+            <div className="bg-surface/80 p-2.5 rounded-md border border-edge shadow-2xs">
+              <div className="flex items-center gap-2 font-semibold text-content">
+                <div className="w-5 h-5 rounded-sm bg-primary-tint flex items-center justify-center text-primary">
                   <Shield size={13} />
                 </div>
                 <span className="text-xs">TLU-OpenCoreSQN</span>
               </div>
-              <p className="mt-1.5 text-[11px] text-[var(--color-content-subtle)] leading-relaxed">
+              <p className="mt-1.5 text-xs text-content-subtle leading-relaxed">
                 Không gian tiếp nhận yêu cầu IT của tổ chức.
               </p>
             </div>
           ) : (
             <div className="flex justify-center py-1" title="TLU-OpenCoreSQN: Hệ thống hỗ trợ IT">
-              <div className="w-7 h-7 rounded-[4px] bg-surface border border-[var(--color-edge-subtle)] flex items-center justify-center text-[var(--color-primary)] shadow-2xs">
+              <div className="w-7 h-7 rounded-sm bg-surface border border-edge flex items-center justify-center text-primary shadow-2xs">
                 <Shield size={15} />
               </div>
             </div>
@@ -202,7 +202,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div
             onClick={onClose}
             aria-hidden="true"
-            className="absolute inset-0 bg-black/50 backdrop-blur-[1px] transition-opacity"
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
           />
 
           {/* Drawer container */}
@@ -211,7 +211,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               type="button"
               aria-label="Đóng menu"
               onClick={onClose}
-              className="absolute right-2 top-2 p-2.5 text-[var(--color-content-muted)] hover:text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] rounded-[4px] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] z-10 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
+              className="absolute right-2 top-2 p-2.5 text-content-muted hover:text-content hover:bg-surface-muted rounded-sm focus:outline-none focus:ring-2 focus:ring-primary z-10 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
             >
               <X size={20} />
             </button>
