@@ -39,7 +39,7 @@ const FIELD_GUIDES: Record<string, FieldGuide> = {
   },
   valid_until: {
     placeholder: '',
-    hint: 'Ngày cuối cùng bạn cần quyền này. Quyền sẽ được thu hồi sau ngày này.',
+    hint: 'Ngày cuối cùng bạn cần dùng quyền này, để bộ phận IT biết khi nào có thể thu hồi.',
   },
   account_name: {
     placeholder: 'VD: nguyen.van.a hoặc nguyen.van.a@congty.vn',

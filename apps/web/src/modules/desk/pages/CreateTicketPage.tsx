@@ -789,15 +789,29 @@ export const CreateTicketPage: React.FC = () => {
                 <label
                   htmlFor="ticket-attachment"
                   onDragOver={(event) => {
-                    if (isSubmitting) return;
+                    // Luôn chặn mặc định: nếu không, thả tệp lúc đang gửi sẽ khiến trình duyệt mở tệp và rời trang.
                     event.preventDefault();
+                    if (isSubmitting) {
+                      event.dataTransfer.dropEffect = 'none';
+                      return;
+                    }
                     setIsDraggingFile(true);
                   }}
-                  onDragLeave={() => setIsDraggingFile(false)}
+                  onDragLeave={(event) => {
+                    // Bỏ qua khi con trỏ chỉ đi vào phần tử con bên trong vùng thả.
+                    const next = event.relatedTarget;
+                    if (next instanceof Node && event.currentTarget.contains(next)) return;
+                    setIsDraggingFile(false);
+                  }}
                   onDrop={(event) => {
                     event.preventDefault();
                     setIsDraggingFile(false);
-                    if (!isSubmitting) pickAttachment(event.dataTransfer.files?.[0] ?? null);
+                    const dropped = event.dataTransfer.files?.[0];
+                    // Kéo thả chữ hoặc liên kết (không có tệp) thì giữ nguyên tệp đang chọn.
+                    if (isSubmitting || !dropped) return;
+                    // Xóa giá trị ô chọn tệp để lần chọn lại cùng tệp vẫn phát sự kiện change.
+                    if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+                    pickAttachment(dropped);
                   }}
                   className={`group flex items-center gap-3 rounded-lg border-2 border-dashed p-4 transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-surface ${
                     isSubmitting

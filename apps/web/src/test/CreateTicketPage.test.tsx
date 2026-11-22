@@ -481,3 +481,45 @@ describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
     expect(readDraft('user-1')).toBeNull();
   });
 });
+
+describe('Vùng kéo thả tệp đính kèm', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(apiService, 'getCategories').mockResolvedValue({ data: mockCategories });
+    vi.spyOn(apiService, 'getCategoryArticles').mockResolvedValue({ data: [] });
+  });
+
+  const dropZone = async () => {
+    mockRenderWithAuth(['Employee']);
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    const input = screen.getByLabelText(/Ảnh hoặc tệp đính kèm/) as HTMLInputElement;
+    return { input, zone: input.closest('label') as HTMLLabelElement };
+  };
+  const png = (name: string) => new File(['x'], name, { type: 'image/png' });
+
+  it('thả tệp hợp lệ thì hiện tên tệp và xóa giá trị ô chọn tệp cũ', async () => {
+    const { input, zone } = await dropZone();
+    const reset = vi.spyOn(input, 'value', 'set');
+    // dragover phải chặn mặc định để trình duyệt không mở tệp thay vì thả vào vùng.
+    expect(fireEvent.dragOver(zone, { dataTransfer: { files: [], dropEffect: 'copy' } })).toBe(false);
+    fireEvent.drop(zone, { dataTransfer: { files: [png('anh-loi.png')] } });
+    expect(screen.getByText('anh-loi.png')).toBeInTheDocument();
+    expect(reset).toHaveBeenCalledWith('');
+  });
+
+  it('kéo thả chữ (không có tệp) giữ nguyên tệp đang chọn', async () => {
+    const { zone } = await dropZone();
+    fireEvent.drop(zone, { dataTransfer: { files: [png('giu-lai.png')] } });
+    fireEvent.drop(zone, { dataTransfer: { files: [] } });
+    expect(screen.getByText('giu-lai.png')).toBeInTheDocument();
+  });
+
+  it('thả tệp sai định dạng thì báo lỗi và không chọn tệp', async () => {
+    const { zone } = await dropZone();
+    fireEvent.drop(zone, {
+      dataTransfer: { files: [new File(['x'], 'macro.exe', { type: 'application/x-msdownload' })] },
+    });
+    expect(await screen.findByText(/Chỉ nhận PNG, JPEG, GIF, WebP, PDF hoặc TXT/)).toBeInTheDocument();
+    expect(screen.queryByText('macro.exe')).not.toBeInTheDocument();
+  });
+});
