@@ -235,6 +235,29 @@ describe('CreateTicketPage — trường động theo requirement_fields (W3-04)
     expect(optionalInput).toHaveAttribute('aria-required', 'false');
   });
 
+  it('placeholder/hint trong cấu hình được ưu tiên hơn gợi ý dự phòng và nối qua aria-describedby', async () => {
+    vi.spyOn(apiService, 'getCategories').mockResolvedValue({
+      data: [{
+        ...vpnCategory,
+        requirement_fields: [
+          { key: 'reason', label: 'Lý do cần VPN', required: true, placeholder: 'VD: Làm việc từ xa', hint: 'Ghi rõ dự án.' },
+          { key: 'valid_until', label: 'Ngày hết hạn mong muốn', required: true, hint: 'Hạn theo hợp đồng.' },
+          { key: 'device_note', label: 'Ghi chú thiết bị', required: false },
+        ],
+      }],
+    });
+    mockRenderWithAuth(['Employee']);
+    const reason = await screen.findByLabelText(/Lý do cần VPN/);
+    expect(reason).toHaveAttribute('placeholder', 'VD: Làm việc từ xa');
+    expect(reason).toHaveAccessibleDescription('Ghi rõ dự án.');
+    // Cấu hình thay thế gợi ý dự phòng của khóa valid_until.
+    expect(screen.getByLabelText(/Ngày hết hạn mong muốn/)).toHaveAccessibleDescription('Hạn theo hợp đồng.');
+    // Khóa không có cấu hình và không có bản dự phòng: dùng câu chung, không có dòng giải thích.
+    const note = screen.getByLabelText(/Ghi chú thiết bị/);
+    expect(note).toHaveAttribute('placeholder', 'Nhập ghi chú thiết bị');
+    expect(note).not.toHaveAttribute('aria-describedby');
+  });
+
   it('khóa nút Gửi và liệt kê trường động bắt buộc còn thiếu bằng tiếng Việt', async () => {
     mockRenderWithAuth(['Employee']);
 
@@ -406,7 +429,9 @@ describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
     const button = await screen.findByRole('button', { name: 'Đã tự xử lý được' });
     fireEvent.click(button);
     fireEvent.click(button);
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Đã ghi nhận bạn tự xử lý được'));
+    const confirm = await screen.findByRole('heading', { name: /Đã ghi nhận bạn tự xử lý được/ });
+    // Nút vừa bấm biến mất nên focus phải chuyển tới thẻ xác nhận.
+    await waitFor(() => expect(confirm).toHaveFocus());
     expect(record).toHaveBeenCalledTimes(1);
     expect(record).toHaveBeenCalledWith('cat-2222-uuid', 'art-vpn');
     expect(create).not.toHaveBeenCalled();
@@ -440,6 +465,18 @@ describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
     expect(screen.getByLabelText(/Tiêu đề phiếu/)).toHaveValue('Máy in không chạy');
   });
 
+  it('"Hủy bỏ" khi chỉ chọn tệp: không có lựa chọn giữ nháp, "Bỏ tệp và rời trang" về danh sách', async () => {
+    renderWithRoutes();
+    await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
+    const input = screen.getByLabelText(/Ảnh hoặc tệp đính kèm/);
+    fireEvent.change(input, { target: { files: [new File(['x'], 'anh.png', { type: 'image/png' })] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy bỏ' }));
+    expect(await screen.findByText('Bạn đã chọn tệp đính kèm nhưng chưa gửi phiếu.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Giữ nháp và rời trang' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ tệp và rời trang' }));
+    expect(await screen.findByText('Danh sách phiếu đích')).toBeInTheDocument();
+  });
+
   it('"Giữ nháp và rời trang" lưu nháp; "Xóa nháp và rời trang" xóa nháp', async () => {
     const first = renderWithRoutes();
     await waitFor(() => expect(screen.getByText('Phần cứng máy tính (HW)')).toBeInTheDocument());
@@ -467,7 +504,8 @@ describe('W5-08 gợi ý bài Wiki và lượt tự phục vụ', () => {
     fireEvent.change(screen.getByLabelText(/Danh mục sự cố/), { target: { value: 'cat-2222-uuid' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Đã tự xử lý được' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Tôi vẫn cần gửi phiếu' }));
-    expect(await screen.findByText('Bạn có thể tiếp tục điền phiếu bên dưới.')).toBeInTheDocument();
+    const note = await screen.findByText('Bạn có thể tiếp tục điền phiếu bên dưới.');
+    await waitFor(() => expect(note).toHaveFocus());
     expect(screen.queryByRole('button', { name: 'Về trang chủ' })).not.toBeInTheDocument();
     first.unmount();
 

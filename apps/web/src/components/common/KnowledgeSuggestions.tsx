@@ -24,6 +24,7 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
   // Người dùng vẫn muốn gửi phiếu sau khi đã ghi nhận tự xử lý.
   const [continueTicket, setContinueTicket] = useState(false);
   const confirmHeadingRef = useRef<HTMLHeadingElement>(null);
+  const continueNoteRef = useRef<HTMLParagraphElement>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
 
@@ -41,6 +42,13 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
     return () => { active = false; };
   }, [categoryId]);
 
+  // Nút vừa bấm biến mất sau mỗi bước: đưa focus tới nội dung mới để người dùng bàn phím
+  // và trình đọc màn hình biết chuyện gì xảy ra (không dùng thêm role="status" để khỏi đọc hai lần).
+  useEffect(() => {
+    if (!recordedFor) return;
+    (continueTicket ? continueNoteRef : confirmHeadingRef).current?.focus();
+  }, [recordedFor, continueTicket]);
+
   if (articles.length === 0) return null;
 
   const markResolved = async (articleId: string) => {
@@ -50,8 +58,6 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
     try {
       await recordSelfService(categoryId, articleId);
       setRecordedFor(articleId);
-      // Nút vừa bấm biến mất: đưa focus tới thẻ xác nhận để người dùng bàn phím thấy hai lựa chọn.
-      window.setTimeout(() => confirmHeadingRef.current?.focus(), 0);
     } catch (err) {
       setError(err);
     } finally {
@@ -72,16 +78,22 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
         Các bài hướng dẫn dưới đây thường giải quyết được sự cố thuộc danh mục này.
       </p>
       {recordedFor && continueTicket ? (
-        <p role="status" className="mt-3 flex items-start gap-1.5 text-xs text-content-muted">
+        <p
+          ref={continueNoteRef}
+          tabIndex={-1}
+          className="mt-3 flex items-start gap-1.5 text-xs text-content-muted focus:outline-none"
+        >
           <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
           Bạn có thể tiếp tục điền phiếu bên dưới.
         </p>
       ) : recordedFor ? (
         <div
-          role="status"
+          role="group"
+          aria-labelledby="knowledge-self-service-confirm"
           className="mt-3 rounded-md border border-status-success-border bg-status-success-bg p-3.5"
         >
           <h4
+            id="knowledge-self-service-confirm"
             ref={confirmHeadingRef}
             tabIndex={-1}
             className="flex items-start gap-1.5 text-xs font-bold text-status-success focus:outline-none"

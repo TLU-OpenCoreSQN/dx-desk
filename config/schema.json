@@ -58,7 +58,9 @@
                 "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,39}$" },
                 "label": { "$ref": "#/definitions/name" },
                 "required": { "type": "boolean" },
-                "type": { "const": "string" }
+                "type": { "const": "string" },
+                "placeholder": { "$ref": "#/definitions/guide_text" },
+                "hint": { "$ref": "#/definitions/guide_text" }
               }
             }
           }
@@ -92,6 +94,7 @@
   "definitions": {
     "code": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{1,39}$" },
     "name": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^(?!.*\\u0000).*\\S.*$" },
+    "guide_text": { "type": "string", "maxLength": 200, "pattern": "^[^\\u0000]*$" },
     "sla": {
       "type": "object",
       "additionalProperties": false,

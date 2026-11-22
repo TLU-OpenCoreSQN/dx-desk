@@ -25,12 +25,13 @@ interface FieldGuide {
 }
 
 /**
- * Hướng dẫn theo khóa trường (khóa ổn định trong config/doanh-nghiep/cau-hinh.json).
- * Trường mới chưa có ở đây sẽ dùng hướng dẫn chung bên dưới.
+ * Hướng dẫn dự phòng theo khóa trường, dùng khi danh mục chưa khai báo `placeholder`/`hint`
+ * (ví dụ stack mới chỉ có dữ liệu mẫu của migration, chưa `config apply`). Nội dung cụ thể
+ * cho từng doanh nghiệp nên khai báo trong config/doanh-nghiep/cau-hinh.json.
  */
 const FIELD_GUIDES: Record<string, FieldGuide> = {
   system_name: {
-    placeholder: 'VD: Phần mềm kế toán MISA, Email Outlook, Hệ thống nhân sự',
+    placeholder: 'VD: Phần mềm kế toán, Email công ty, Hệ thống nhân sự',
     hint: 'Tên phần mềm hoặc trang web bạn đang dùng, đúng như tên hiển thị trên màn hình hoặc biểu tượng.',
   },
   permission_level: {
@@ -50,7 +51,7 @@ const FIELD_GUIDES: Record<string, FieldGuide> = {
     hint: 'Mô tả ngắn chuyện gì đang xảy ra với tài khoản.',
   },
   client_version: {
-    placeholder: 'VD: FortiClient 7.2.4',
+    placeholder: 'VD: 7.2.4',
     hint: 'Mở phần mềm VPN, vào mục Giới thiệu (About) để xem số phiên bản.',
   },
   error_message: {
@@ -62,7 +63,7 @@ const FIELD_GUIDES: Record<string, FieldGuide> = {
     hint: 'Hệ điều hành của máy đang gặp sự cố.',
   },
   device_code: {
-    placeholder: 'VD: LT-0123 (in trên tem dán ở mặt dưới máy)',
+    placeholder: 'VD: mã in trên tem dán ở mặt dưới máy',
     hint: 'Mã tài sản trên tem dán của thiết bị. Không thấy tem thì ghi tên và màu thiết bị.',
   },
   location: {
@@ -79,11 +80,17 @@ const FIELD_GUIDES: Record<string, FieldGuide> = {
   },
 };
 
-const fieldGuide = (field: RequirementField): FieldGuide =>
-  FIELD_GUIDES[field.key] ?? {
+// Cấu hình doanh nghiệp được ưu tiên; thiếu thì dùng bản dự phòng theo khóa, cuối cùng là câu chung.
+const fieldGuide = (field: RequirementField): FieldGuide => {
+  const fallback = FIELD_GUIDES[field.key] ?? {
     placeholder: isDateField(field) ? '' : `Nhập ${field.label.toLowerCase()}`,
     hint: '',
   };
+  return {
+    placeholder: isDateField(field) ? '' : field.placeholder?.trim() || fallback.placeholder,
+    hint: field.hint?.trim() || fallback.hint,
+  };
+};
 
 export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> = ({
   fields,

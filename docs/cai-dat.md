@@ -87,7 +87,9 @@ node scripts/dxdesk.mjs config validate
 ```
 
 `config/schema.json` định nghĩa phiên bản 1: `teams`, `categories`/`requirement_fields`, `routing`,
-`sla_policies` theo priority và `modules.enabled`. Trường động hiện hỗ trợ chuỗi. Bắt buộc giữ module
+`sla_policies` theo priority và `modules.enabled`. Trường động hiện hỗ trợ chuỗi; mỗi trường có thể khai
+báo thêm `placeholder` (ví dụ trong ô nhập) và `hint` (dòng giải thích), tối đa 200 ký tự, để form tạo
+phiếu hướng dẫn người dùng theo cách gọi của doanh nghiệp. Bắt buộc giữ module
 `core`; mã trùng, trường lạ, JSON trùng khóa hoặc policy sai bị từ chối. Validate offline chưa xác nhận
 tham chiếu tới nhóm/danh mục hiện có trong DB; kiểm tra đó chạy trong apply.
 

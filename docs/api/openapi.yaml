@@ -259,6 +259,8 @@ paths:
                               key: { type: string }
                               label: { type: string }
                               required: { type: boolean }
+                              placeholder: { type: string, description: "Ví dụ trong ô nhập (không bắt buộc, từ cấu hình doanh nghiệp)." }
+                              hint: { type: string, description: "Dòng giải thích dưới ô nhập (không bắt buộc, từ cấu hình doanh nghiệp)." }
         "401": { $ref: "#/components/responses/Error" }
   /categories/{id}/articles:
     get:

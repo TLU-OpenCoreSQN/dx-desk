@@ -167,11 +167,12 @@ export const CreateTicketPage: React.FC = () => {
   // Hủy bỏ: chỉ hỏi lại khi người dùng đã nhập gì đó; luôn quay về danh sách phiếu
   // (không dùng navigate(-1) vì trang có thể được mở trực tiếp, không có lịch sử).
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const hasUnsavedInput =
+  // Nội dung chữ được lưu nháp; tệp đính kèm thì không (chỉ giữ trong phiên trang này).
+  const hasDraftContent =
     title.trim().length > 0 ||
     description.trim().length > 0 ||
-    Object.values(fieldValues).some((v) => v.trim().length > 0) ||
-    attachmentFile !== null;
+    Object.values(fieldValues).some((v) => v.trim().length > 0);
+  const hasUnsavedInput = hasDraftContent || attachmentFile !== null;
 
   const leaveToTicketList = () => navigate('/tickets');
 
@@ -1030,27 +1031,43 @@ export const CreateTicketPage: React.FC = () => {
         isOpen={cancelDialogOpen}
         onClose={() => setCancelDialogOpen(false)}
         title="Hủy tạo phiếu?"
-        description="Bạn đã nhập một số thông tin cho phiếu này."
+        description={
+          hasDraftContent
+            ? 'Bạn đã nhập một số thông tin cho phiếu này.'
+            : 'Bạn đã chọn tệp đính kèm nhưng chưa gửi phiếu.'
+        }
         size="md"
         footer={
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={discardDraftAndLeave}
-              className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-status-danger-border bg-status-danger-bg px-4 text-xs font-semibold text-status-danger transition-colors hover:bg-status-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
-            >
-              Xóa nháp và rời trang
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCancelDialogOpen(false);
-                leaveToTicketList();
-              }}
-              className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-edge bg-surface px-4 text-xs font-semibold text-content transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              Giữ nháp và rời trang
-            </button>
+            {hasDraftContent ? (
+              <>
+                <button
+                  type="button"
+                  onClick={discardDraftAndLeave}
+                  className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-status-danger-border bg-status-danger-bg px-4 text-xs font-semibold text-status-danger transition-colors hover:bg-status-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
+                >
+                  Xóa nháp và rời trang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCancelDialogOpen(false);
+                    leaveToTicketList();
+                  }}
+                  className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-edge bg-surface px-4 text-xs font-semibold text-content transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  Giữ nháp và rời trang
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={discardDraftAndLeave}
+                className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-status-danger-border bg-status-danger-bg px-4 text-xs font-semibold text-status-danger transition-colors hover:bg-status-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
+              >
+                Bỏ tệp và rời trang
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setCancelDialogOpen(false)}
@@ -1062,8 +1079,9 @@ export const CreateTicketPage: React.FC = () => {
         }
       >
         <p className="text-sm text-content-muted">
-          Nháp (tiêu đề, mô tả và thông tin bổ sung) được lưu trên trình duyệt này và tự khôi phục khi
-          bạn quay lại. Tệp đính kèm đã chọn sẽ không được giữ.
+          {hasDraftContent
+            ? 'Nháp (tiêu đề, mô tả và thông tin bổ sung) được lưu trên trình duyệt này và tự khôi phục khi bạn quay lại. Tệp đính kèm đã chọn sẽ không được giữ.'
+            : 'Tệp đính kèm không được lưu nháp, nên rời trang thì tệp đã chọn sẽ bị bỏ.'}
         </p>
       </Modal>
     </div>
