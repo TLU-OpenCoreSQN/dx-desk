@@ -6,7 +6,7 @@ import { NavLink } from 'react-router-dom';
 import { Shield, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useModules } from '../../modules/ModuleContext';
-import { navEntries } from '../../modules/registry';
+import { navEntries, type NavEntry } from '../../modules/registry';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -70,10 +70,52 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // W6-11: mục menu dựng từ sổ đăng ký module, lọc theo module bật và vai trò Keycloak.
   const { modules } = useModules();
-  const links = navEntries(modules, { isAuthenticated, roles, profile });
+  const entries = navEntries(modules, { isAuthenticated, roles, profile });
+  const mainLinks = entries.filter((entry) => entry.section !== 'resources');
+  const resourceLinks = entries.filter((entry) => entry.section === 'resources');
 
   const renderContent = (isMobile = false) => {
     const isCompact = !isMobile && collapsed;
+
+    const renderLink = ({ to, label, icon: Icon, external }: NavEntry) => external ? (
+      <a
+        key={to}
+        href={to}
+        title={isCompact ? label : undefined}
+        aria-label={label}
+        className={`group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all min-h-[40px] text-content-muted hover:bg-surface-muted hover:text-content ${
+          isCompact ? 'justify-center px-2' : ''
+        }`}
+      >
+        <Icon size={18} aria-hidden="true" className="shrink-0 transition-transform group-hover:scale-110" />
+        {!isCompact && <span className="truncate">{label}</span>}
+      </a>
+    ) : (
+      <NavLink
+        key={to}
+        to={to}
+        end
+        onClick={isMobile ? onClose : undefined}
+        title={isCompact ? label : undefined}
+        aria-label={label}
+        className={({ isActive }) =>
+          `group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all min-h-[40px] ${
+            isCompact ? 'justify-center px-2' : ''
+          } ${
+            isActive
+              ? 'bg-primary-tint text-primary font-semibold shadow-2xs border-l-2 border-primary'
+              : 'text-content-muted hover:bg-surface-muted hover:text-content'
+          }`
+        }
+      >
+        <Icon
+          size={18}
+          aria-hidden="true"
+          className="shrink-0 transition-transform group-hover:scale-110"
+        />
+        {!isCompact && <span className="truncate">{label}</span>}
+      </NavLink>
+    );
 
     return (
       <div className="dx-sidebar h-full bg-surface-sidebar flex flex-col text-content border-r border-edge select-none">
@@ -108,46 +150,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           aria-label="Điều hướng chính"
           id={isMobile ? 'app-navigation' : undefined}
         >
-          {links.map(({ to, label, icon: Icon, external }) => external ? (
-            <a
-              key={to}
-              href={to}
-              title={isCompact ? label : undefined}
-              aria-label={label}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all min-h-[40px] text-content-muted hover:bg-surface-muted hover:text-content ${
-                isCompact ? 'justify-center px-2' : ''
-              }`}
-            >
-              <Icon size={18} aria-hidden="true" className="shrink-0 transition-transform group-hover:scale-110" />
-              {!isCompact && <span className="truncate">{label}</span>}
-            </a>
-          ) : (
-            <NavLink
-              key={to}
-              to={to}
-              end
-              onClick={isMobile ? onClose : undefined}
-              title={isCompact ? label : undefined}
-              aria-label={label}
-              className={({ isActive }) =>
-                `group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all min-h-[40px] ${
-                  isCompact ? 'justify-center px-2' : ''
-                } ${
-                  isActive
-                    ? 'bg-primary-tint text-primary font-semibold shadow-2xs border-l-2 border-primary'
-                    : 'text-content-muted hover:bg-surface-muted hover:text-content'
-                }`
-              }
-            >
-              <Icon
-                size={18}
-                aria-hidden="true"
-                className="shrink-0 transition-transform group-hover:scale-110"
-              />
-              {!isCompact && <span className="truncate">{label}</span>}
-            </NavLink>
-          ))}
+          {mainLinks.map(renderLink)}
         </nav>
+
+        {/* Trang tham khảo (không thuộc luồng xử lý phiếu) tách thành nhóm riêng. */}
+        {resourceLinks.length > 0 && (
+          <nav
+            className="space-y-1 px-2.5 pt-2 pb-2 border-t border-edge"
+            aria-label="Tài nguyên"
+          >
+            {!isCompact && (
+              <p className="px-3 pt-1 pb-1 text-xs font-bold tracking-wider uppercase text-content-subtle">
+                Tài nguyên
+              </p>
+            )}
+            {resourceLinks.map(renderLink)}
+          </nav>
+        )}
 
         {/* Footer info */}
         <div className="mt-auto border-t border-edge p-3 text-xs text-content-muted">

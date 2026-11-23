@@ -22,6 +22,9 @@ export interface ModuleNavItem {
   order: number;
   /** Đường dẫn trên menu nếu khác `path` của trang. */
   to?: string;
+  /** Nhóm trên Sidebar: `main` (mặc định) là luồng công việc; `resources` là trang tham
+   *  khảo, hiện tách riêng ở cuối thanh bên. */
+  section?: 'main' | 'resources';
 }
 
 /** Một trang của SPA, gắn vào router. */

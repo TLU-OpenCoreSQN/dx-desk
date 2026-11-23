@@ -77,6 +77,9 @@ export function assistantServer(dependencies, proposals = proposalStore()) {
       response.end();
     } catch (error) {
       if (response.destroyed) return;
+      // Ghi lỗi nội bộ (chỉ thông điệp, không câu hỏi hay token) để vận hành chẩn đoán được,
+      // ví dụ Ollama chưa tải model; người dùng vẫn chỉ thấy thông điệp chung.
+      if (!error.status) console.error('Assistant request failed:', error?.message ?? error);
       const message = error.status ? error.message : 'Trợ lý chưa xử lý được yêu cầu. Vui lòng thử lại.';
       if (!response.headersSent) return json(response, error.status ?? 503, { message });
       response.end(JSON.stringify({ type: 'error', message }) + '\n');

@@ -14,7 +14,7 @@ export const dataModule: ModuleManifest = {
   icon: Database,
   access: 'public',
   pages: [
-    { path: 'du-lieu', component: DataCatalogPage, access: 'public', nav: { label: 'Danh mục dữ liệu', icon: Database, order: 10 } },
+    { path: 'du-lieu', component: DataCatalogPage, access: 'public', nav: { label: 'Danh mục dữ liệu', icon: Database, order: 100, section: 'resources' } },
     { path: 'bao-cao', component: ManagerAnalyticsPage, access: 'Manager', nav: { label: 'Báo cáo vận hành', icon: ChartNoAxesCombined, order: 51 } },
   ],
 };

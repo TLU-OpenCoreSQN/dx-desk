@@ -509,7 +509,12 @@ export const TicketListPage: React.FC = () => {
           />
         </div>
       ) : (
-        <div className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs overflow-hidden">
+        // `overflow-clip`, không phải `overflow-hidden`: hidden biến khung này thành vùng cuộn của
+        // header sticky, header bị ghim cách mép khung 56px và đè lên phiếu đầu tiên.
+        <div
+          data-testid="ticket-table"
+          className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs overflow-clip"
+        >
           {/* Sticky column header (desktop only, sticks below the app header) */}
           <div
             aria-hidden="true"
