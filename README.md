@@ -117,7 +117,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:9080/rest/
 
 Người dùng mẫu (chỉ dùng cho phát triển): `employee.a`, `employee.b`, `agent.1`, `agent.2`, `manager.1`, cùng mật khẩu `DxDesk@2026`.
 Tài khoản quản trị Keycloak nằm trong `.env`.
-Automation mặc định bật với profile `demo-light`; runner sinh secret local và bootstrap roster/kênh riêng.
+Automation mặc định bật với profile `demo-light` và `full` (`.env.example` mặc định `full`); runner sinh secret local và bootstrap roster/kênh riêng.
 Tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env` (`MATTERMOST_DEMO_PASSWORD`).
 
 ## Cấu trúc kho mã
