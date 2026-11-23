@@ -5,7 +5,7 @@
 ## [Chưa phát hành]
 
 ### Thay đổi
-- ADR 0011: bỏ Ollama cục bộ, mô hình AI (chat có công cụ của trợ lý, gợi ý phân loại phiếu, nhúng bài Wiki) gọi qua API bên thứ ba chuẩn OpenAI-compatible, mặc định Google Gemini (`gemini-2.5-flash`, `gemini-embedding-001`). Cấu hình bằng `AI_API_BASE_URL`, `AI_API_KEY`, `ASSISTANT_CHAT_MODEL`, `ASSISTANT_EMBED_MODEL`; client `apps/assistant/llm.mjs`.
+- ADR 0011: bỏ Ollama cục bộ, mô hình AI (chat có công cụ của trợ lý, gợi ý phân loại phiếu, nhúng bài Wiki) gọi qua API bên thứ ba chuẩn OpenAI-compatible, mặc định Google Gemini (`gemini-flash-latest`, `gemini-embedding-001`). Cấu hình bằng `AI_API_BASE_URL`, `AI_API_KEY`, `ASSISTANT_CHAT_MODEL`, `ASSISTANT_EMBED_MODEL`; client `apps/assistant/llm.mjs`.
 
 ### Gỡ bỏ
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).

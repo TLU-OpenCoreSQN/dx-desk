@@ -480,7 +480,7 @@ Chọn `COMPOSE_PROFILES=full` và đặt khóa API trong `.env` (không commit)
 ```sh
 AI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 AI_API_KEY=<khóa API Gemini>
-ASSISTANT_CHAT_MODEL=gemini-2.5-flash
+ASSISTANT_CHAT_MODEL=gemini-flash-latest
 ASSISTANT_EMBED_MODEL=gemini-embedding-001
 ```
 

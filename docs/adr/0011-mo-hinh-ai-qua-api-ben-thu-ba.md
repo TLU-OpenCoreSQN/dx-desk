@@ -18,9 +18,10 @@ Mô hình phải tải tay; khi chưa tải, trợ lý chỉ báo "Trợ lý ch�
 - Bỏ dịch vụ `ollama`, volume `ollama-data` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 - Mọi lời gọi mô hình đi qua **API chuẩn OpenAI-compatible** (`chat/completions`, `embeddings`):
   - trợ lý: `apps/assistant/llm.mjs` (chat stream SSE có công cụ, embedding);
-  - gợi ý phân loại phiếu: `apps/api/src/ticket-ai-suggestion.ts` (`response_format` JSON Schema).
+  - gợi ý phân loại phiếu: `apps/api/src/ticket-ai-suggestion.ts` (`response_format: json_object`,
+    định dạng ghi trong prompt; `json_schema` của Gemini không ổn định khi thử 23/11/2026).
 - Nhà cung cấp trước mắt là **Google Gemini** qua endpoint tương thích OpenAI
-  `https://generativelanguage.googleapis.com/v1beta/openai/`; model mặc định `gemini-2.5-flash`
+  `https://generativelanguage.googleapis.com/v1beta/openai/`; model mặc định `gemini-flash-latest`
   (chat) và `gemini-embedding-001` (nhúng).
 - Cấu hình trong `.env`: `AI_API_BASE_URL`, `AI_API_KEY`, `ASSISTANT_CHAT_MODEL`,
   `ASSISTANT_EMBED_MODEL`. Đổi nhà cung cấp không cần sửa mã.
@@ -47,5 +48,12 @@ Mô hình phải tải tay; khi chưa tải, trợ lý chỉ báo "Trợ lý ch�
 - **Thiếu khóa hoặc hết hạn mức**: trợ lý và gợi ý AI báo lỗi chung; phần còn lại của DX-Desk
   chạy bình thường. Log `assistant`/`wiki-index` ghi nguyên nhân.
 - **RAM** hồ sơ `full` giảm phần Ollama; không còn bước tải mô hình.
+- **Hạn mức Gemini Free Tier** (đo 23/11/2026): mỗi model chat chỉ **20 request/ngày/dự án**
+  (`gemini-flash-latest` đang trỏ tới `gemini-3.8-flash`); một câu hỏi có gọi công cụ tốn 2–3 request.
+  Model mới thường báo 503 "high demand" vào giờ cao điểm; `gemini-2.5-flash` không còn mở cho dự án
+  mới (404). Client tự thử lại 2 lần với 429/503. Trước buổi demo cần bật thanh toán cho dự án
+  Google AI Studio hoặc chọn model có hạn mức phù hợp.
+- **Gemini 3 bắt buộc thought signature**: tool call trả về có `extra_content.google.thought_signature`
+  và phải gửi lại nguyên vẹn ở lượt sau, nếu không API trả 400; `llm.mjs`/`chat.mjs` giữ trường này.
 - **Việc tiếp:** `tools/testing/week6-evaluate.mjs` vẫn gọi trực tiếp API Ollama (`/api/tags`,
   `/api/chat`) để đánh giá chất lượng; cần chuyển sang API mới trước khi chạy lại đánh giá W6.

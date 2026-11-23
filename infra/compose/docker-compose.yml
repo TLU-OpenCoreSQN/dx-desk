@@ -148,7 +148,7 @@ services:
       # ADR 0011: mô hình AI qua API bên thứ ba (OpenAI-compatible, mặc định Gemini).
       AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
       AI_API_KEY: ${AI_API_KEY:-}
-      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-gemini-2.5-flash}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-gemini-flash-latest}
       OIDC_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
       OIDC_AUDIENCE: ${OIDC_AUDIENCE}
@@ -347,7 +347,7 @@ services:
       AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
       AI_API_KEY: ${AI_API_KEY:-}
       ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-gemini-embedding-001}
-      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-gemini-2.5-flash}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-gemini-flash-latest}
       ASSISTANT_ACTION_KEY: ${ASSISTANT_ACTION_KEY:-}
     command: ["node", "start.mjs"]
     healthcheck:

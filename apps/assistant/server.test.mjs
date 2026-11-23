@@ -12,12 +12,19 @@ test('confirmation is bound to the question owner, consumes the proposal once, a
     identity: async token => ({ id: token, roles: ['Employee'] }),
     available: async () => ['create_ticket'],
     knowledge: async () => [{ title: 'VPN', url: 'https://wiki.example.test/en/ho-tro/vpn', text: 'VPN.' }],
-    async *complete(_messages, definitions) {
+    async *complete(messages, definitions) {
       if (definitions.length) yield { tool_calls: [
         { id: 'call_1', name: 'create_ticket', arguments: { ...args, role: 'Manager' } },
-        { id: 'call_2', name: 'create_ticket', arguments: args },
+        { id: 'call_2', name: 'create_ticket', arguments: args, extra_content: { google: { thought_signature: 'sig' } } },
       ] };
-      else yield { content: 'Đã chuẩn bị đề xuất.' };
+      else {
+        // Lượt sau gửi lại tool call theo định dạng OpenAI, kèm thought signature và tool_call_id.
+        const replayed = messages.find(message => message.role === 'assistant');
+        assert.deepEqual(replayed.tool_calls[1], { id: 'call_2', type: 'function',
+          function: { name: 'create_ticket', arguments: JSON.stringify(args) }, extra_content: { google: { thought_signature: 'sig' } } });
+        assert.deepEqual(messages.filter(message => message.role === 'tool').map(message => message.tool_call_id), ['call_1', 'call_2']);
+        yield { content: 'Đã chuẩn bị đề xuất.' };
+      }
     },
     async invoke(...params) { mutations.push(params.slice(0, 4)); },
   });

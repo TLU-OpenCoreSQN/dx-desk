@@ -123,6 +123,8 @@ export async function answer({ caller, signal, question, dependencies, emit }) {
     messages.push({ role: 'assistant', content: content || null, tool_calls: calls.map((call, index) => ({
       id: call.id || `call_${round}_${index}`, type: 'function',
       function: { name: String(call.name ?? ''), arguments: JSON.stringify(call.arguments ?? {}) },
+      // Dữ liệu riêng của nhà cung cấp (thought signature của Gemini 3) phải gửi lại nguyên vẹn.
+      ...(call.extra_content ? { extra_content: call.extra_content } : {}),
     })) });
     for (const [index, call] of calls.entries()) {
       const name = call.name;

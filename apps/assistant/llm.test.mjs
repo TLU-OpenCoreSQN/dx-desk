@@ -56,6 +56,18 @@ test('chatStream ghép chữ và mảnh đối số công cụ từ luồng SSE'
   assert.deepEqual(requests[0].body.tools, tools);
 });
 
+test('chatStream giữ thought signature của Gemini 3 kèm tool call không có index', async t => {
+  const signature = { google: { thought_signature: 'sig-fixture' } };
+  const { config } = await provider(t, (_request, response) => {
+    const event = { choices: [{ delta: { tool_calls: [{ id: 'call_g', type: 'function', extra_content: signature,
+      function: { name: 'similar_tickets', arguments: '{"query":"excel"}' } }] } }] };
+    response.end(`data: ${JSON.stringify(event)}\n\ndata: [DONE]\n\n`);
+  });
+  const parts = await collect(chatStream(config, [], [{ type: 'function' }], new AbortController().signal));
+  assert.deepEqual(parts, [{ tool_calls: [{ id: 'call_g', name: 'similar_tickets', arguments: { query: 'excel' },
+    extra_content: signature }] }]);
+});
+
 test('chatStream không gửi trường tools khi không có công cụ', async t => {
   const { config, requests } = await provider(t, (_request, response) => response.end('data: [DONE]\n\n'));
   assert.deepEqual(await collect(chatStream(config, [], [], new AbortController().signal)), []);
@@ -74,6 +86,19 @@ test('embed trả vector theo đúng thứ tự index và từ chối phản h�
   assert.equal(requests[0].body.model, 'embed-fixture');
   broken = true;
   await assert.rejects(embed(config, ['a', 'b']), /Invalid AI embedding response/);
+});
+
+test('quá tải tạm thời (503/429) được thử lại, hết lượt thì báo lỗi', async t => {
+  const statuses = [503, 429, 200];
+  const { config, requests } = await provider(t, (_request, response, body) => {
+    response.statusCode = statuses.shift() ?? 503;
+    response.end(JSON.stringify({ data: body.input.map((_, index) => ({ index, embedding: [1, 2] })) }));
+  });
+  const fast = { ...config, retryDelays: [1, 1] };
+  assert.deepEqual(await embed(fast, ['a']), [[1, 2]]);
+  assert.equal(requests.length, 3);
+  await assert.rejects(embed(fast, ['a']), /HTTP 503/);
+  assert.equal(requests.length, 6);
 });
 
 test('lỗi HTTP của nhà cung cấp không lộ nội dung phản hồi; thiếu khóa thì không gọi mạng', async t => {
