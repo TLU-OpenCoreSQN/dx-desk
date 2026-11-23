@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AttachmentPanel } from '../components/common/AttachmentPanel';
-import { CreateTicketPage } from '../pages/CreateTicketPage';
+import { CreateTicketPage } from '../modules/desk/pages/CreateTicketPage';
 import { fileError, MAX_ATTACHMENT_BYTES } from '../lib/attachments';
 import * as api from '../services/api';
 import * as auth from '../contexts/AuthContext';

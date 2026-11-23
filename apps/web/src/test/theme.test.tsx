@@ -23,7 +23,7 @@ describe('theme preferences', () => {
     render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
     expect(screen.getByRole('button', { name: 'Tùy biến giao diện và màu sắc' })).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute('data-theme', 'modern');
-    expect(document.documentElement).toHaveAttribute('data-accent', 'blue');
+    expect(document.documentElement).toHaveAttribute('data-accent', 'corporate-blue');
   });
 
   it('validates stored values and derives the tint from a valid custom color', () => {
@@ -33,6 +33,17 @@ describe('theme preferences', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'modern');
     expect(document.documentElement).toHaveAttribute('data-grid-lines', 'true');
     expect(document.documentElement.style.getPropertyValue('--color-primary-tint')).toBe('rgb(227,231,235)');
+  });
+
+  it('migrates legacy stored preferences to v2-corporate while preserving mode', () => {
+    localStorage.setItem('dx-desk-theme', JSON.stringify({ mode: 'dark', accent: '#cb912f', theme: 'classic' }));
+    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
+    expect(document.documentElement).toHaveClass('dark');
+    expect(document.documentElement).toHaveAttribute('data-accent', 'corporate-blue');
+    const stored = JSON.parse(localStorage.getItem('dx-desk-theme')!);
+    expect(stored.version).toBe('v2-corporate');
+    expect(stored.mode).toBe('dark');
+    expect(stored.accent).toBe('corporate-blue');
   });
 
   it('moves focus into theme controls and restores the trigger on Escape', async () => {

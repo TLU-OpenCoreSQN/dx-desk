@@ -5,6 +5,11 @@
 ## [Chưa phát hành]
 
 ### Thêm
+- W6-15: `scripts/import-nhan-vien.mjs` (lệnh `node scripts/dxdesk.mjs import-nhan-vien`, `make import-nhan-vien`) nhập nhân viên từ CSV vào Keycloak — mặc định chạy thử, `--thuc-hien` tạo người dùng với mật khẩu tạm ngẫu nhiên bắt đổi lần đầu, gán realm role, đưa Agent/Manager vào nhóm qua `POST /api/system/roster`; chạy lại không tạo trùng, báo lỗi theo dòng. Tệp mẫu `config/doanh-nghiep/nhan-vien.mau.csv`, 50 nhân viên giả lập `nhan-vien.gia-lap-50.csv`, kiểm thử `tests/import-nhan-vien.test.mjs`.
+
+## [0.5.0] - 2026-11-17
+
+### Thêm
 - W5-08: Wiki.js 2.5.315 trong hồ sơ `full`/`demo-light`, đăng nhập bằng Keycloak (client `wikijs`, OIDC, nhóm theo vai trò), cấu hình tự động bằng `scripts/setup-wiki.mjs`; 6 bài tri thức CC BY 4.0 và trang chủ mục lục (`docs/wiki/home.md`, tránh màn "Welcome to your wiki" khi vào `/`) trong `docs/wiki/`.
 - W5-08: migration 012 — bài tri thức, ánh xạ danh mục → bài, lượt "Đã tự xử lý được" (RLS chỉ chủ sở hữu đọc) và view `reporting.self_service_weekly` cho Metabase; endpoint `GET /api/categories/:id/articles`, `POST /api/self-service`; biểu mẫu tạo phiếu hiện bài gợi ý theo danh mục.
 - W5-10: migration 017 — `ticket_events.actor_type` nhận thêm `ai`; view `reporting.automation_weekly` (bước xử lý theo tuần của người/hệ thống/AI, tỷ lệ thao tác thủ công) cấp cho `reporting_reader`; dashboard Metabase thêm thẻ "Bước xử lý theo tác nhân theo tuần (H-P-D-I)".
@@ -17,6 +22,10 @@
 - W5-05/06/07 (#38): bộ sinh dữ liệu giả lập 6–8 tuần có kịch bản VPN và tự đối chiếu KPI (dữ liệu CC0-1.0, migration 013); Metabase OSS v0.64.3 trong hồ sơ `full` với dashboard Manager nhúng ký tại `/bao-cao`; trang danh mục dữ liệu công khai hiển thị JSON-LD và DCAT; nghiệm thu `tools/testing/week5-metabase.mjs`.
 
 ### Thay đổi
+- Giao diện web: trang chi tiết và trang tạo phiếu tách thành component con, dùng chung `Button`/`FormField`; thêm `Toast`, `Modal`, `Skeleton`; các trang tải theo kiểu lazy (skeleton trong vùng nội dung, có màn "Không thể tải trang" khi chunk cũ không còn sau lần cập nhật).
+- Trang tạo phiếu tự lưu bản nháp trong trình duyệt theo từng người dùng (lưu khi rời trang, xoá khi gửi phiếu hoặc đăng xuất); danh sách phiếu đồng bộ từ khoá, bộ lọc và số trang với URL.
+- Ứng dụng 2 "Xin cấp thiết bị": giao diện đồng bộ với DX-Desk, nút chuyển sáng/tối dùng chung thiết lập, thanh tiến trình có số bước.
+- Dark mode: màu chữ trạng thái của ứng dụng 2 và màu tint/viền nhấn của web tối theo nền để đủ tương phản.
 - W5-11 (#39): 6 bài tri thức Wiki.js và tài liệu thống nhất theo bối cảnh doanh nghiệp (bài LMS đổi thành "Phần mềm nghiệp vụ nội bộ"), migration 016.
 
 ### Tài liệu (tuần 5)
@@ -24,6 +33,8 @@
 - W4-10 hủy (12/11): DX-Desk chỉ phục vụ doanh nghiệp, không khảo sát Trung tâm CNTT của trường. Tài liệu khảo sát đổi thành `docs/tham-so-du-lieu-gia-lap.md`, giữ tham số giả định của đội.
 - `THIRD-PARTY-NOTICES.md`: Wiki.js, Mattermost Team Edition, Metabase OSS chuyển từ mục PoC sang thành phần sản phẩm.
 - ADR 0008, `cai-dat.md`, `tai-nguyen.md`, hợp đồng API/OpenAPI và kịch bản demo cảnh 1 cập nhật theo W5-08.
+- W5-09: kịch bản demo tuần 5 cảnh 1–3 có ứng dụng 2 (`docs/demo-tuan-5.md`): SSO sang `/thiet-bi/`, luồng đề nghị → duyệt → bàn giao có biên bản PDF, báo cáo `/bao-cao` và danh mục `/du-lieu`.
+- W5-09: đo lại RAM ba lượt khi đã có ứng dụng 2 (`demo-light` 3,22 GiB, `full` 4,60 GiB đỉnh, ứng dụng 2 ~20 MiB) trong `tai-nguyen.md`; ADR 0010 cập nhật bảng ước lượng.
 
 ### Tài liệu
 - W4-09: bảng RAM theo dịch vụ cho hồ sơ `demo-light` và `full` trên máy dev 16 GB (số đo tạm), đầu vào TN-05 vòng 2 (`docs/tai-nguyen.md`).
@@ -76,5 +87,6 @@
 - `scripts/check-apisix.sh` và job CI `kiểm tra apisix.yaml`: nạp `apisix.yaml` bằng image APISIX, báo lỗi nếu thiếu `#END`, sai cú pháp, sai schema route hoặc route không được nạp.
 - ADR 0001 (APISIX standalone).
 
-[Chưa phát hành]: https://github.com/TLU-OpenCoreSQN/dx-desk/compare/v0.1.0...HEAD
+[Chưa phát hành]: https://github.com/TLU-OpenCoreSQN/dx-desk/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/TLU-OpenCoreSQN/dx-desk/compare/v0.1.0...v0.5.0
 [0.1.0]: https://github.com/TLU-OpenCoreSQN/dx-desk/releases/tag/v0.1.0

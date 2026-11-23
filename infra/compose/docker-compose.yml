@@ -143,6 +143,10 @@ services:
     environment:
       PORT: "3000"
       DATABASE_URL: postgres://api_login:${API_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ASSISTANT_ACTION_KEY: ${ASSISTANT_ACTION_KEY:-}
+      ASSISTANT_PROFILE: ${COMPOSE_PROFILES:-}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-qwen3:4b}
+      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
       OIDC_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
       OIDC_AUDIENCE: ${OIDC_AUDIENCE}
@@ -182,6 +186,9 @@ services:
         VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM}
         VITE_KEYCLOAK_CLIENT_ID: ${WEB_KEYCLOAK_CLIENT_ID}
     <<: *restart
+    # W6-11: danh sách module bật, đọc lúc chạy. Sửa tệp rồi tải lại trang, không build lại image.
+    volumes:
+      - ../../config/doanh-nghiep:/etc/dxdesk/enterprise:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
       interval: 5s
@@ -261,7 +268,7 @@ services:
       DXDESK_API_URL: http://api:3000
     command: ["import:workflow", "--separate", "--input=/import/workflows"]
     volumes:
-      - ../n8n/workflows:/import/workflows:ro
+      - ../../config/doanh-nghiep/workflows:/import/workflows:ro
 
   # Credentials của n8n (import:credentials) sẽ thêm ở tuần 4 khi workflow cần gọi API.
   n8n-publish:
@@ -271,11 +278,11 @@ services:
       n8n-import:
         condition: service_completed_successfully
     environment: *n8n-env
-    # Mã workflow mẫu cố định trong infra/n8n/workflows/hello.json
     entrypoint: ["node", "/import/publish-workflows.mjs"]
     volumes:
-      - ../n8n/workflows:/import/workflows:ro
+      - ../../config/doanh-nghiep/workflows:/import/workflows:ro
       - ../n8n/publish-workflows.mjs:/import/publish-workflows.mjs:ro
+      - ../n8n/validate-workflows.mjs:/import/validate-workflows.mjs:ro
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:${N8N_VERSION}
@@ -301,12 +308,62 @@ services:
     profiles: ["benchmark", "full"]
     <<: *restart
     ports:
-      - "127.0.0.1:11434:11434"
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
     volumes:
       - ollama-data:/root/.ollama
     environment:
       OLLAMA_MAX_LOADED_MODELS: "1"
       OLLAMA_NUM_PARALLEL: "1"
+
+  qdrant:
+    image: qdrant/qdrant:${QDRANT_VERSION:-v1.20.1}
+    profiles: ["full"]
+    <<: *restart
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  wiki-index:
+    image: node:${ASSISTANT_NODE_VERSION:-22.22.0-alpine}
+    profiles: ["full"]
+    <<: *restart
+    depends_on:
+      - qdrant
+      - ollama
+      - wikijs
+    user: node
+    working_dir: /app
+    volumes:
+      - ../../apps/assistant:/app:ro
+    environment:
+      WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
+      WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
+      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-bge-m3:567m}
+      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
+    command: ["node", "index-wiki.mjs"]
+
+  assistant:
+    image: node:${ASSISTANT_NODE_VERSION:-22.22.0-alpine}
+    profiles: ["full"]
+    <<: *restart
+    depends_on:
+      - wiki-index
+    user: node
+    working_dir: /app
+    volumes:
+      - ../../apps/assistant:/app:ro
+    environment:
+      WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
+      WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
+      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-bge-m3:567m}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-qwen3:4b}
+      ASSISTANT_ACTION_KEY: ${ASSISTANT_ACTION_KEY:-}
+      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
+    command: ["node", "start.mjs"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   mattermost-db:
     image: postgres:${POSTGRES_VERSION}
@@ -440,6 +497,7 @@ volumes:
   postgres-data:
   clamav-db:
   ollama-data:
+  qdrant-data:
   seaweedfs-data:
   mattermost-db-data:
   mattermost-data:

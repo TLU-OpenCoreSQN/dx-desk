@@ -111,6 +111,18 @@ routes:
       type: roundrobin
       nodes:
         "api:3000": 1
+  - id: assistant-chat
+    uris: ["/api/assistant/chat", "/api/assistant/confirm"]
+    methods: [POST]
+    priority: 35
+    plugins:
+      openid-connect: *verify-jwt
+      limit-req: *probe-limit
+    upstream:
+      type: roundrobin
+      timeout: { connect: 5, send: 10, read: 120 }
+      nodes:
+        "assistant:3000": 1
   # W5-01: ứng dụng 2 cùng origin với DX-Desk nên dùng chung phiên Keycloak và gọi /rest/* không cần CORS.
   - id: device-request
     uris: ["/thiet-bi", "/thiet-bi/*"]

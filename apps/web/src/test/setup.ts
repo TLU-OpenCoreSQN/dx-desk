@@ -8,6 +8,8 @@ import { afterEach, vi } from 'vitest';
 // Cleanup after each test
 afterEach(() => {
   cleanup();
+  // Trang tạo phiếu ghi bản nháp khi unmount; xoá để không rò sang test kế tiếp.
+  localStorage.clear();
   vi.clearAllMocks();
 });
 

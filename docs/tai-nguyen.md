@@ -106,7 +106,51 @@ Nhận xét:
   của ADR 0010. Wiki.js + CSDL thêm ~0,24 GiB.
 - `demo-light` vẫn ~3 GiB vì Metabase chỉ có trong `full`; `full` ~4,4 GiB, dưới trần 7,59 GiB của
   Docker Desktop và dưới 8 GB của VPS đã chốt (ADR 0010), kể cả khi bật Metabase trên VPS.
-- Còn phải đo lại khi W5-01 (ứng dụng 2) gộp `main`, trước khi gắn thẻ v0.5.0.
+- Đã đo lại khi có ứng dụng 2: xem mục *Đo lại trước v0.5.0* bên dưới.
+
+## Đo lại trước v0.5.0 — có ứng dụng 2 (W5-09, 17/11/2026)
+
+Cùng máy dev, Docker Desktop Engine 29.9.3, Compose v5.7.0, RAM cấp cho Docker 7,59 GiB. Commit nguồn
+`8f4320f` (`feature/release-v0.5.0` = `main` `8e5f434` + PR phát hành, không đổi mã dịch vụ), đã gồm
+W5-01..04 và W5-10. Stack dev hiện có, cùng quy trình mục trên: hồ sơ `full` trước — `up`, `week4-stack`
+(8/8), `week5-wiki` (5/5), `week5-device` (10/10), `week5-metabase` (thoát 0) — rồi ba lượt
+`benchmark-stack.mjs --duration=30 --interval=1000` (36 mẫu); sau đó dừng Metabase/Ollama, `up` với
+`COMPOSE_PROFILES=demo-light`, chạy lại ba bài nghiệm thu (8/8, 5/5, 10/10) và ba lượt đo (37 mẫu).
+Ollama chưa nạp mô hình. Vẫn là số đo tạm.
+
+Ghi chú: lần chạy `week5-device` đầu tiên lỗi 401 vì volume Mattermost cũ lưu `manager.1` với mật khẩu
+khác `MATTERMOST_DEMO_PASSWORD` (và `agent.1` bị khóa do đăng nhập sai nhiều lần); `setup-automation.mjs`
+chỉ tạo user khi chưa có nên không sửa lệch này. Đặt lại hai mật khẩu demo bằng tài khoản admin Mattermost
+rồi chạy lại thì đạt. Không phải lỗi mã: stack dựng mới trong CI không gặp.
+
+| Dịch vụ (MiB) | `demo-light` đỉnh | `demo-light` TB | `full` đỉnh | `full` TB |
+|---|---:|---:|---:|---:|
+| clamav | 925 | 925 | 929 | 925 |
+| keycloak | 719 | 717 | 706 | 705 |
+| n8n | 432 | 428 | 418 | 415 |
+| apisix | 340 | 339 | 353 | 350 |
+| mattermost | 233 | 232 | 231 | 226 |
+| wikijs | 225 | 206 | 201 | 194 |
+| seaweedfs | 177 | 173 | 172 | 171 |
+| api | 60 | 50 | 109 | 101 |
+| postgres | 89 | 89 | 94 | 90 |
+| mattermost-db | 47 | 47 | 52 | 45 |
+| postgrest | 25 | 20 | 35 | 34 |
+| wiki-db | 27 | 26 | 26 | 26 |
+| device-request (ứng dụng 2) | 16 | 15 | 20 | 15 |
+| web | 14 | 13 | 13 | 13 |
+| metabase | — | — | 1315 | 1314 |
+| metabase-db | — | — | 61 | 61 |
+| ollama (chưa nạp mô hình) | — | — | 15 | 15 |
+| **Tổng container** | **3,22 GiB** | **3,20 GiB** | **4,60 GiB** | **4,59 GiB** |
+
+Nhận xét:
+
+- Ứng dụng 2 chỉ là Nginx phục vụ SPA, ~15–20 MiB; luồng đề nghị thiết bị đi qua PostgREST/API sẵn có.
+- So với 12/11, tổng tăng ~0,24 GiB ở cả hai hồ sơ, chủ yếu do ClamAV (+~90 MiB, cơ sở chữ ký mới),
+  Keycloak (+~60–90 MiB) và API (biên bản PDF, JSON-LD); dao động giữa các lần dựng cùng cỡ.
+- `demo-light` ~3,2 GiB, `full` ~4,6 GiB: vẫn dưới trần 7,59 GiB của Docker Desktop và dưới 8 GB của
+  VPS đã chốt (ADR 0010). Kết luận ngân sách không đổi.
 
 ## So sánh với W2-10
 

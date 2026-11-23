@@ -45,3 +45,16 @@ path = ["apps/web/public/data/synthetic/*.json"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
 SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["db/migrations/020_linked_data_catalog.sql"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
+SPDX-License-Identifier = "Apache-2.0"
+
+# W6-15: tệp mẫu và danh sách nhân viên giả lập để nhập vào Keycloak (CSV không ghi được chú thích).
+[[annotations]]
+path = ["config/doanh-nghiep/*.csv"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
+SPDX-License-Identifier = "CC0-1.0"

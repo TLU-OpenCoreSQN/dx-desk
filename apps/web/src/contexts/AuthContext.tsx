@@ -18,6 +18,7 @@ import {
   getParsedSubject,
 } from '../services/keycloak';
 import { getMe, ApiClientError } from '../services/api';
+import { clearAllDrafts } from '../lib/ticketDraft';
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
@@ -114,6 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
+    // Đăng xuất chủ động: không để lại nội dung nháp trên máy dùng chung.
+    clearAllDrafts();
     clearAuthData();
     try { await kcLogout(); }
     catch { expireSession(); setIsKeycloakOffline(true); }

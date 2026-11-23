@@ -1,0 +1,51 @@
+tai_khoan,ho_ten,email,vai_tro,nhom_xu_ly,don_vi
+gl.nv01,Trần Thu Hạnh,gl.nv01@gia-lap.dxdesk.local,Manager,,phong-hanh-chinh
+gl.nv02,Lê Hữu Oanh,gl.nv02@gia-lap.dxdesk.local,Manager,,phong-ke-toan
+gl.nv03,Phạm Thị Tuấn,gl.nv03@gia-lap.dxdesk.local,Manager,,phong-kinh-doanh
+gl.nv04,Hoàng Quốc Dũng,gl.nv04@gia-lap.dxdesk.local,Agent,Network Team;IT Support,phong-cntt
+gl.nv05,Vũ Thanh Linh,gl.nv05@gia-lap.dxdesk.local,Agent,IT Support,phong-cntt
+gl.nv06,Đặng Minh Sơn,gl.nv06@gia-lap.dxdesk.local,Agent,Network Team,phong-cntt
+gl.nv07,Bùi Ngọc Đức,gl.nv07@gia-lap.dxdesk.local,Agent,Identity Team,phong-cntt
+gl.nv08,Đỗ Văn Hải,gl.nv08@gia-lap.dxdesk.local,Agent,IT Support,phong-cntt
+gl.nv09,Hồ Thu Nam,gl.nv09@gia-lap.dxdesk.local,Agent,Network Team,phong-cntt
+gl.nv10,Nguyễn Hữu Trang,gl.nv10@gia-lap.dxdesk.local,Agent,Identity Team,phong-cntt
+gl.nv11,Trần Thị Chi,gl.nv11@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv12,Lê Quốc Lan,gl.nv12@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv13,Phạm Thanh Quân,gl.nv13@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv14,Hoàng Minh Yến,gl.nv14@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv15,Vũ Ngọc Hà,gl.nv15@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv16,Đặng Văn Mai,gl.nv16@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv17,Bùi Thu Thảo,gl.nv17@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv18,Đỗ Hữu Bình,gl.nv18@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv19,Hồ Thị Khoa,gl.nv19@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv20,Nguyễn Quốc Phúc,gl.nv20@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv21,Trần Thanh Vy,gl.nv21@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv22,Lê Minh Giang,gl.nv22@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv23,Phạm Ngọc Long,gl.nv23@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv24,Hoàng Văn Tâm,gl.nv24@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv25,Vũ Thu An,gl.nv25@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv26,Đặng Hữu Hạnh,gl.nv26@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv27,Bùi Thị Oanh,gl.nv27@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv28,Đỗ Quốc Tuấn,gl.nv28@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv29,Hồ Thanh Dũng,gl.nv29@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv30,Nguyễn Minh Linh,gl.nv30@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv31,Trần Ngọc Sơn,gl.nv31@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv32,Lê Văn Đức,gl.nv32@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv33,Phạm Thu Hải,gl.nv33@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv34,Hoàng Hữu Nam,gl.nv34@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv35,Vũ Thị Trang,gl.nv35@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv36,Đặng Quốc Chi,gl.nv36@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv37,Bùi Thanh Lan,gl.nv37@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv38,Đỗ Minh Quân,gl.nv38@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv39,Hồ Ngọc Yến,gl.nv39@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv40,Nguyễn Văn Hà,gl.nv40@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv41,Trần Thu Mai,gl.nv41@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv42,Lê Hữu Thảo,gl.nv42@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv43,Phạm Thị Bình,gl.nv43@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv44,Hoàng Quốc Khoa,gl.nv44@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv45,Vũ Thanh Phúc,gl.nv45@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv46,Đặng Minh Vy,gl.nv46@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh
+gl.nv47,Bùi Ngọc Giang,gl.nv47@gia-lap.dxdesk.local,Employee,,phong-nhan-su
+gl.nv48,Đỗ Văn Long,gl.nv48@gia-lap.dxdesk.local,Employee,,phong-hanh-chinh
+gl.nv49,Hồ Thu Tâm,gl.nv49@gia-lap.dxdesk.local,Employee,,phong-ke-toan
+gl.nv50,Nguyễn Hữu An,gl.nv50@gia-lap.dxdesk.local,Employee,,phong-kinh-doanh

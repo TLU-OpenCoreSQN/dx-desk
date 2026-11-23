@@ -5,6 +5,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { parse } from 'yaml';
+import { loadConfig } from '../../scripts/enterprise-config.mjs';
+import { validateWorkflowDirectory } from '../../infra/n8n/validate-workflows.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const read = path => readFile(resolve(root, path), 'utf8');
 const compose = parse(await read('infra/compose/docker-compose.yml'));
@@ -110,4 +112,13 @@ for (const app of ['web', 'api']) {
   assert.deepEqual(pkg.dependencies, lock.packages[''].dependencies, `${app} dependency lock mismatch`);
   assert.deepEqual(pkg.devDependencies, lock.packages[''].devDependencies, `${app} dev dependency lock mismatch`);
 }
-console.log('PASS config references, env completeness, Keycloak audiences, YAML and package locks');
+const enterprise = await loadConfig();
+assert.deepEqual(JSON.parse(await read('config/doanh-nghiep/modules.json')), enterprise.modules,
+  'modules.json must be the projection of cau-hinh.json');
+await validateWorkflowDirectory(resolve(root, 'config/doanh-nghiep/workflows'));
+assert.ok(compose.services.web.volumes.includes('../../config/doanh-nghiep:/etc/dxdesk/enterprise:ro'));
+assert.ok((await read('apps/web/nginx.conf')).includes('alias /etc/dxdesk/enterprise/modules.json;'));
+for (const service of ['n8n-import', 'n8n-publish']) {
+  assert.ok(compose.services[service].volumes.includes('../../config/doanh-nghiep/workflows:/import/workflows:ro'));
+}
+console.log('PASS config references, enterprise schema/projection/workflows, env completeness, Keycloak audiences, YAML and package locks');

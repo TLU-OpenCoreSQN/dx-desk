@@ -3,7 +3,7 @@
 Hệ thống tiếp nhận và tự động xử lý yêu cầu IT nội bộ, xây dựng trên nền tảng DX-OS Open-Core theo mô hình H-P-D-I.
 Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung Phần mềm nguồn mở (đội TLU-OpenCoreSQN, Trường Đại học Thủy lợi).
 
-> Trạng thái: **v0.1.0**, bàn giao kỹ thuật tuần 4. Có auto-route VPN,
+> Trạng thái: **v0.5.0** (mốc M4): thêm Wiki.js, Metabase, ứng dụng 2 "Xin cấp thiết bị", biên bản PDF, JSON-LD/DCAT; nền tảng từ v0.1.0 có auto-route VPN,
 > outbox/retry, kênh Mattermost, bảng việc Agent và queue phê duyệt Manager,
 > cùng nền tảng/RLS, OTP và tệp quét virus/URL ký của tuần 3.
 > Xem [CHANGELOG](CHANGELOG.md), [hợp đồng API](docs/api/contract.md), các lệnh kiểm thử bên dưới và CI đúng SHA.
@@ -126,11 +126,12 @@ Tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env` (`M
 | Thư mục | Nội dung |
 |---|---|
 | `infra/compose` | `docker-compose.yml` của Tầng 1 |
-| `infra/keycloak`, `infra/apisix`, `infra/n8n`, `infra/postgres` | Cấu hình dạng mã: realm, route, workflow, khởi tạo CSDL |
+| `infra/keycloak`, `infra/apisix`, `infra/n8n`, `infra/postgres` | Realm, route, bộ nạp workflow và khởi tạo CSDL |
+| `config/doanh-nghiep` | Cấu hình doanh nghiệp, projection module và workflow n8n; kiểm bằng `node scripts/dxdesk.mjs config validate` |
 | `db/migrations`, `db/policies` | Lược đồ CSDL và chính sách RLS (chạy khi khởi tạo PostgreSQL) |
 | `apps/web`, `apps/api` | React và NestJS: ứng dụng 1 DX-Desk |
 | `apps/device-request` | Ứng dụng 2 "Xin cấp thiết bị" (React, không backend riêng) tại `/thiet-bi/` |
-| `apps/assistant` | Giữ chỗ cho mốc sau; không phải dịch vụ đã chạy |
+| `apps/assistant` | Trợ lý RAG Wiki/Qdrant/Ollama trong profile `full`, công cụ ghi chỉ chạy sau xác nhận; chất lượng mô hình cần nghiệm thu TN-05/TN-06 riêng |
 | `tools/testing` | Harness PostgreSQL portable + PostgREST và kiểm tra cấu hình |
 | `scripts/` | Script hỗ trợ `make up` |
 | `docs/` | Tài liệu và quyết định kiến trúc (`docs/adr/`) |

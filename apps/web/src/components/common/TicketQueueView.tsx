@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Kanban, LayoutList } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiClientError, claimTicket, getTeams, getTickets, updateTicketStatus } from '../../services/api';
 import { Team, Ticket, TicketQueue } from '../../types/api';
@@ -10,6 +11,7 @@ import { ErrorMessage } from './ErrorMessage';
 import { LoadingSpinner } from './LoadingSpinner';
 import { PriorityBadge, StatusBadge } from './Badge';
 import { TicketSlaInfo } from './TicketSlaInfo';
+import { TicketKanbanBoard } from '../workflow';
 
 const PAGE_SIZE = 25;
 const BUTTON_BASE = 'min-h-11 rounded-md border px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50';
@@ -22,9 +24,11 @@ const QUEUES: { key: TicketQueue; label: string }[] = [
 ];
 
 export function TicketQueueView({ approvals = false }: { approvals?: boolean }) {
+  const navigate = useNavigate();
   const { roles, profile } = useAuth();
   const isStaff = roles.includes('Agent') || roles.includes('Manager');
   const permitted = approvals ? roles.includes('Manager') : isStaff;
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [queue, setQueue] = useState<TicketQueue>(approvals ? 'pending_approval' : 'my_open');
   const [teamId, setTeamId] = useState('');
   const [offset, setOffset] = useState(0);
@@ -123,7 +127,37 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
           <h1 className="text-xl font-bold text-content sm:text-2xl">{approvals ? 'Phê duyệt phiếu hỗ trợ' : 'Bảng việc kỹ thuật viên'}</h1>
           <p className="mt-1 text-sm text-content-muted">{approvals ? 'Các phiếu hỗ trợ đang chờ quyết định; yêu cầu cấp thiết bị được quản lý riêng.' : 'Hàng đợi được lọc trên máy chủ theo người phụ trách và nhóm của bạn.'}</p>
         </div>
-        <button type="button" className={BUTTON} disabled={loading || busyId !== null} onClick={() => { void loadTickets(); void loadTeams(); }}>Làm mới hàng đợi</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Chế độ xem hàng đợi" className="inline-flex rounded-md border border-edge bg-surface p-0.5 shadow-2xs">
+            <button
+              type="button"
+              aria-pressed={viewMode === 'table'}
+              onClick={() => setViewMode('table')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-[4px] transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-content-muted hover:text-content hover:bg-surface-muted'
+              }`}
+            >
+              <LayoutList className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Bảng danh sách</span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={viewMode === 'kanban'}
+              onClick={() => setViewMode('kanban')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-[4px] transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-content-muted hover:text-content hover:bg-surface-muted'
+              }`}
+            >
+              <Kanban className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Kanban luồng việc</span>
+            </button>
+          </div>
+          <button type="button" className={BUTTON} disabled={loading || busyId !== null} onClick={() => { void loadTickets(); void loadTeams(); }}>Làm mới hàng đợi</button>
+        </div>
       </header>
 
       {!approvals && (
@@ -149,7 +183,15 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
       {loading ? <LoadingSpinner label="Đang tải hàng đợi phiếu..." /> : error == null && (
         <>
           <p className="text-xs text-content-muted" aria-live="polite">{total !== undefined ? `${total} phiếu trong hàng đợi` : `${tickets.length} phiếu trên trang này`} · Trang {Math.floor(offset / PAGE_SIZE) + 1}</p>
-          {tickets.length === 0 ? <p className="rounded-lg border border-edge bg-surface p-6 text-sm text-content-muted">Không có phiếu trong hàng đợi này.</p> : (
+          {tickets.length === 0 ? <p className="rounded-lg border border-edge bg-surface p-6 text-sm text-content-muted">Không có phiếu trong hàng đợi này.</p> : viewMode === 'kanban' ? (
+            <TicketKanbanBoard
+              tickets={tickets}
+              onTicketClick={(ticket) => navigate(`/tickets/${encodeURIComponent(ticket.id)}`)}
+              canClaim={canClaim}
+              busyTicketId={busyId}
+              onClaimTicket={(ticket) => void mutate(ticket, () => claimTicket(ticket.id), 'Đã nhận phiếu. Phiếu có trong hàng đợi Đang phụ trách.')}
+            />
+          ) : (
             <ul className="grid min-w-0 gap-4 xl:grid-cols-2">
               {tickets.map(ticket => <li key={ticket.id} className="min-w-0 rounded-lg border border-edge bg-surface p-4 shadow-xs sm:p-5">
                 <article aria-label={ticket.title} className="space-y-3">

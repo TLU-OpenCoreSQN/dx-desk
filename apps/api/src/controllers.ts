@@ -6,9 +6,11 @@ import {
   Req, ServiceUnavailableException, UnprocessableEntityException, UseGuards,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { AuthRequest, JwtGuard } from './auth';
+import type { PoolClient } from 'pg';
+import { AuthRequest, JwtGuard, type UserClaims } from './auth';
 import { Database } from './database';
 import { scanWithClamd } from './clamd';
+import { assistantEnabled } from './config';
 import { deleteObject, putObject } from './seaweedfs';
 import {
   ALLOWED_CONTENT_TYPES, CreateDeviceRequest, CreateTicket, ListQuery,
@@ -26,7 +28,7 @@ export class HealthController {
   async health() {
     try { await this.db.pool.query('SELECT 1'); }
     catch { throw new ServiceUnavailableException('Cơ sở dữ liệu chưa sẵn sàng.'); }
-    return { status: 'ok', service: 'dx-desk-api', version: '0.1.0' };
+    return { status: 'ok', service: 'dx-desk-api', version: '0.5.0' };
   }
 }
 
@@ -79,6 +81,40 @@ export function workflowExceptionForCode(code?: string): { status: number; messa
   return null;
 }
 
+export async function createUserTicket(client: PoolClient, claims: UserClaims, body: CreateTicket) {
+  const roles = activeRoles(claims.realm_access.roles);
+  // W3-02 rule 2: critical chỉ Manager (API layer; RLS vẫn là lớp phòng thủ cuối).
+  const critical = criticalViolation(roles, body.priority);
+  if (critical) throw new ForbiddenException(critical);
+  const category = (await client.query(
+    'SELECT code, requirement_fields FROM public.categories WHERE id = $1 AND active',
+    [body.category_id],
+  )).rows[0] as { code: string; requirement_fields: unknown } | undefined;
+  if (!category) {
+    throw new ForbiddenException('Danh mục không tồn tại hoặc không khả dụng.');
+  }
+  // W3-02 rule 5: trường bắt buộc theo danh mục (categories.requirement_fields).
+  const check = checkRequirementFields(category.requirement_fields, body.fields);
+  if (!check.ok) {
+    if (check.kind === 'missing') {
+      throw new UnprocessableEntityException(`Thiếu trường bắt buộc: ${check.labels.join(', ')}.`);
+    }
+    if (check.kind === 'unknown') {
+      throw new BadRequestException('Biểu mẫu chứa trường không thuộc danh mục đã chọn.');
+    }
+    throw new BadRequestException('Giá trị trường biểu mẫu không hợp lệ (cần chuỗi 1–500 ký tự).');
+  }
+  // W3-02 rule 3: Employee tạo ticket loại 'access' vào hàng chờ phê duyệt.
+  const status = initialStatusFor(category.code, roles);
+  const created = (await client.query(
+    `INSERT INTO public.tickets(category_id, title, description, priority, status, request_fields)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [body.category_id, body.title, body.description, body.priority ?? 'normal',
+      status, JSON.stringify(check.values)],
+  )).rows[0];
+  return (await client.query(`SELECT ${TICKET_SELECT} FROM public.tickets t WHERE t.id=$1`, [created.id])).rows[0];
+}
+
 @Controller('api')
 @UseGuards(JwtGuard)
 export class DeskController {
@@ -88,6 +124,7 @@ export class DeskController {
     return {
       id: request.claims.sub, username: request.claims.preferred_username ?? '',
       roles: request.claims.realm_access.roles.filter(r => ['Employee', 'Agent', 'Manager'].includes(r)),
+      assistant_enabled: assistantEnabled(),
     };
   }
   @Get('categories')
@@ -149,39 +186,7 @@ export class DeskController {
   }
   @Post('tickets')
   createTicket(@Req() request: AuthRequest, @Body() body: CreateTicket) {
-    const roles = activeRoles(request.claims.realm_access.roles);
-    return this.db.asUser(request.claims, async client => {
-      // W3-02 rule 2: critical chỉ Manager (API layer; RLS vẫn là lớp phòng thủ cuối).
-      const critical = criticalViolation(roles, body.priority);
-      if (critical) throw new ForbiddenException(critical);
-      const category = (await client.query(
-        'SELECT code, requirement_fields FROM public.categories WHERE id = $1 AND active',
-        [body.category_id],
-      )).rows[0] as { code: string; requirement_fields: unknown } | undefined;
-      if (!category) {
-        throw new ForbiddenException('Danh mục không tồn tại hoặc không khả dụng.');
-      }
-      // W3-02 rule 5: trường bắt buộc theo danh mục (categories.requirement_fields).
-      const check = checkRequirementFields(category.requirement_fields, body.fields);
-      if (!check.ok) {
-        if (check.kind === 'missing') {
-          throw new UnprocessableEntityException(`Thiếu trường bắt buộc: ${check.labels.join(', ')}.`);
-        }
-        if (check.kind === 'unknown') {
-          throw new BadRequestException('Biểu mẫu chứa trường không thuộc danh mục đã chọn.');
-        }
-        throw new BadRequestException('Giá trị trường biểu mẫu không hợp lệ (cần chuỗi 1–500 ký tự).');
-      }
-      // W3-02 rule 3: Employee tạo ticket loại 'access' vào hàng chờ phê duyệt.
-      const status = initialStatusFor(category.code, roles);
-      const created = (await client.query(
-        `INSERT INTO public.tickets(category_id, title, description, priority, status, request_fields)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [body.category_id, body.title, body.description, body.priority ?? 'normal',
-          status, JSON.stringify(check.values)],
-      )).rows[0];
-      return (await client.query(`SELECT ${TICKET_SELECT} FROM public.tickets t WHERE t.id=$1`, [created.id])).rows[0];
-    });
+    return this.db.asUser(request.claims, client => createUserTicket(client, request.claims, body));
   }
   /**
    * W3-01: PATCH /api/tickets/:id/status. Một giao dịch qua db.asUser (RLS áp dụng):

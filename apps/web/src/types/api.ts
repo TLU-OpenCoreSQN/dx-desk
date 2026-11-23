@@ -13,12 +13,17 @@ export interface UserProfile {
   id: string;
   username: string;
   roles: UserRole[];
+  assistant_enabled?: boolean;
 }
 
 export interface RequirementField {
   key: string;
   label: string;
   required: boolean;
+  /** Ví dụ trong ô nhập, khai báo trong cấu hình doanh nghiệp (không bắt buộc). */
+  placeholder?: string;
+  /** Dòng giải thích ngắn dưới ô nhập, khai báo trong cấu hình doanh nghiệp (không bắt buộc). */
+  hint?: string;
 }
 
 export interface Category {
