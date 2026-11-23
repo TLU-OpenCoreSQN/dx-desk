@@ -61,7 +61,7 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
 - `GET /api/health`: công khai, `{status:"ok",service:"dx-desk-api",version:"0.5.0"}`.
 - `GET /api/me` trả `{id,username,roles:["Employee"|"Agent"|"Manager"],assistant_enabled}`. `assistant_enabled` cho biết hồ sơ `full` đã bật các tính năng trợ lý Desk.
 - `GET /api/categories`: `{data:[{id,code,name,description,requirement_fields}]}`.
-  `requirement_fields` là mảng đối tượng `{key,label,required}` — trường động theo loại
+  `requirement_fields` là mảng đối tượng `{key,label,required,placeholder?,hint?}` — trường động theo loại
   ticket (tuần 3 thêm danh mục `access` "Cấp quyền hệ thống" và `system-error` "Lỗi hệ thống",
   tổng cộng 6 danh mục active).
 - `GET /api/categories/:id/articles` (W5-08): `{data:[{id,slug,title,summary,url}]}` — bài Wiki.js gợi ý

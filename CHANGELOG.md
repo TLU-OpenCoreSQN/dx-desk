@@ -4,6 +4,18 @@
 
 ## [Chưa phát hành]
 
+### Thay đổi
+- ADR 0011: bỏ Ollama cục bộ, mô hình AI (chat có công cụ của trợ lý, gợi ý phân loại phiếu, nhúng bài Wiki) gọi qua API bên thứ ba chuẩn OpenAI-compatible, mặc định Google Gemini (`gemini-flash-latest`, `gemini-embedding-001`). Cấu hình bằng `AI_API_BASE_URL`, `AI_API_KEY`, `ASSISTANT_CHAT_MODEL`, `ASSISTANT_EMBED_MODEL`; client `apps/assistant/llm.mjs`.
+
+### Gỡ bỏ
+- Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
+
+### Sửa
+- Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
+
+### Thêm
+- W6-15: `scripts/import-nhan-vien.mjs` (lệnh `node scripts/dxdesk.mjs import-nhan-vien`, `make import-nhan-vien`) nhập nhân viên từ CSV vào Keycloak — mặc định chạy thử, `--thuc-hien` tạo người dùng với mật khẩu tạm ngẫu nhiên bắt đổi lần đầu, gán realm role, đưa Agent/Manager vào nhóm qua `POST /api/system/roster`; chạy lại không tạo trùng, báo lỗi theo dòng. Tệp mẫu `config/doanh-nghiep/nhan-vien.mau.csv`, 50 nhân viên giả lập `nhan-vien.gia-lap-50.csv`, kiểm thử `tests/import-nhan-vien.test.mjs`.
+
 ## [0.5.0] - 2026-11-17
 
 ### Thêm

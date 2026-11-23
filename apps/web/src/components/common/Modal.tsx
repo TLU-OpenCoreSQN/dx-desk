@@ -153,7 +153,7 @@ export const Modal: React.FC<ModalProps> = ({
     <div
       role="presentation"
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-opacity overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity overflow-y-auto"
       data-testid="modal-backdrop"
     >
       <div
@@ -163,15 +163,15 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} rounded-[8px] border border-[var(--color-edge,#d6d5d2)] bg-[var(--color-surface,#ffffff)] text-[var(--color-content,#211f1b)] shadow-xl outline-none transition-all my-8 ${className}`}
+        className={`relative w-full ${sizeClasses[size]} rounded-lg border border-edge bg-surface text-content shadow-xl outline-none transition-all my-8 ${className}`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-[var(--color-edge-subtle,#e4e3e0)] p-4 sm:p-5">
+        <div className="flex items-start justify-between border-b border-edge-subtle p-4 sm:p-5">
           <div className="space-y-1 pr-6">
             {title && (
               <h2
                 id={titleId}
-                className="text-base sm:text-lg font-semibold text-[var(--color-content,#211f1b)]"
+                className="text-base sm:text-lg font-semibold text-content"
               >
                 {title}
               </h2>
@@ -179,7 +179,7 @@ export const Modal: React.FC<ModalProps> = ({
             {description && (
               <p
                 id={descriptionId}
-                className="text-xs sm:text-sm text-[var(--color-content-muted,#5f5e5a)]"
+                className="text-xs sm:text-sm text-content-muted"
               >
                 {description}
               </p>
@@ -189,18 +189,18 @@ export const Modal: React.FC<ModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Đóng"
-            className="rounded-[4px] p-1.5 text-[var(--color-content-muted,#5f5e5a)] hover:bg-[var(--color-surface-muted,#f1f1ef)] hover:text-[var(--color-content,#211f1b)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] transition-colors"
+            className="rounded-sm p-1.5 text-content-muted hover:bg-surface-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
         {/* Content body */}
-        <div className="p-4 sm:p-5 text-sm">{children}</div>
+        <div className="p-4 sm:p-5 text-sm text-content">{children}</div>
 
         {/* Optional Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-[var(--color-edge-subtle,#e4e3e0)] bg-[var(--color-surface-warm,#f7f6f3)] px-4 py-3 sm:px-5 rounded-b-[8px]">
+          <div className="flex items-center justify-end gap-2 border-t border-edge-subtle bg-surface-muted px-4 py-3 sm:px-5 rounded-b-lg">
             {footer}
           </div>
         )}

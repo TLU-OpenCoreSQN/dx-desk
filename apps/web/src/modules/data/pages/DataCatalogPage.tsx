@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
-import { catalogDatasets, playgroundUrl, resourceGroups, sampleCatalog, sampleCollections, sampleResources } from '../../catalog-fixtures';
+import { catalogDatasets, playgroundUrl, resourceGroups, sampleCatalog, sampleCollections, sampleResources } from '../../../../catalog-fixtures';
 
 type Document = Record<string, unknown>;
 type CatalogResponse = { document: Document; sample: boolean };

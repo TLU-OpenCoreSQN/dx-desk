@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useState } from 'react';
 import { handoverUrl, listEvents, transition } from './rest';
-import { actionsFor, DEVICE_LABELS, formatTime, shortId, STATUS_LABELS, STEPS, validateNote,
+import { actionsFor, DEVICE_LABELS, formatTime, shortId, STATUS_LABELS, validateNote,
   type Action, type CurrentUser, type DeviceRequest, type DeviceRequestEvent, type DeviceStatus } from './workflow';
+import { DeviceWorkflowStepper } from './DeviceWorkflowStepper';
 
 const STATUS_STYLES: Record<DeviceStatus, string> = {
   pending: 'border-warning-edge bg-warning-tint text-warning',
@@ -30,7 +31,6 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
   const [busy, setBusy] = useState(false);
   const [events, setEvents] = useState<DeviceRequestEvent[] | null>(null);
   const actions = actionsFor(request, user);
-  const step = STEPS.indexOf(request.status);
 
   async function run(action: Action, reason?: string) {
     setBusy(true);
@@ -84,47 +84,7 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
         </span>
       </div>
       <p className="mt-2.5 whitespace-pre-wrap break-words text-sm text-content leading-relaxed">{request.reason}</p>
-      {request.status === 'rejected' && request.decision_note && (
-        <p className="mt-2.5 rounded-md border border-danger-edge bg-danger-tint p-2.5 text-sm text-danger">Lý do từ chối: {request.decision_note}</p>
-      )}
-      {request.status !== 'rejected' && (
-        <ol className="mt-3.5 grid grid-cols-4 gap-1.5 text-[11px]" aria-label="Tiến trình">
-          {['Gửi đề nghị', 'Quản lý duyệt', 'IT chuẩn bị', 'Bàn giao'].map((label, index) => {
-            // Đã bàn giao là trạng thái kết thúc: bước cuối cũng tính là hoàn tất.
-            const finished = request.status === 'handed_over';
-            const isDone = index < step || finished;
-            const isCurrent = index === step && !finished;
-            return (
-              <li
-                key={label}
-                aria-current={isCurrent ? 'step' : undefined}
-                className={`border-t-2 pt-1.5 transition-colors ${
-                  isCurrent
-                    ? 'border-primary text-content font-semibold'
-                    : isDone
-                    ? 'border-primary text-content'
-                    : 'border-edge text-muted'
-                }`}
-              >
-                <div className="flex items-center gap-1">
-                  <span
-                    className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                      isDone
-                        ? 'bg-primary text-white'
-                        : isCurrent
-                        ? 'border border-primary-edge bg-primary-tint text-primary-text'
-                        : 'bg-surface-muted text-muted'
-                    }`}
-                  >
-                    {isDone ? '✓' : index + 1}
-                  </span>
-                  <span className="truncate">{label}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      )}
+      <DeviceWorkflowStepper request={request} />
 
       {rejecting && (
         <div className="mt-3 rounded-md border border-edge bg-surface-warm/40 p-3">
@@ -165,9 +125,9 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
         <ul className="mt-3.5 grid gap-1.5 border-t border-edge pt-3 text-xs text-muted" aria-label="Lịch sử xử lý">
           {events.map(event => (
             <li key={event.id} className="rounded-md border border-edge-subtle bg-surface-warm/40 px-3 py-1.5">
-              {formatTime(event.created_at)} — {event.from_status ? STATUS_LABELS[event.to_status] : 'Gửi đề nghị'} —{' '}
+              {formatTime(event.created_at)} - {event.from_status ? STATUS_LABELS[event.to_status] : 'Gửi đề nghị'} -{' '}
               {event.actor_type === 'user' ? event.actor_name || 'Người dùng' : 'Hệ thống'}
-              {event.note ? ` — ${event.note}` : ''}
+              {event.note ? ` - ${event.note}` : ''}
             </li>
           ))}
         </ul>

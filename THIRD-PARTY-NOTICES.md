@@ -21,12 +21,11 @@ Kho mã này không chứa, không sửa và không đóng gói lẫn mã nguồ
 
 Các image sau cũng được ghim trong `infra/compose/tn04.yml`, `.env.example` hoặc
 Dockerfile. PoC TN-04 (`tn04.yml`) chạy tách biệt và dùng cùng phiên bản Wiki.js, Mattermost,
-Metabase như bảng trên; profile benchmark không tự tải mô hình.
+Metabase như bảng trên. Mô hình AI dùng qua API của nhà cung cấp (ADR 0011), không phân phối
+kèm kho mã; điều khoản sử dụng theo gói API của nhóm.
 
 | Image / phiên bản | Metadata giấy phép upstream | Phạm vi |
 |---|---|---|
-| `ollama/ollama:0.12.6` | [MIT](https://github.com/ollama/ollama/blob/v0.12.6/LICENSE) | Benchmark và embedding Wiki; mô hình có giấy phép riêng |
-| `bge-m3:567m` | [MIT](https://ollama.com/library/bge-m3:567m) | Mô hình nhúng đa ngôn ngữ tải riêng qua Ollama (W6-01) |
 | `node:22.22.0-alpine` | Node.js MIT và notices thành phần đi kèm | Build web, runtime API và đồng bộ Wiki |
 | `nginx:1.28.0-alpine` | Nginx BSD-2-Clause và notices thành phần đi kèm | Phục vụ static web |
 | `postgres:17.11-alpine` | PostgreSQL License và notices thành phần đi kèm | DB PoC |
@@ -68,6 +67,8 @@ Metadata kiểm tại dependency đã cài ngày 21/10/2026:
   với web; không thêm thư viện runtime mới. Build cũng tạo `dist/THIRD-PARTY-LICENSES.txt`.
 - jsonld 9.0.0 (Digital Bazaar): BSD-3-Clause; chỉ là devDependency của API để kiểm
   thử JSON-LD W5-04, không nằm trong image runtime.
+- Ajv 8.20.0: MIT; công cụ kiểm JSON Schema cho cấu hình doanh nghiệp W6-12,
+  được ghim trong `tools/testing/package-lock.json`, không thêm vào runtime API/web.
 
 Build web tạo `dist/THIRD-PARTY-LICENSES.txt` từ LICENSE/NOTICE của toàn bộ cây
 runtime dependency đã cài và đóng gói cùng static assets. Docker API giữ LICENSE

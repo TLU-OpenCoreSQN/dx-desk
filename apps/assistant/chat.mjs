@@ -105,25 +105,31 @@ export async function answer({ caller, signal, question, dependencies, emit }) {
   for (let round = 0; round < 3; round++) {
     const calls = [];
     let content = '';
+    // `complete` trả `{ content }` cho từng đoạn chữ và `{ tool_calls: [{ id, name, arguments }] }`
+    // (đối số đã parse) khi mô hình gọi công cụ — xem llm.mjs.
     for await (const part of dependencies.complete(messages, round < 2 && !offered ? toolDefinitions(available) : [], signal)) {
       if (signal.aborted) return;
-      const message = part.message;
-      if (typeof message?.content === 'string' && message.content) {
-        content += message.content;
+      if (typeof part?.content === 'string' && part.content) {
+        content += part.content;
         if (content.length > 16000) throw new Error('Assistant answer too long');
-        emit('delta', { text: message.content });
+        emit('delta', { text: part.content });
       }
-      if (Array.isArray(message?.tool_calls)) {
-        calls.push(...message.tool_calls);
+      if (Array.isArray(part?.tool_calls)) {
+        calls.push(...part.tool_calls);
         if (calls.length > 5) throw new Error('Too many assistant tool calls');
       }
     }
     if (calls.length === 0 || round === 2) break;
-    messages.push({ role: 'assistant', content, tool_calls: calls });
-    for (const call of calls) {
-      const name = call.function?.name;
+    messages.push({ role: 'assistant', content: content || null, tool_calls: calls.map((call, index) => ({
+      id: call.id || `call_${round}_${index}`, type: 'function',
+      function: { name: String(call.name ?? ''), arguments: JSON.stringify(call.arguments ?? {}) },
+      // Dữ liệu riêng của nhà cung cấp (thought signature của Gemini 3) phải gửi lại nguyên vẹn.
+      ...(call.extra_content ? { extra_content: call.extra_content } : {}),
+    })) });
+    for (const [index, call] of calls.entries()) {
+      const name = call.name;
       const tool = Object.hasOwn(tools, name) ? tools[name] : undefined;
-      const args = tool && available.includes(name) ? validArguments(tool, call.function.arguments) : null;
+      const args = tool && available.includes(name) ? validArguments(tool, call.arguments) : null;
       let result = { error: 'Công cụ hoặc tham số không hợp lệ.' };
       if (args && !signal.aborted) {
         emit('step', { label: tool.label });
@@ -135,7 +141,8 @@ export async function answer({ caller, signal, question, dependencies, emit }) {
           result = await dependencies.invoke(name, args, caller.token, undefined, signal);
         }
       }
-      messages.push({ role: 'tool', tool_name: name, content: JSON.stringify(result).slice(0, 12000) });
+      messages.push({ role: 'tool', tool_call_id: call.id || `call_${round}_${index}`,
+        content: JSON.stringify(result).slice(0, 12000) });
     }
   }
   emit('done', {});

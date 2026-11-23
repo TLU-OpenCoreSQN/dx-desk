@@ -20,7 +20,7 @@ import {
 
 function SwatchSquare({ color, bg }: { color: string; bg: string }) {
   return (
-    <span className="inline-flex h-3.5 w-7 shrink-0 overflow-hidden rounded-[3px] border border-[var(--color-edge)]">
+    <span className="inline-flex h-3.5 w-7 shrink-0 overflow-hidden rounded-xs border border-edge">
       <span className="flex-1" style={{ backgroundColor: color }} />
       <span className="flex-1" style={{ backgroundColor: bg }} />
     </span>
@@ -106,10 +106,10 @@ export const ThemeSwitcher: React.FC = () => {
         aria-haspopup="dialog"
         aria-controls={isOpen ? panelId : undefined}
         title="Tùy biến giao diện và màu sắc"
-        className={`h-9 w-9 rounded-[6px] border flex items-center justify-center transition-all ${
+        className={`h-9 w-9 rounded-md border flex items-center justify-center transition-all ${
           isOpen
-            ? 'border-[var(--color-primary)] bg-[var(--color-primary-tint)] text-[var(--color-primary)] shadow-xs'
-            : 'border-[var(--color-edge-subtle)] bg-surface text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] shadow-2xs'
+            ? 'border-primary bg-primary-tint text-primary shadow-xs'
+            : 'border-edge bg-surface text-content-muted hover:bg-surface-muted hover:text-content shadow-2xs'
         }`}
       >
         <Palette className="w-4 h-4" />
@@ -121,10 +121,10 @@ export const ThemeSwitcher: React.FC = () => {
           id={panelId}
           role="dialog"
           aria-label="Tùy biến giao diện"
-          className="fixed left-4 right-4 top-16 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-2 text-xs text-[var(--color-content)] shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.05)] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72"
+          className="fixed left-4 right-4 top-16 max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-lg border border-edge bg-surface p-2.5 text-xs text-content shadow-lg z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
         >
           {/* Section: Kiểu giao diện */}
-          <div className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-subtle)]">
+          <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-content-subtle">
             Giao diện
           </div>
           <div className="space-y-0.5">
@@ -136,31 +136,31 @@ export const ThemeSwitcher: React.FC = () => {
                   type="button"
                   aria-pressed={selected}
                   onClick={() => setTheme(preset.key as ThemeKey)}
-                  className={`w-full flex items-center justify-between p-2 rounded-[5px] text-left transition-colors ${
+                  className={`w-full flex items-center justify-between p-2 rounded-md text-left transition-colors ${
                     selected
-                      ? 'bg-[var(--color-surface-warm)] font-semibold text-[var(--color-content)]'
-                      : 'hover:bg-[var(--color-surface-sidebar)] text-[var(--color-content-muted)]'
+                      ? 'bg-surface-warm font-semibold text-content'
+                      : 'hover:bg-surface-sidebar text-content-muted'
                   }`}
                 >
                   <div className="min-w-0 pr-2">
-                    <div className="text-xs font-semibold text-[var(--color-content)]">{preset.label}</div>
-                    <div className="text-[11px] text-[var(--color-content-subtle)] leading-tight mt-0.5">
+                    <div className="text-xs font-semibold text-content">{preset.label}</div>
+                    <div className="text-[11px] text-content-subtle leading-tight mt-0.5">
                       {preset.description}
                     </div>
                   </div>
-                  {selected && <Check className="w-4 h-4 text-[var(--color-primary)] shrink-0" />}
+                  {selected && <Check className="w-4 h-4 text-primary shrink-0" />}
                 </button>
               );
             })}
           </div>
 
-          <div className="my-2 border-t border-[var(--color-edge-subtle)]" />
+          <div className="my-2 border-t border-edge" />
 
-          {/* Section: Màu chủ đạo */}
-          <div className="px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-subtle)]">
+          {/* Section: Bảng màu chuẩn doanh nghiệp */}
+          <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-content-subtle">
             Màu chủ đạo
           </div>
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 max-h-48 overflow-y-auto pr-0.5">
             {ACCENT_PRESETS.map((preset) => {
               const selected = accent === preset.key;
               return (
@@ -169,15 +169,15 @@ export const ThemeSwitcher: React.FC = () => {
                   type="button"
                   aria-pressed={selected}
                   onClick={() => setAccent(preset.key as AccentKey)}
-                  className={`w-full flex items-center gap-2.5 p-2 rounded-[5px] text-left transition-colors ${
+                  className={`w-full flex items-center gap-2.5 p-2 rounded-md text-left transition-colors ${
                     selected
-                      ? 'bg-[var(--color-surface-warm)] font-semibold text-[var(--color-content)]'
-                      : 'hover:bg-[var(--color-surface-sidebar)] text-[var(--color-content-muted)]'
+                      ? 'bg-surface-warm font-semibold text-content'
+                      : 'hover:bg-surface-sidebar text-content-muted'
                   }`}
                 >
                   <SwatchSquare color={preset.swatch} bg={preset.swatchBg} />
                   <span className="flex-1 text-xs">{preset.label}</span>
-                  {selected && <Check className="w-4 h-4 text-[var(--color-primary)] shrink-0" />}
+                  {selected && <Check className="w-4 h-4 text-primary shrink-0" />}
                 </button>
               );
             })}
@@ -189,39 +189,39 @@ export const ThemeSwitcher: React.FC = () => {
               onClick={() => {
                 colorInputRef.current?.click();
               }}
-              className={`w-full flex items-center gap-2.5 p-2 rounded-[5px] text-left transition-colors ${
+              className={`w-full flex items-center gap-2.5 p-2 rounded-md text-left transition-colors ${
                 accent === 'custom'
-                  ? 'bg-[var(--color-surface-warm)] font-semibold text-[var(--color-content)]'
-                  : 'hover:bg-[var(--color-surface-sidebar)] text-[var(--color-content-muted)]'
+                  ? 'bg-surface-warm font-semibold text-content'
+                  : 'hover:bg-surface-sidebar text-content-muted'
               }`}
             >
               <SwatchSquare color={customAccentHex} bg={customAccentBgHex} />
-              <Pipette className="w-3.5 h-3.5 text-[var(--color-content-subtle)]" />
+              <Pipette className="w-3.5 h-3.5 text-content-subtle" />
               <span className="flex-1 text-xs">Tùy chỉnh</span>
-              {accent === 'custom' && <Check className="w-4 h-4 text-[var(--color-primary)] shrink-0" />}
+              {accent === 'custom' && <Check className="w-4 h-4 text-primary shrink-0" />}
             </button>
           </div>
 
-          <div className="my-2 border-t border-[var(--color-edge-subtle)]" />
+          <div className="my-2 border-t border-edge" />
 
-          {/* Section: Mode & Table Grid */}
+          {/* Section: Tùy chọn hiển thị & Viền ô bảng */}
           <div className="space-y-0.5">
             {/* Chế độ tối */}
             <button
               type="button"
               onClick={toggleMode}
               aria-pressed={mode === 'dark'}
-              className="w-full flex items-center justify-between p-2 rounded-[5px] text-left text-xs hover:bg-[var(--color-surface-sidebar)] text-[var(--color-content)] transition-colors"
+              className="w-full flex items-center justify-between p-2 rounded-md text-left text-xs hover:bg-surface-sidebar text-content transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 {mode === 'light' ? (
-                  <Moon className="w-4 h-4 text-[var(--color-content-muted)]" />
+                  <Moon className="w-4 h-4 text-content-muted" />
                 ) : (
-                  <Sun className="w-4 h-4 text-[#cb912f]" />
+                  <Sun className="w-4 h-4 text-amber-500" />
                 )}
                 <span>Chế độ tối</span>
               </div>
-              <span className="text-[11px] font-semibold text-[var(--color-content-subtle)]">
+              <span className="text-[11px] font-semibold text-content-subtle">
                 {mode === 'dark' ? 'Đang bật' : 'Đang tắt'}
               </span>
             </button>
@@ -231,13 +231,13 @@ export const ThemeSwitcher: React.FC = () => {
               type="button"
               onClick={() => setTableGridLines(!tableGridLines)}
               aria-pressed={tableGridLines}
-              className="w-full flex items-center justify-between p-2 rounded-[5px] text-left text-xs hover:bg-[var(--color-surface-sidebar)] text-[var(--color-content)] transition-colors"
+              className="w-full flex items-center justify-between p-2 rounded-md text-left text-xs hover:bg-surface-sidebar text-content transition-colors"
             >
               <div className="flex items-center gap-2.5">
-                <Grid3x3 className="w-4 h-4 text-[var(--color-content-muted)]" />
+                <Grid3x3 className="w-4 h-4 text-content-muted" />
                 <span>Viền ô bảng</span>
               </div>
-              <span className="text-[11px] font-semibold text-[var(--color-primary)]">
+              <span className="text-[11px] font-semibold text-primary">
                 {tableGridLines ? 'Có' : 'Không'}
               </span>
             </button>

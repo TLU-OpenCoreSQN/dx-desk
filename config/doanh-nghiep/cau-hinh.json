@@ -1,0 +1,90 @@
+{
+  "$schema": "../schema.json",
+  "$comment": "SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN\nSPDX-License-Identifier: Apache-2.0",
+  "schema_version": 1,
+  "modules": { "enabled": ["core", "desk", "devices", "data"] },
+  "teams": [
+    { "code": "network", "name": "Network Team", "active": true },
+    { "code": "identity", "name": "Identity Team", "active": true },
+    { "code": "support", "name": "IT Support", "active": true }
+  ],
+  "categories": [
+    {
+      "code": "vpn",
+      "name": "Kết nối VPN",
+      "description": "Không kết nối được mạng nội bộ từ xa",
+      "active": true,
+      "requirement_fields": [
+        { "key": "client_version", "label": "Phiên bản client VPN", "required": true, "placeholder": "VD: 7.2.4", "hint": "Mở phần mềm VPN, vào mục Giới thiệu (About) để xem số phiên bản." },
+        { "key": "error_message", "label": "Dòng lỗi hiển thị", "required": true, "placeholder": "VD: \"Không thể kết nối tới máy chủ (mã lỗi -14)\"", "hint": "Chép nguyên văn dòng thông báo lỗi trên màn hình, kể cả mã lỗi nếu có." },
+        { "key": "device_os", "label": "Hệ điều hành", "required": false, "placeholder": "VD: Windows 11, macOS 14, Android 14", "hint": "Hệ điều hành của máy đang gặp sự cố." }
+      ]
+    },
+    {
+      "code": "account",
+      "name": "Tài khoản",
+      "description": "Đăng nhập và quyền truy cập",
+      "active": true,
+      "requirement_fields": [
+        { "key": "account_name", "label": "Tên tài khoản", "required": true, "placeholder": "VD: nguyen.van.a hoặc nguyen.van.a@congty.vn", "hint": "Tên bạn dùng để đăng nhập máy tính hoặc email công ty." },
+        { "key": "issue_type", "label": "Loại sự cố tài khoản", "required": true, "placeholder": "VD: Quên mật khẩu, tài khoản bị khóa, không nhận được mã xác thực", "hint": "Mô tả ngắn chuyện gì đang xảy ra với tài khoản." }
+      ]
+    },
+    {
+      "code": "hardware",
+      "name": "Thiết bị",
+      "description": "Sự cố máy tính và thiết bị ngoại vi",
+      "active": true,
+      "requirement_fields": [
+        { "key": "device_code", "label": "Mã thiết bị", "required": true, "placeholder": "VD: mã in trên tem dán ở mặt dưới máy", "hint": "Mã tài sản trên tem dán của thiết bị. Không thấy tem thì ghi tên và màu thiết bị." },
+        { "key": "location", "label": "Vị trí làm việc", "required": true, "placeholder": "VD: Tầng 3, phòng 305, bàn số 12", "hint": "Nơi kỹ thuật viên có thể tìm đến bạn hoặc thiết bị." }
+      ]
+    },
+    {
+      "code": "software",
+      "name": "Phần mềm",
+      "description": "Cài đặt và lỗi phần mềm",
+      "active": true,
+      "requirement_fields": [
+        { "key": "software_name", "label": "Tên phần mềm", "required": true, "placeholder": "VD: Microsoft Excel, Zoom, phần mềm chấm công", "hint": "Tên phần mềm đang gặp lỗi hoặc cần cài đặt." },
+        { "key": "error_message", "label": "Dòng lỗi hiển thị", "required": false, "placeholder": "VD: \"Không thể kết nối tới máy chủ (mã lỗi -14)\"", "hint": "Chép nguyên văn dòng thông báo lỗi trên màn hình, kể cả mã lỗi nếu có." }
+      ]
+    },
+    {
+      "code": "access",
+      "name": "Cấp quyền hệ thống",
+      "description": "Yêu cầu cấp/thay đổi quyền truy cập hệ thống nội bộ (cần phê duyệt)",
+      "active": true,
+      "requirement_fields": [
+        { "key": "system_name", "label": "Tên hệ thống", "required": true, "placeholder": "VD: Phần mềm kế toán, Email công ty, Hệ thống nhân sự", "hint": "Tên phần mềm hoặc trang web bạn đang dùng, đúng như tên hiển thị trên màn hình hoặc biểu tượng." },
+        { "key": "permission_level", "label": "Cấp quyền yêu cầu", "required": true, "placeholder": "VD: Chỉ xem báo cáo; Thêm và sửa chứng từ", "hint": "Bạn cần làm được gì trong hệ thống. Nếu chưa rõ, ghi giống quyền của một đồng nghiệp cùng vị trí." },
+        { "key": "valid_until", "label": "Thời hạn sử dụng quyền", "required": true, "hint": "Ngày cuối cùng bạn cần dùng quyền này, để bộ phận IT biết khi nào có thể thu hồi." }
+      ]
+    },
+    {
+      "code": "system-error",
+      "name": "Lỗi hệ thống",
+      "description": "Sự cố ảnh hưởng hệ thống dùng chung nhiều người dùng",
+      "active": true,
+      "requirement_fields": [
+        { "key": "system_name", "label": "Tên hệ thống", "required": true, "placeholder": "VD: Phần mềm kế toán, Email công ty, Hệ thống nhân sự", "hint": "Tên phần mềm hoặc trang web bạn đang dùng, đúng như tên hiển thị trên màn hình hoặc biểu tượng." },
+        { "key": "error_message", "label": "Dòng lỗi hiển thị", "required": true, "placeholder": "VD: \"Không thể kết nối tới máy chủ (mã lỗi -14)\"", "hint": "Chép nguyên văn dòng thông báo lỗi trên màn hình, kể cả mã lỗi nếu có." },
+        { "key": "occurred_at", "label": "Thời điểm xảy ra", "required": false, "placeholder": "VD: Khoảng 9h sáng nay, sau khi khởi động lại máy", "hint": "Thời điểm bạn thấy lỗi lần đầu và lỗi có lặp lại hay không." }
+      ]
+    }
+  ],
+  "routing": [
+    { "category": "vpn", "team": "network", "active": true },
+    { "category": "account", "team": "identity", "active": true },
+    { "category": "hardware", "team": "support", "active": true },
+    { "category": "software", "team": "support", "active": true },
+    { "category": "access", "team": "identity", "active": true },
+    { "category": "system-error", "team": "support", "active": true }
+  ],
+  "sla_policies": {
+    "low": { "response_minutes": 480, "resolution_minutes": 2880 },
+    "normal": { "response_minutes": 240, "resolution_minutes": 1440 },
+    "high": { "response_minutes": 60, "resolution_minutes": 480 },
+    "critical": { "response_minutes": 15, "resolution_minutes": 120 }
+  }
+}

@@ -4,20 +4,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, FileText, Info } from 'lucide-react';
-import { getTicketById, getTicketEvents, getCategories } from '../services/api';
-import { Ticket, TicketEvent, Category } from '../types/api';
-import { ErrorMessage } from '../components/common/ErrorMessage';
-import { TicketDetailHeader } from '../components/ticket-detail/TicketDetailHeader';
-import { TicketTimeline } from '../components/ticket-detail/TicketTimeline';
-import { TicketWorkflowActions } from '../components/ticket-detail/TicketWorkflowActions';
-import { TicketAttachmentSection } from '../components/ticket-detail/TicketAttachmentSection';
-import { TicketAiSuggestion } from '../modules/desk/TicketAiSuggestion';
-import { useAuth } from '../contexts/AuthContext';
+import { getTicketById, getTicketEvents, getCategories } from '../../../services/api';
+import { Ticket, TicketEvent, Category } from '../../../types/api';
+import { ErrorMessage } from '../../../components/common/ErrorMessage';
+import { TicketDetailHeader } from '../../../components/ticket-detail/TicketDetailHeader';
+import { TicketTimeline } from '../../../components/ticket-detail/TicketTimeline';
+import { TicketWorkflowActions } from '../../../components/ticket-detail/TicketWorkflowActions';
+import { TicketAttachmentSection } from '../../../components/ticket-detail/TicketAttachmentSection';
+import { TicketStageTracker, SlaPauseBanner } from '../../../components/workflow';
+import { TicketAiSuggestion } from '../TicketAiSuggestion';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   RESOLUTION_NOTE_MAX,
   RESOLUTION_NOTE_MIN,
   statusLabel,
-} from '../lib/ticketWorkflow';
+} from '../../../lib/ticketWorkflow';
 
 export const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -146,8 +147,13 @@ export const TicketDetailPage: React.FC = () => {
         onRefresh={() => void loadTicketData(true)}
         onBack={() => navigate('/tickets')}
       />
+
+      <SlaPauseBanner ticket={ticket} />
+
+      <TicketStageTracker ticket={ticket} events={events} />
+
       {profile?.assistant_enabled && roles.some(role => role === 'Agent' || role === 'Manager') && (
-        <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} categories={categories} refresh={() => loadTicketData(true)} />
+        <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} ticket={ticket} categories={categories} refresh={() => loadTicketData(true)} />
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">

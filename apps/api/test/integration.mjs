@@ -1330,11 +1330,28 @@ test('confirmed assistant writes keep requester scope, avoid duplicates and enqu
     });
   };
   const args = { category: 'vpn', title: 'VPN assistant fixture ' + randomUUID(), description: 'Máy báo lỗi kết nối VPN tại văn phòng.' };
+  const otherStatistics = (await call(apiUrl, '/api/assistant-tools/ticket_statistics', 'b', { category: 'vpn' })).body;
+  assert.equal((await call(apiUrl, '/api/assistant-tools/ticket_statistics', 'a', { category: "vpn' OR true --" })).status, 400);
+  assert.equal((await call(apiUrl, '/api/assistant-tools/similar_tickets', 'a', { query: 'VPN', sql: 'SELECT * FROM tickets' })).status, 400);
+  const employeeTools = (await call(apiUrl, '/api/assistant-tools', 'a')).body.tools;
+  const managerTools = (await call(apiUrl, '/api/assistant-tools', 'manager')).body.tools;
+  assert.ok(employeeTools.includes('create_ticket'));
+  assert.ok(!employeeTools.includes('create_task'));
+  assert.ok(managerTools.includes('create_task'));
   const id = randomUUID();
   assert.equal((await write('create_ticket', 'a', id, args, false)).status, 403);
   const first = await write('create_ticket', 'a', id, args);
   assert.equal(first.status, 200, 'Assistant proof allows the explicit user-confirmed action');
   const created = await first.json();
+  assert.deepEqual((await call(apiUrl, '/api/assistant-tools/ticket_statistics', 'b', { category: 'vpn' })).body, otherStatistics);
+  const canonical = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b)));
+  const originalProof = createHmac('sha256', signingKey).update(JSON.stringify([users.a.sub, 'create_ticket', id, canonical])).digest('hex');
+  const tampered = await fetch(apiUrl + '/api/assistant-tools/create_ticket', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + tokens.a, 'Content-Type': 'application/json',
+      'Idempotency-Key': id, 'X-DXDesk-Assistant-Proof': originalProof },
+    body: JSON.stringify({ ...args, title: args.title + ' bị đổi' }),
+  });
+  assert.equal(tampered.status, 403);
   assert.deepEqual(await (await write('create_ticket', 'a', id, args)).json(), created);
   assert.equal((await write('create_ticket', 'b', id, args)).status, 409);
   const log = (await call(apiUrl, '/api/tickets/' + created.ticket_id + '/events', 'a')).body.data[0];
@@ -1350,13 +1367,16 @@ test('confirmed assistant writes keep requester scope, avoid duplicates and enqu
 });
 
 test('staff can explicitly edit and apply AI triage with a recorded audit while protected fields stay locked', async t => {
-  const model = createServer((_request, response) => {
+  const modelRequests = [];
+  const model = createServer((request, response) => {
+    modelRequests.push({ url: request.url, authorization: request.headers.authorization });
     response.setHeader('Content-Type','application/json');
-    response.end(JSON.stringify({ message: { content: JSON.stringify({ category: 'vpn', priority: 'high' }) } }));
+    response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ category: 'vpn', priority: 'high' }) } }] }));
   });
   model.listen(0,'127.0.0.1'); await once(model,'listening');
   t.after(() => new Promise(resolve => model.close(resolve)));
-  const env = { ASSISTANT_PROFILE:'full', OLLAMA_URL:'http://127.0.0.1:' + model.address().port };
+  const env = { ASSISTANT_PROFILE:'full', AI_API_KEY:'ai-fixture',
+    AI_API_BASE_URL:'http://127.0.0.1:' + model.address().port + '/v1beta/openai' };
   const old = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
   Object.assign(process.env,env);
   t.after(() => { for (const [key,value] of Object.entries(old)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } });
@@ -1367,6 +1387,7 @@ test('staff can explicitly edit and apply AI triage with a recorded audit while 
   assert.equal((await call(apiUrl,path,'b')).status,403);
   const first = await call(apiUrl,path,'agent');
   assert.equal(first.status,200,JSON.stringify(first.body));
+  assert.deepEqual(modelRequests[0], { url: '/v1beta/openai/chat/completions', authorization: 'Bearer ai-fixture' });
   const { id, ...values } = first.body;
   assert.equal(values.priority,'high');
   assert.equal((await call(apiUrl,'/api/tickets/' + ticket.id,'a')).body.priority,'normal');

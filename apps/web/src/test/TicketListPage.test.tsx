@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { TicketListPage } from '../pages/TicketListPage';
+import { TicketListPage } from '../modules/desk/pages/TicketListPage';
 import * as apiService from '../services/api';
 import * as authContext from '../contexts/AuthContext';
 import { Ticket } from '../types/api';
@@ -63,6 +63,14 @@ describe('TicketListPage Component', () => {
         <TicketListPage />
       </MemoryRouter>
     );
+
+  it('khung bảng không tạo vùng cuộn riêng để header sticky không đè lên phiếu đầu', async () => {
+    vi.spyOn(apiService, 'getTickets').mockResolvedValue({ data: mockTickets, limit: 25, offset: 0 });
+    renderComponent();
+    const table = await screen.findByTestId('ticket-table');
+    // overflow-hidden làm khung thành scroll container của header `sticky top-14`.
+    expect(table.className).not.toMatch(/overflow-(hidden|auto|scroll)/);
+  });
 
   it('renders ticket table with real data', async () => {
     vi.spyOn(apiService, 'getTickets').mockResolvedValue({
