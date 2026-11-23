@@ -81,8 +81,8 @@ function pointId(path, index) {
   return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
 
-export function embed(config, input) {
-  return embedText(config.ai, input);
+export function embed(config, input, signal) {
+  return embedText(config.ai, input, signal);
 }
 
 function requestCollection(config, suffix = '', options) {
@@ -152,10 +152,10 @@ export async function syncKnowledge(config) {
   return { pages: pages.length, updated, removed: stale.length };
 }
 
-export async function searchKnowledge(config, question) {
+export async function searchKnowledge(config, question, signal) {
   const authorized = (await listedPages(config)).map(versionOf);
   if (!authorized.length) return [];
-  const [vector] = await embed(config, [question]);
+  const [vector] = await embed(config, [question], signal);
   const response = await requestCollection(config, '/points/query', { method: 'POST', allowMissing: true,
     body: { query: vector, limit: 12, with_payload: true, filter: {
       must: [{ key: 'version', match: { any: authorized } }],
