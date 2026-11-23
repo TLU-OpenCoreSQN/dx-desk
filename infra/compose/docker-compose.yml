@@ -145,8 +145,10 @@ services:
       DATABASE_URL: postgres://api_login:${API_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       ASSISTANT_ACTION_KEY: ${ASSISTANT_ACTION_KEY:-}
       ASSISTANT_PROFILE: ${COMPOSE_PROFILES:-}
-      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-qwen3:4b}
-      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
+      # ADR 0011: mô hình AI qua API bên thứ ba (OpenAI-compatible, mặc định Gemini).
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      AI_API_KEY: ${AI_API_KEY:-}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-gemini-2.5-flash}
       OIDC_ISSUER: ${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}
       OIDC_JWKS_URL: http://keycloak:8080/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs
       OIDC_AUDIENCE: ${OIDC_AUDIENCE}
@@ -303,18 +305,6 @@ services:
       retries: 20
       start_period: 30s
 
-  ollama:
-    image: ollama/ollama:${OLLAMA_VERSION}
-    profiles: ["benchmark", "full"]
-    <<: *restart
-    ports:
-      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    environment:
-      OLLAMA_MAX_LOADED_MODELS: "1"
-      OLLAMA_NUM_PARALLEL: "1"
-
   qdrant:
     image: qdrant/qdrant:${QDRANT_VERSION:-v1.20.1}
     profiles: ["full"]
@@ -328,7 +318,6 @@ services:
     <<: *restart
     depends_on:
       - qdrant
-      - ollama
       - wikijs
     user: node
     working_dir: /app
@@ -337,8 +326,9 @@ services:
     environment:
       WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
       WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
-      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-bge-m3:567m}
-      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      AI_API_KEY: ${AI_API_KEY:-}
+      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-gemini-embedding-001}
     command: ["node", "index-wiki.mjs"]
 
   assistant:
@@ -354,10 +344,11 @@ services:
     environment:
       WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
       WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
-      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-bge-m3:567m}
-      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-qwen3:4b}
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}
+      AI_API_KEY: ${AI_API_KEY:-}
+      ASSISTANT_EMBED_MODEL: ${ASSISTANT_EMBED_MODEL:-gemini-embedding-001}
+      ASSISTANT_CHAT_MODEL: ${ASSISTANT_CHAT_MODEL:-gemini-2.5-flash}
       ASSISTANT_ACTION_KEY: ${ASSISTANT_ACTION_KEY:-}
-      OLLAMA_URL: ${ASSISTANT_OLLAMA_URL:-http://ollama:11434}
     command: ["node", "start.mjs"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -496,7 +487,6 @@ services:
 volumes:
   postgres-data:
   clamav-db:
-  ollama-data:
   qdrant-data:
   seaweedfs-data:
   mattermost-db-data:

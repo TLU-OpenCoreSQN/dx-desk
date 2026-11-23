@@ -163,8 +163,8 @@ của stack. Phần đo mô hình (token/s, RAM khi nạp mô hình) của TN-05
 Hồ sơ `full` **không vượt** ngân sách 16 GB ở trạng thái hiện tại (chưa nạp mô hình).
 Rủi ro nằm ở phần sẽ thêm ở W6-05, không phải ở dịch vụ đang có:
 
-- **Mô hình Ollama** là khoản lớn nhất chưa đo. Phải đo bằng `scripts/benchmark.mjs` với mô hình thật;
-  không suy RAM từ số tham số.
+- ~~**Mô hình Ollama** là khoản lớn nhất chưa đo.~~ Từ 23/11/2026 mô hình AI chạy qua API bên thứ ba
+  ([ADR 0011](adr/0011-mo-hinh-ai-qua-api-ben-thu-ba.md)), không còn container Ollama; các bảng trên là số đo lịch sử.
 - **Trần Docker Desktop**: mặc định chỉ ~50% RAM máy (7,59 GiB ở đây). Nếu stack + mô hình vượt mức này,
   container bị OOM trước khi máy hết RAM. Ghi `.wslconfig` `[wsl2] memory=` vào hướng dẫn cài đặt máy demo
   khi đã chốt mô hình.

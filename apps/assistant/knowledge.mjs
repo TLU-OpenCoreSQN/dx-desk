@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { createHash } from 'node:crypto';
+import { embed as embedText, llmConfig } from './llm.mjs';
 
 export const knowledgePaths = [
   'ho-tro/email', 'ho-tro/mat-khau', 'ho-tro/phan-mem-ban-quyen',
@@ -11,14 +12,15 @@ const schemaVersion = 1;
 const hash = value => createHash('sha256').update(value).digest('hex');
 
 export function wikiKnowledge(env = process.env) {
+  const ai = llmConfig(env);
   return {
     wikiUrl: env.ASSISTANT_WIKI_URL || 'http://wikijs:3000',
     wikiPublicUrl: env.WIKI_PUBLIC_URL || 'http://localhost:18030',
     wikiToken: env.WIKI_INDEX_TOKEN,
-    ollamaUrl: env.OLLAMA_URL || 'http://ollama:11434',
-    model: env.ASSISTANT_EMBED_MODEL || 'bge-m3:567m',
+    ai,
     qdrantUrl: env.QDRANT_URL || 'http://qdrant:6333',
-    collection: 'dxdesk_wiki_' + hash(`${schemaVersion}:${env.ASSISTANT_EMBED_MODEL || 'bge-m3:567m'}`).slice(0, 12),
+    // Mỗi model nhúng có không gian vector riêng: đổi model là sang collection mới, chỉ mục lại từ đầu.
+    collection: 'dxdesk_wiki_' + hash(`${schemaVersion}:${ai.embedModel}`).slice(0, 12),
   };
 }
 
@@ -79,16 +81,8 @@ function pointId(path, index) {
   return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
 
-export async function embed(config, input) {
-  const { embeddings } = await json(new URL('/api/embed', config.ollamaUrl), {
-    method: 'POST', timeout: 90000, body: { model: config.model, input, truncate: false, keep_alive: '30s' },
-  });
-  if (!Array.isArray(embeddings) || embeddings.length !== input.length ||
-      !embeddings[0]?.length || embeddings.some(vector => !Array.isArray(vector) ||
-        vector.length !== embeddings[0].length || !vector.every(Number.isFinite))) {
-    throw new Error('Invalid Ollama embedding response');
-  }
-  return embeddings;
+export function embed(config, input) {
+  return embedText(config.ai, input);
 }
 
 function requestCollection(config, suffix = '', options) {

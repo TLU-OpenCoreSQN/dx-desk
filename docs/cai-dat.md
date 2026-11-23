@@ -147,6 +147,9 @@ node tools/testing/week6-evaluate.mjs --help
 node tools/testing/week6-evaluate.mjs --timeout-ms 3000
 ```
 
+> Công cụ này vẫn gọi API Ollama và chưa chuyển sang API bên thứ ba của [ADR 0011](adr/0011-mo-hinh-ai-qua-api-ben-thu-ba.md);
+> chưa dùng được cho tới khi cập nhật.
+
 Mặc định chỉ preflight GET: kiểm gateway, role token và model đã có trong Ollama; không pull model,
 không sinh câu trả lời hoặc xác nhận hành động. Runtime/token thiếu trả exit khác 0 và
 `completed:false`, không coi thiếu máy là kết quả đạt. Token của ba người dùng thử nhập từ biến môi
@@ -469,15 +472,26 @@ Mọi cổng được bind localhost cho phát triển. Triển khai Internet, T
 và hardening gateway là các mốc sau; không dùng cấu hình dev để công bố trực tiếp.
 ### Chỉ mục ngữ nghĩa Wiki (W6-01)
 
-Hồ sơ `full` chạy Qdrant và tiến trình `wiki-index` trong mạng Compose. Chọn
-`COMPOSE_PROFILES=full` trong `.env`, chạy `make up` rồi tải mô hình nhúng một lần.
-BGE-M3 567M hỗ trợ truy vấn đa ngôn ngữ, gồm truy vấn tiếng Việt. Trọng số mô hình
-được tải riêng và giữ trong volume Ollama.
+Hồ sơ `full` chạy Qdrant và tiến trình `wiki-index` trong mạng Compose. Mô hình AI chạy
+ở nhà cung cấp bên thứ ba qua API chuẩn OpenAI-compatible, mặc định Google Gemini
+([ADR 0011](adr/0011-mo-hinh-ai-qua-api-ben-thu-ba.md)); không cần tải mô hình về máy.
+Chọn `COMPOSE_PROFILES=full` và đặt khóa API trong `.env` (không commit), rồi chạy `make up`:
 
 ```sh
-docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull bge-m3:567m
+AI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+AI_API_KEY=<khóa API Gemini>
+ASSISTANT_CHAT_MODEL=gemini-2.5-flash
+ASSISTANT_EMBED_MODEL=gemini-embedding-001
+```
+
+Đổi nhà cung cấp chỉ cần đổi bốn biến trên. Kiểm tra đồng bộ chỉ mục:
+
+```sh
 docker compose --env-file .env -f infra/compose/docker-compose.yml logs wiki-index
 ```
+
+Nội dung sáu bài hỗ trợ được gửi tới nhà cung cấp để nhúng; câu hỏi trợ lý và tiêu đề/mô tả
+phiếu (khi gợi ý phân loại) cũng được gửi đi. Chỉ dùng dữ liệu synthetic khi demo.
 
 Tiến trình đọc sáu bài hỗ trợ đã xuất bản qua GraphQL Wiki.js, kiểm tra thay đổi mỗi
 60 giây và thay thế đoạn cũ trong Qdrant. Bài bị ẩn hoặc xóa sẽ mất khỏi kết quả tìm kiếm.
@@ -487,12 +501,10 @@ Nếu khóa hết hạn, chạy lại `make up`. Qdrant và tiến trình đồn
 
 ### Cảnh 4 với trợ lý IT (W6-03, W6-04, W6-09)
 
-Trong hồ sơ `full`, tải model chat sau khi tải model nhúng. Khi chỉ mục Wiki đã
-sẵn sàng, mở **Trợ lý AI** từ menu Desk. Bật Mattermost và outbox demo để kiểm tra
+Trong hồ sơ `full`, khi đã đặt `AI_API_KEY` và chỉ mục Wiki đã sẵn sàng, mở **Trợ lý AI** từ menu Desk. Bật Mattermost và outbox demo để kiểm tra
 thông báo task của quản lý.
 
 ```sh
-docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull qwen3:4b
 npm ci --prefix tools/testing
 npx --prefix tools/testing playwright install chromium
 node tools/testing/week6-assistant.mjs

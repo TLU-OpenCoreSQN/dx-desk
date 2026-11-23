@@ -13,11 +13,11 @@ test('confirmation is bound to the question owner, consumes the proposal once, a
     available: async () => ['create_ticket'],
     knowledge: async () => [{ title: 'VPN', url: 'https://wiki.example.test/en/ho-tro/vpn', text: 'VPN.' }],
     async *complete(_messages, definitions) {
-      if (definitions.length) yield { message: { tool_calls: [
-        { function: { name: 'create_ticket', arguments: { ...args, role: 'Manager' } } },
-        { function: { name: 'create_ticket', arguments: args } },
-      ] } };
-      else yield { message: { content: 'Đã chuẩn bị đề xuất.' } };
+      if (definitions.length) yield { tool_calls: [
+        { id: 'call_1', name: 'create_ticket', arguments: { ...args, role: 'Manager' } },
+        { id: 'call_2', name: 'create_ticket', arguments: args },
+      ] };
+      else yield { content: 'Đã chuẩn bị đề xuất.' };
     },
     async invoke(...params) { mutations.push(params.slice(0, 4)); },
   });

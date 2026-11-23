@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createServer } from 'node:http';
 import { createHmac } from 'node:crypto';
-import { answer, ndjson, proposalStore, tools } from './chat.mjs';
+import { answer, proposalStore, tools } from './chat.mjs';
 import { searchKnowledge, wikiKnowledge } from './knowledge.mjs';
+import { chatStream } from './llm.mjs';
 
 const errorWith = (status, message) => Object.assign(new Error(message), { status });
 const MAX_BODY = 4096;
@@ -78,7 +79,7 @@ export function assistantServer(dependencies, proposals = proposalStore()) {
     } catch (error) {
       if (response.destroyed) return;
       // Ghi lỗi nội bộ (chỉ thông điệp, không câu hỏi hay token) để vận hành chẩn đoán được,
-      // ví dụ Ollama chưa tải model; người dùng vẫn chỉ thấy thông điệp chung.
+      // ví dụ thiếu AI_API_KEY hoặc nhà cung cấp AI từ chối; người dùng vẫn chỉ thấy thông điệp chung.
       if (!error.status) console.error('Assistant request failed:', error?.message ?? error);
       const message = error.status ? error.message : 'Trợ lý chưa xử lý được yêu cầu. Vui lòng thử lại.';
       if (!response.headersSent) return json(response, error.status ?? 503, { message });
@@ -128,15 +129,7 @@ export function assistantDependencies(env = process.env) {
       }
       return result.json();
     },
-    async *complete(messages, available, signal) {
-      const response = await fetch(new URL('/api/chat', config.ollamaUrl), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, redirect: 'error',
-        body: JSON.stringify({ model: env.ASSISTANT_CHAT_MODEL || 'qwen3:4b', messages, tools: available,
-          stream: true, think: false, keep_alive: '30s', options: { num_predict: 512, temperature: 0.1 } }),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(90000)]),
-      });
-      if (!response.ok) throw new Error('Ollama chat unavailable');
-      yield* ndjson(response.body);
-    },
+    // Mô hình chạy ở nhà cung cấp API bên thứ ba (ADR 0011), không còn Ollama cục bộ.
+    complete: (messages, available, signal) => chatStream(config.ai, messages, available, signal),
   };
 }
