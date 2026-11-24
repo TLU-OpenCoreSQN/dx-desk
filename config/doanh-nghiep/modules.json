@@ -1,3 +1,8 @@
 {
-  "enabled": ["core", "desk", "devices", "data"]
+  "enabled": [
+    "core",
+    "desk",
+    "devices",
+    "data"
+  ]
 }
