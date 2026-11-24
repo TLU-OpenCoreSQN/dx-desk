@@ -22,6 +22,7 @@ import { LinkedDataController } from './linked-data';
 import { OutboxDispatcher } from './outbox-dispatcher';
 import { AssistantToolsController } from './assistant-tools';
 import { TicketAiSuggestionController } from './ticket-ai-suggestion';
+import { AssistantSessionsController } from './assistant-sessions';
 
 @Catch()
 class Errors implements ExceptionFilter {
@@ -53,7 +54,8 @@ class Errors implements ExceptionFilter {
 @Module({
   controllers: [HealthController, DeskController, AttachmentsController, AttachmentLinksController, AttachmentContentController,
     WorkQueueController, AutomationController, KnowledgeController, AnalyticsController,
-    DeviceHandoverController, DeviceHandoverContentController, LinkedDataController, AssistantToolsController, TicketAiSuggestionController],
+    DeviceHandoverController, DeviceHandoverContentController, LinkedDataController, AssistantToolsController, TicketAiSuggestionController,
+    AssistantSessionsController],
   providers: [Database, JwtGuard, AutomationGuard, OutboxDispatcher],
 })
 export class AppModule {}

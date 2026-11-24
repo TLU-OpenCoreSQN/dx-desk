@@ -23,11 +23,12 @@ const limit = (body: unknown, fields: Record<string, [number, number]>) => {
   return args;
 };
 
-function actionProof(owner: string, kind: string, id: string, proof: string | undefined, args: Record<string, string>) {
+function actionProof(owner: string, kind: string, id: string, proof: string | undefined, args: Record<string, string>, sessionId?: string) {
   const key = process.env.ASSISTANT_ACTION_KEY;
   if (!key || key.length < 32 || !proof || !/^[0-9a-f]{64}$/.test(proof)) return false;
   const canonical = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b)));
-  const expected = createHmac('sha256', key).update(JSON.stringify([owner, kind, id, canonical])).digest();
+  const payload = sessionId ? [owner, kind, id, canonical, sessionId] : [owner, kind, id, canonical];
+  const expected = createHmac('sha256', key).update(JSON.stringify(payload)).digest();
   return timingSafeEqual(expected, Buffer.from(proof, 'hex'));
 }
 
@@ -83,7 +84,8 @@ export class AssistantToolsController {
   @Post(':kind')
   @HttpCode(200)
   write(@Req() request: AuthRequest, @Param('kind') kind: string, @Headers('idempotency-key') id: string | undefined,
-    @Headers('x-dxdesk-assistant-proof') proof: string | undefined, @Body() body: unknown) {
+    @Headers('x-dxdesk-assistant-proof') proof: string | undefined, @Body() body: unknown,
+    @Headers('x-dxdesk-assistant-session') sessionId?: string) {
     if (kind !== 'create_ticket' && kind !== 'create_task') throw new BadRequestException('Công cụ không hợp lệ.');
     if (kind === 'create_task' && !request.claims.realm_access.roles.includes('Manager')) {
       throw new ForbiddenException('Chỉ quản lý tạo được công việc điều tra.');
@@ -91,19 +93,33 @@ export class AssistantToolsController {
     const lengths: Record<string, [number, number]> = { title: [5, 150], description: [10, 2000] };
     if (kind === 'create_ticket') lengths.category = [2, 40];
     const args = limit(body, lengths);
-    if (!id || !UUID.test(id) || !actionProof(request.claims.sub, kind, id, proof, args)) {
+    if (!id || !UUID.test(id) || (sessionId && !UUID.test(sessionId)) || !actionProof(request.claims.sub, kind, id, proof, args, sessionId)) {
       throw new ForbiddenException('Cần xác nhận hành động qua trợ lý.');
     }
     return this.db.asUser(request.claims, async client => {
+      let sessionTurn: {id:string;metadata:{proposal:{status:string;expires_at:string}}} | undefined;
+      if (sessionId) {
+        const session=await client.query('SELECT id FROM private.assistant_sessions WHERE id=$1 FOR UPDATE',[sessionId]);
+        if (!session.rowCount) throw new NotFoundException('Cuộc trò chuyện không tồn tại.');
+        sessionTurn=(await client.query(`SELECT id,metadata FROM private.assistant_turns WHERE session_id=$1 AND status='complete'
+          AND metadata->'proposal'->>'id'=$2 AND metadata->'proposal'->>'tool'=$3
+          AND metadata->'proposal'->'fields'=$4::jsonb`,[sessionId,id,kind,JSON.stringify(args)])).rows[0];
+        const proposal=sessionTurn?.metadata.proposal;
+        if (!proposal || proposal.status==='cancelled' || (proposal.status==='pending' && Date.parse(proposal.expires_at)<=Date.now())) {
+          throw new ConflictException('Đề xuất đã hết hạn hoặc đã được xử lý.');
+        }
+      }
       const insert = await client.query(`INSERT INTO private.assistant_actions(id,kind,args)
         VALUES($1,$2,$3::jsonb) ON CONFLICT(id) DO NOTHING RETURNING id`, [id, kind, JSON.stringify(args)]);
+      let result: {id:string;ticket_id:string|null};
       if (!insert.rowCount) {
         const existing = await client.query(`SELECT id,ticket_id FROM private.assistant_actions
           WHERE id=$1 AND kind=$2 AND args=$3::jsonb`, [id, kind, JSON.stringify(args)]);
         if (!existing.rowCount) throw new ConflictException('Mã hành động đã được sử dụng.');
-        return existing.rows[0];
-      }
-      if (kind === 'create_task') return { id, ticket_id: null };
+        result=existing.rows[0];
+      } else if (kind === 'create_task') {
+        result={id,ticket_id:null};
+      } else {
       const category = (await client.query(`SELECT id FROM public.categories WHERE code=$1 AND active`, [args.category])).rows[0];
       if (!category) throw new BadRequestException('Danh mục công cụ không hợp lệ.');
       // VPN drafts retain the user's description. Missing diagnostic values remain explicitly unknown.
@@ -117,7 +133,11 @@ export class AssistantToolsController {
         category_id: category.id, title: args.title, description: args.description, fields,
       });
       await client.query('UPDATE private.assistant_actions SET ticket_id=$2 WHERE id=$1', [id, ticket.id]);
-      return { id, ticket_id: ticket.id };
+        result={id,ticket_id:ticket.id};
+      }
+      if (sessionTurn) await client.query(`UPDATE private.assistant_turns SET metadata=jsonb_set(metadata,'{proposal}',
+        (metadata->'proposal') || jsonb_build_object('status','applied','result',$2::jsonb)) WHERE id=$1`,[sessionTurn.id,JSON.stringify(result)]);
+      return result;
     });
   }
 }
