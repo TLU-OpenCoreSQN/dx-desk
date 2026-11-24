@@ -73,8 +73,11 @@ export async function answer({ caller, signal, question, history = [], dependenc
   const references = await dependencies.knowledge([...recentQuestions, question].join('\n').slice(-3000), signal);
   if (signal.aborted) throw signal.reason;
   emit('sources', { items: references.map(({ title, url }) => ({ title, url })) });
-  const available = await dependencies.available(caller.token);
-  const normalized = question.normalize('NFD').replace(/\p{Mark}/gu, '').toLowerCase();
+  const normalized = question.normalize('NFD').replace(/\p{Mark}/gu, '').replace(/đ/gi, 'd').toLowerCase();
+  // A mention of creating a ticket can be guidance or a request to wait, not permission to offer a write.
+  const deferredWrite = /\b(?:truoc khi|cach|huong dan(?: cach)?|lam sao(?: de)?|lam the nao(?: de)?|khi nao)\s+tao (?:phieu|cong viec|task)\b/.test(normalized) ||
+    /\b(?:khong|chua|dung|khoan)\s+(?:(?:muon|can|nen|duoc|hay|giup|voi)\s+){0,3}tao (?:phieu|cong viec|task)\b/.test(normalized);
+  const available = (await dependencies.available(caller.token)).filter(name => !deferredWrite || !tools[name]?.write);
   const unresolved = /\bvan (bi loi|khong ket noi|chua ket noi)\b|\bchua (khac phuc|xu ly) duoc\b/.test(normalized);
   if (normalized.includes('vpn') && (normalized.includes('tao phieu') || unresolved) && available.includes('create_ticket')) {
     emit('step', { label: tools.create_ticket.label });

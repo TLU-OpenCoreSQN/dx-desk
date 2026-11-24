@@ -11,6 +11,7 @@
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 
 ### Sửa
+- #74: Trợ lý không nhầm câu hỏi hướng dẫn hoặc yêu cầu hoãn tạo phiếu/công việc thành đề xuất ghi dữ liệu.
 - Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
 
 ### Thêm
