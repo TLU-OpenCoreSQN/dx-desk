@@ -25,7 +25,7 @@ Sản phẩm dự thi Olympic Tin học Sinh viên Việt Nam 2026, nội dung P
 - Docker Engine và Docker Compose v2; cấu hình đã kiểm bằng Compose 2.40.3.
 - Node.js >=22.12 cho runner đa nền tảng; GNU Make là giao diện lệnh tùy chọn dùng chung runner.
 - Máy demo mục tiêu 16 GB RAM. Số đo tạm W4-09: cả hai hồ sơ dùng khoảng 3 GiB RAM container
-  (chưa nạp mô hình Ollama); bảng theo dịch vụ ở [docs/tai-nguyen.md](docs/tai-nguyen.md).
+  (mô hình AI chạy qua API bên thứ ba, không tốn RAM máy); bảng theo dịch vụ ở [docs/tai-nguyen.md](docs/tai-nguyen.md).
 
 ## Chạy từ mã nguồn
 
@@ -77,14 +77,13 @@ npm run integration --prefix tools/testing
 Integration dùng PostgreSQL portable và PostgREST thật, không cần Docker.
 Nghiệm thu đầy đủ Keycloak/APISIX/n8n cần Docker:
 `node scripts/stack-test.mjs --restart-n8n`.
-RAM theo dịch vụ đo bằng `node scripts/benchmark-stack.mjs`, kết quả ở [docs/tai-nguyen.md](docs/tai-nguyen.md);
-đo mô hình Ollama (TN-05 vòng 2) bằng `node scripts/benchmark.mjs`.
+RAM theo dịch vụ đo bằng `node scripts/benchmark-stack.mjs`, kết quả ở [docs/tai-nguyen.md](docs/tai-nguyen.md).
 
 ### Tự động hóa và hàng đợi
 
 `node scripts/dxdesk.mjs up` sinh secret local và cấu hình client automation,
 roster Keycloak thật cùng kênh Mattermost riêng. Agent dùng `/work-queue`, Manager
-dùng `/approvals`. `demo-light` đủ luồng tuần 4; `full` bật thêm Ollama, không tự tải model.
+dùng `/approvals`. `demo-light` đủ luồng tuần 4; `full` bật thêm trợ lý AI (Qdrant, chỉ mục Wiki), cần `AI_API_KEY` của nhà cung cấp mô hình ([ADR 0011](docs/adr/0011-mo-hinh-ai-qua-api-ben-thu-ba.md)).
 
 ```sh
 node tools/testing/week4-stack.mjs
@@ -118,7 +117,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:9080/rest/
 
 Người dùng mẫu (chỉ dùng cho phát triển): `employee.a`, `employee.b`, `agent.1`, `agent.2`, `manager.1`, cùng mật khẩu `DxDesk@2026`.
 Tài khoản quản trị Keycloak nằm trong `.env`.
-Automation mặc định bật với profile `demo-light`; runner sinh secret local và bootstrap roster/kênh riêng.
+Automation mặc định bật với profile `demo-light` và `full` (`.env.example` mặc định `full`); runner sinh secret local và bootstrap roster/kênh riêng.
 Tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env` (`MATTERMOST_DEMO_PASSWORD`).
 
 ## Cấu trúc kho mã
@@ -131,7 +130,7 @@ Tài khoản Mattermost dùng mật khẩu riêng được sinh trong `.env` (`M
 | `db/migrations`, `db/policies` | Lược đồ CSDL và chính sách RLS (chạy khi khởi tạo PostgreSQL) |
 | `apps/web`, `apps/api` | React và NestJS: ứng dụng 1 DX-Desk |
 | `apps/device-request` | Ứng dụng 2 "Xin cấp thiết bị" (React, không backend riêng) tại `/thiet-bi/` |
-| `apps/assistant` | Trợ lý RAG Wiki/Qdrant/Ollama trong profile `full`, công cụ ghi chỉ chạy sau xác nhận; chất lượng mô hình cần nghiệm thu TN-05/TN-06 riêng |
+| `apps/assistant` | Trợ lý RAG Wiki/Qdrant, mô hình qua API OpenAI-compatible (mặc định Gemini) trong profile `full`, công cụ ghi chỉ chạy sau xác nhận; chất lượng mô hình cần nghiệm thu TN-05/TN-06 riêng |
 | `tools/testing` | Harness PostgreSQL portable + PostgREST và kiểm tra cấu hình |
 | `scripts/` | Script hỗ trợ `make up` |
 | `docs/` | Tài liệu và quyết định kiến trúc (`docs/adr/`) |

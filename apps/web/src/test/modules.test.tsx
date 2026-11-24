@@ -54,15 +54,22 @@ describe('W6-11: quyền theo vai trò', () => {
   it('menu chỉ hiện mục đúng vai trò, giữ đúng thứ tự cũ', () => {
     expect(labels(anonymous)).toEqual(['Trang chủ', 'Danh mục dữ liệu']);
     expect(labels(as('Employee'))).toEqual([
-      'Trang chủ', 'Danh mục dữ liệu', 'Danh sách phiếu', 'Tạo phiếu hỗ trợ', 'Yêu cầu cấp thiết bị',
-      'Xin cấp thiết bị (ứng dụng 2)',
+      'Trang chủ', 'Danh sách phiếu', 'Tạo phiếu hỗ trợ', 'Yêu cầu cấp thiết bị',
+      'Xin cấp thiết bị (ứng dụng 2)', 'Danh mục dữ liệu',
     ]);
     expect(labels(as('Agent'))).toContain('Bảng việc kỹ thuật viên');
     expect(labels(as('Agent'))).not.toContain('Phê duyệt phiếu hỗ trợ');
     expect(labels(as('Manager'))).toEqual([
-      'Trang chủ', 'Danh mục dữ liệu', 'Danh sách phiếu', 'Tạo phiếu hỗ trợ', 'Yêu cầu cấp thiết bị',
+      'Trang chủ', 'Danh sách phiếu', 'Tạo phiếu hỗ trợ', 'Yêu cầu cấp thiết bị',
       'Bảng việc kỹ thuật viên', 'Phê duyệt phiếu hỗ trợ', 'Báo cáo vận hành', 'Xin cấp thiết bị (ứng dụng 2)',
+      'Danh mục dữ liệu',
     ]);
+  });
+
+  it('Danh mục dữ liệu nằm ở nhóm Tài nguyên, tách khỏi luồng công việc', () => {
+    const entries = navEntries(enabledModules(null), as('Employee'));
+    expect(entries.find((e) => e.label === 'Danh mục dữ liệu')?.section).toBe('resources');
+    expect(entries.filter((e) => e.section === 'resources').map((e) => e.label)).toEqual(['Danh mục dữ liệu']);
   });
 
   it('trợ lý AI chỉ hiện khi /api/me bật assistant_enabled', () => {

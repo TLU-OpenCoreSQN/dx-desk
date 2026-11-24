@@ -1367,13 +1367,16 @@ test('confirmed assistant writes keep requester scope, avoid duplicates and enqu
 });
 
 test('staff can explicitly edit and apply AI triage with a recorded audit while protected fields stay locked', async t => {
-  const model = createServer((_request, response) => {
+  const modelRequests = [];
+  const model = createServer((request, response) => {
+    modelRequests.push({ url: request.url, authorization: request.headers.authorization });
     response.setHeader('Content-Type','application/json');
-    response.end(JSON.stringify({ message: { content: JSON.stringify({ category: 'vpn', priority: 'high' }) } }));
+    response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ category: 'vpn', priority: 'high' }) } }] }));
   });
   model.listen(0,'127.0.0.1'); await once(model,'listening');
   t.after(() => new Promise(resolve => model.close(resolve)));
-  const env = { ASSISTANT_PROFILE:'full', OLLAMA_URL:'http://127.0.0.1:' + model.address().port };
+  const env = { ASSISTANT_PROFILE:'full', AI_API_KEY:'ai-fixture',
+    AI_API_BASE_URL:'http://127.0.0.1:' + model.address().port + '/v1beta/openai' };
   const old = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
   Object.assign(process.env,env);
   t.after(() => { for (const [key,value] of Object.entries(old)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } });
@@ -1384,6 +1387,7 @@ test('staff can explicitly edit and apply AI triage with a recorded audit while 
   assert.equal((await call(apiUrl,path,'b')).status,403);
   const first = await call(apiUrl,path,'agent');
   assert.equal(first.status,200,JSON.stringify(first.body));
+  assert.deepEqual(modelRequests[0], { url: '/v1beta/openai/chat/completions', authorization: 'Bearer ai-fixture' });
   const { id, ...values } = first.body;
   assert.equal(values.priority,'high');
   assert.equal((await call(apiUrl,'/api/tickets/' + ticket.id,'a')).body.priority,'normal');
