@@ -8,6 +8,7 @@ import { chromium } from 'playwright';
 const env = parseEnv(await readFile(process.env.DXDESK_TEST_ENV || '.env', 'utf8'));
 const base = 'http://localhost:' + env.APISIX_PORT;
 const marker = 'SEN-XANH-' + Date.now();
+const conversationTitle = 'Hỗ trợ VPN trên Windows 11 · ' + marker;
 const question = 'Ghi nhớ mã của tôi là ' + marker + ' và tôi dùng Windows 11.';
 const browser = await chromium.launch();
 const report = { passed: false, checks: [] };
@@ -55,11 +56,11 @@ try {
   pass('Reload preserves history and the model continues from the saved context');
 
   await page.getByRole('button', { name: 'Đổi tên ' + question.slice(0, 80), exact: true }).click();
-  await page.getByLabel('Tên cuộc trò chuyện', { exact: true }).fill('Hỗ trợ VPN trên Windows 11');
+  await page.getByLabel('Tên cuộc trò chuyện', { exact: true }).fill(conversationTitle);
   await page.getByRole('button', { name: 'Lưu tên cuộc trò chuyện', exact: true }).click();
-  await page.getByRole('button', { name: 'Hỗ trợ VPN trên Windows 11', exact: true }).waitFor();
+  await page.getByRole('button', { name: conversationTitle, exact: true }).waitFor();
   await page.reload();
-  await page.getByRole('button', { name: 'Hỗ trợ VPN trên Windows 11', exact: true }).waitFor();
+  await page.getByRole('button', { name: conversationTitle, exact: true }).waitFor();
   pass('Rename is persisted across reload');
 
   await page.getByRole('button', { name: 'Cuộc trò chuyện mới', exact: true }).click();
@@ -75,7 +76,7 @@ try {
   await page.getByRole('button', { name: 'Xóa ' + isolation.slice(0, 80), exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Xóa cuộc trò chuyện', exact: true }).click();
   await page.getByRole('heading', { name: 'Bạn cần hỗ trợ việc gì?', exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Hỗ trợ VPN trên Windows 11', exact: true }).click();
+  await page.getByRole('button', { name: conversationTitle, exact: true }).click();
   await page.locator('.assistant-response').nth(2).waitFor();
   pass('Delete removes the selected conversation and preserves other conversations');
 
@@ -107,7 +108,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Mở lịch sử hội thoại', exact: true }).click();
   const history = page.getByRole('complementary', { name: 'Lịch sử hội thoại' });
-  await history.getByRole('button', { name: 'Hỗ trợ VPN trên Windows 11', exact: true }).waitFor();
+  await history.getByRole('button', { name: conversationTitle, exact: true }).waitFor();
   await history.getByRole('button', { name: 'Đóng lịch sử hội thoại', exact: true }).click();
   await page.screenshot({ path: '.local/reports/assistant-conversations-mobile.png' });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
