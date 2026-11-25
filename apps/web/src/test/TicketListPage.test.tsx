@@ -212,4 +212,34 @@ describe('TicketListPage Component', () => {
     expect(screen.queryByRole('button', { name: 'Trang sau' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Trang trước' })).not.toBeInTheDocument();
   });
+
+  it('displays assignee_name when available and ignores stale page responses', async () => {
+    let resolvePage1!: (value: { data: Ticket[]; limit: number; offset: number }) => void;
+    const page1 = Array.from({ length: 25 }, (_, i) => ({
+      ...mockTickets[0],
+      id: `p1-${i}`,
+      title: `Phiếu trang 1 #${i}`,
+      assigned_to: 'agent-uuid-1',
+      assignee_name: 'Nguyễn Văn A',
+    }));
+    const page2 = [{ ...mockTickets[0], id: 'p2-0', title: 'Phiếu trang 2 mới nhất' }];
+
+    vi.spyOn(apiService, 'getTickets')
+      .mockResolvedValueOnce({ data: page1, limit: 25, offset: 0 })
+      .mockResolvedValueOnce({ data: page2, limit: 25, offset: 25 })
+      .mockImplementationOnce(() => new Promise((resolve) => { resolvePage1 = resolve; }));
+
+    renderComponent();
+    await screen.findByText('Phiếu trang 1 #0');
+    expect(screen.getAllByText('Nguyễn Văn A').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
+    await screen.findByText('Phiếu trang 2 mới nhất');
+
+    // Trigger refresh on page 2? Instead navigate back then forward? No, trigger refresh while slow response is pending:
+    fireEvent.click(screen.getByRole('button', { name: 'Trang trước' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
+    resolvePage1({ data: [{ ...mockTickets[0], id: 'stale', title: 'Dữ liệu cũ bị trễ' }], limit: 25, offset: 0 });
+    await waitFor(() => expect(screen.queryByText('Dữ liệu cũ bị trễ')).not.toBeInTheDocument());
+  });
 });

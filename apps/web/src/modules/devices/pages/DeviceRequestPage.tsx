@@ -152,24 +152,31 @@ export const DeviceRequestPage: React.FC = () => {
 
   const formTriggerRef = useRef<HTMLButtonElement>(null);
   const formHeadingRef = useRef<HTMLHeadingElement>(null);
+  const requestRevision = useRef(0);
 
   const quantityValue = quantityText.trim() === '' ? Number.NaN : Number(quantityText);
 
   const loadRequests = useCallback(async (currentOffset: number) => {
+    const revision = ++requestRevision.current;
     setIsLoading(true);
     setError(null);
     try {
       const res = await getDeviceRequests(PAGE_SIZE, currentOffset);
+      if (revision !== requestRevision.current) return;
       setRequests(res.data || []);
     } catch (err) {
+      if (revision !== requestRevision.current) return;
       setError(err);
     } finally {
-      setIsLoading(false);
+      if (revision === requestRevision.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void loadRequests(offset);
+    return () => {
+      requestRevision.current += 1;
+    };
   }, [loadRequests, offset]);
 
   useEffect(() => {

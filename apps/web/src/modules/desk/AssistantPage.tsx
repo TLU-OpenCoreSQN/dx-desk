@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { decideAssistantProposal, streamAssistant, type AssistantEvent, type Proposal, type WikiSource } from './assistantApi';
 import { ApiClientError } from '../../services/api';
 
@@ -115,7 +116,7 @@ export function AssistantPage() {
             </div>
           </section>}
           {answer.status && <p role="status">{answer.status}</p>}
-          {answer.ticketId && <a className="text-primary underline" href={`/tickets/${encodeURIComponent(answer.ticketId)}`}>Xem phiếu vừa tạo</a>}
+          {answer.ticketId && <Link className="text-primary underline" to={`/tickets/${encodeURIComponent(answer.ticketId)}`}>Xem phiếu vừa tạo</Link>}
           {answer.error && <p role="alert" className="text-danger">{answer.error}</p>}
         </li>)}
       </ol>

@@ -192,4 +192,33 @@ describe('DeviceRequestPage Component', () => {
     });
     expect(createSpy).not.toHaveBeenCalled();
   });
+
+  it('ignores stale responses when reloading device requests', async () => {
+    let resolveSlow!: (value: { data: DeviceRequest[]; limit: number; offset: number }) => void;
+    vi.spyOn(apiService, 'getDeviceRequests')
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSlow = resolve; }))
+      .mockResolvedValueOnce({
+        data: [{ ...mockDeviceRequests[0], id: 'dreq-fresh', reason: 'Yêu cầu mới nhất từ máy chủ.' }],
+        limit: 25,
+        offset: 0,
+      });
+    vi.spyOn(apiService, 'createDeviceRequest').mockResolvedValue({
+      ...mockDeviceRequests[0],
+      id: 'dreq-fresh',
+      reason: 'Yêu cầu mới nhất từ máy chủ.',
+    });
+
+    renderComponent();
+
+    fireEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu mới/i }));
+    fireEvent.change(screen.getByLabelText(/Lý do đề xuất/i), {
+      target: { value: 'Yêu cầu mới nhất từ máy chủ.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu thiết bị/i }));
+
+    await screen.findByText('Yêu cầu mới nhất từ máy chủ.');
+
+    resolveSlow({ data: [{ ...mockDeviceRequests[0], id: 'dreq-stale', reason: 'Dữ liệu cũ bị trễ.' }], limit: 25, offset: 0 });
+    await waitFor(() => expect(screen.queryByText('Dữ liệu cũ bị trễ.')).not.toBeInTheDocument());
+  });
 });

@@ -59,6 +59,13 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
     onActiveEdgeChange?.(Boolean(activeEdge));
   }, [activeEdge, onActiveEdgeChange]);
 
+  useEffect(() => {
+    setActiveEdge(null);
+    setNote('');
+    setResolutionNote('');
+    setTransitionError(null);
+  }, [ticket.id, ticket.status]);
+
   const allowedTransitions = useMemo(
     () =>
       getAllowedTransitions(ticket.status, roles, {
@@ -134,13 +141,14 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
       setSuccessMessage(msg);
       await onTransitionSuccess(msg);
     } catch (err) {
-      setTransitionError(err);
       if (err instanceof ApiClientError && err.statusCode === 409) {
         setActiveEdge(null);
         const msg =
           'Phiếu đã được cập nhật bởi người khác. Dữ liệu mới đã được tải lại; hãy kiểm tra trước khi thao tác tiếp.';
         setSuccessMessage(msg);
         await onTransitionSuccess(msg);
+      } else {
+        setTransitionError(err);
       }
     } finally {
       setIsTransitioning(false);

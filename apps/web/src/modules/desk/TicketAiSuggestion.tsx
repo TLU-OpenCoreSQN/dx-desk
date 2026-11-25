@@ -11,11 +11,13 @@ const input = 'block w-full rounded border border-edge bg-surface p-2 text-sm';
 
 interface Props {
   ticketId: string;
+  ticketStatus?: string;
+  assignedTo?: string | null;
   categories: Category[];
   refresh: () => Promise<void>;
 }
 
-export function TicketAiSuggestion({ ticketId, categories, refresh }: Props) {
+export function TicketAiSuggestion({ ticketId, ticketStatus, assignedTo, categories, refresh }: Props) {
   const heading = useId();
   const [suggestion, setSuggestion] = useState<AiSuggestion | null>(null);
   const [draft, setDraft] = useState<SuggestionValues | null>(null);
@@ -27,13 +29,17 @@ export function TicketAiSuggestion({ ticketId, categories, refresh }: Props) {
   useEffect(() => {
     const request = new AbortController();
     void getAiSuggestion(ticketId, request.signal).then(async result => {
-      if (request.signal.aborted || !result) return;
+      if (request.signal.aborted) return;
       setSuggestion(result);
+      if (!result) {
+        setDraft(null);
+        return;
+      }
       const { data } = await getTeams();
       if (!request.signal.aborted) setTeams(data.filter(team => team.active));
     }).catch(() => { if (!request.signal.aborted) setError('Không tải được thông tin đề xuất AI.'); });
     return () => request.abort();
-  }, [ticketId]);
+  }, [ticketId, ticketStatus, assignedTo]);
 
   function edit() {
     if (!suggestion) return;

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { AssistantPage } from '../modules/desk/AssistantPage';
 import { decideAssistantProposal, streamAssistant } from '../modules/desk/assistantApi';
@@ -22,7 +23,7 @@ it.each([[true, 'Xác nhận', 'Đã thực hiện.'], [false, 'Hủy đề xu�
       emit({ type: 'done' });
     });
     vi.mocked(decideAssistantProposal).mockResolvedValue({ status: approve ? 'applied' : 'cancelled' });
-    render(<AssistantPage />);
+    render(<MemoryRouter><AssistantPage /></MemoryRouter>);
     fireEvent.change(screen.getByLabelText('Câu hỏi hỗ trợ IT'), { target: { value: 'VPN không kết nối' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gửi câu hỏi' }));
     expect(await screen.findByText('Kiểm tra VPN.')).toBeInTheDocument();
@@ -36,3 +37,20 @@ it.each([[true, 'Xác nhận', 'Đã thực hiện.'], [false, 'Hủy đề xu�
     await waitFor(() => expect(screen.queryByRole('button', { name: button })).not.toBeInTheDocument());
   },
 );
+
+it('renders SPA router link when proposal creates a ticket', async () => {
+  vi.mocked(streamAssistant).mockImplementation(async (_text, _signal, emit) => {
+    emit({ type: 'proposal', id: 'proposal-2', label: 'Tạo phiếu', fields: { title: 'Lỗi mạng' } });
+    emit({ type: 'done' });
+  });
+  vi.mocked(decideAssistantProposal).mockResolvedValue({
+    status: 'applied',
+    result: { id: 'act-1', ticket_id: 'ticket-99' },
+  });
+  render(<MemoryRouter><AssistantPage /></MemoryRouter>);
+  fireEvent.change(screen.getByLabelText('Câu hỏi hỗ trợ IT'), { target: { value: 'Mạng chậm' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Gửi câu hỏi' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận' }));
+  const link = await screen.findByRole('link', { name: 'Xem phiếu vừa tạo' });
+  expect(link).toHaveAttribute('href', '/tickets/ticket-99');
+});

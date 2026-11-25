@@ -96,7 +96,7 @@ export async function ensureFreshToken(minValidity = 30): Promise<boolean> {
 
 export async function login(): Promise<void> {
   await keycloak.login({
-    redirectUri: window.location.origin,
+    redirectUri: window.location.href,
   });
 }
 

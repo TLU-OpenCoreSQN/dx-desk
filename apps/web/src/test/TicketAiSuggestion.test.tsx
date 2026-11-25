@@ -50,3 +50,21 @@ it('labels the persisted suggestion event and AI actor in ticket history', () =>
   expect(screen.getByText('Đã xác nhận đề xuất AI')).toBeInTheDocument();
   expect(screen.getByText('AI (manager.1)')).toBeInTheDocument();
 });
+
+it('re-fetches and clears suggestion when ticketStatus or assignedTo changes', async () => {
+  const { rerender } = render(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="assigned" assignedTo={null} categories={categories} refresh={refresh} />
+  );
+  await screen.findByText('IT Support');
+
+  vi.mocked(getAiSuggestion).mockResolvedValueOnce(null);
+  rerender(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="in_progress" assignedTo="agent-1" categories={categories} refresh={refresh} />
+  );
+  await screen.findByText('IT Support').catch(() => undefined);
+  expect(getAiSuggestion).toHaveBeenCalledTimes(2);
+  await screen.findByText('IT Support').then(
+    () => { throw new Error('Expected suggestion to be cleared'); },
+    () => undefined,
+  );
+});
