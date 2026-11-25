@@ -28,6 +28,7 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
   const [noteError, setNoteError] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [historyBusy, setHistoryBusy] = useState(false);
   const [events, setEvents] = useState<DeviceRequestEvent[] | null>(null);
   const actions = actionsFor(request, user);
   const step = STEPS.indexOf(request.status);
@@ -39,11 +40,18 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
       onChanged(await transition(request.id, action.to, reason));
       setRejecting(false);
       setNote('');
-      if (events) setEvents(await listEvents(request.id));
     } catch (error) {
       setFailure((error as Error).message);
+      return;
     } finally {
       setBusy(false);
+    }
+    if (events) {
+      try {
+        setEvents(await listEvents(request.id));
+      } catch {
+        setEvents(null);
+      }
     }
   }
   function choose(action: Action) {
@@ -66,7 +74,16 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
   }
   async function toggleHistory() {
     if (events) return setEvents(null);
-    try { setEvents(await listEvents(request.id)); } catch (error) { setFailure((error as Error).message); }
+    if (historyBusy) return;
+    setHistoryBusy(true);
+    setFailure(null);
+    try {
+      setEvents(await listEvents(request.id));
+    } catch (error) {
+      setFailure((error as Error).message);
+    } finally {
+      setHistoryBusy(false);
+    }
   }
 
   return (
@@ -156,9 +173,9 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
             Tải biên bản (PDF)
           </button>
         )}
-        <button type="button" onClick={() => void toggleHistory()} aria-expanded={!!events}
-          className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface-warm transition-all shadow-2xs">
-          {events ? 'Ẩn lịch sử' : 'Lịch sử'}
+        <button type="button" disabled={historyBusy} onClick={() => void toggleHistory()} aria-expanded={!!events}
+          className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface-warm disabled:opacity-60 transition-all shadow-2xs">
+          {events ? 'Ẩn lịch sử' : historyBusy ? 'Đang tải…' : 'Lịch sử'}
         </button>
       </div>
       {events && (
