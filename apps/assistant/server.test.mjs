@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assistantServer } from './server.mjs';
+import { assistantDependencies, assistantServer } from './server.mjs';
 import { answer, ndjson, proposalStore } from './chat.mjs';
 
 test('confirmation is bound to the question owner, consumes the proposal once, and forwards the exact arguments', async t => {
@@ -94,4 +94,62 @@ test('a lost tool response allows retry with the same durable action ID', async 
   assert.equal((await confirm()).status, 503);
   assert.equal((await confirm()).status, 200);
   assert.deepEqual(ids, [offered.id, offered.id]);
+});
+
+test('Vietnamese đ is normalized for unresolved VPN reports', async () => {
+  const events = [];
+  await answer({
+    caller: { id: 'employee', token: 'token', roles: ['Employee'] },
+    signal: new AbortController().signal,
+    question: 'Tôi đã thử nhưng vẫn chưa khắc phục được VPN.',
+    dependencies: {
+      knowledge: async () => [],
+      available: async () => ['create_ticket'],
+      propose: proposalStore().offer,
+      invoke: () => assert.fail('A proposal must never invoke the write tool'),
+    },
+    emit: (type, data) => events.push({ type, ...data }),
+  });
+  assert.equal(events.find(event => event.type === 'proposal')?.fields.category, 'vpn');
+});
+
+test('Ollama stream error part throws instead of completing silently', async () => {
+  await assert.rejects(
+    answer({
+      caller: { id: 'employee', token: 'token', roles: ['Employee'] },
+      signal: new AbortController().signal,
+      question: 'Xin hướng dẫn đổi mật khẩu.',
+      dependencies: {
+        knowledge: async () => [],
+        available: async () => [],
+        propose: proposalStore().offer,
+        async *complete() { yield { error: 'model not found' }; },
+      },
+      emit: () => {},
+    }),
+    /model not found/,
+  );
+});
+
+test('ndjson rejects oversized complete lines and expired proposals are evicted on take', async () => {
+  const oversized = '{"ok":true,"pad":"' + 'a'.repeat(100001) + '"}\n';
+  await assert.rejects(async () => {
+    for await (const _ of ndjson([Buffer.from(oversized)])) { /* noop */ }
+  }, /too large/);
+
+  let now = 5000;
+  const store = proposalStore(() => now);
+  const offer = store.offer('owner', 'create_task', { title: 'Test' });
+  now += 300000;
+  assert.equal(store.take(offer.id, 'owner'), null);
+  now = 5000;
+  assert.equal(store.take(offer.id, 'owner'), null);
+});
+
+test('assistantDependencies.invoke fails fast when ASSISTANT_ACTION_KEY is missing for write actions', async () => {
+  const deps = assistantDependencies({ ASSISTANT_ACTION_KEY: '' });
+  await assert.rejects(
+    deps.invoke('create_ticket', { category: 'vpn', title: 'T', description: 'D' }, 'tok', 'action-1', undefined, 'owner'),
+    /Missing ASSISTANT_ACTION_KEY/,
+  );
 });

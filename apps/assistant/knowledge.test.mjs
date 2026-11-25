@@ -77,3 +77,20 @@ test('Wiki revisions are embedded once, search masks stale data, and removed chu
   assert.deepEqual(await syncKnowledge(config), { pages: 0, updated: 0, removed: 1 });
   assert.equal(points.size, 0);
 });
+
+test('searchKnowledge handles Qdrant response without result safely', async t => {
+  const article = { id: 3, path: 'ho-tro/vpn', locale: 'en', title: 'VPN', description: 'Mạng riêng',
+    isPublished: true, isPrivate: false, updatedAt: '2026-11-17T00:00:00Z' };
+  const server = createServer(async (request, response) => {
+    for await (const _ of request) { /* drain */ }
+    response.setHeader('Content-Type', 'application/json');
+    if (request.url === '/graphql') return response.end(JSON.stringify({ data: { pages: { list: [article] } } }));
+    if (request.url === '/api/embed') return response.end(JSON.stringify({ embeddings: [[1, 2]] }));
+    response.end(JSON.stringify({}));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const config = wikiKnowledge({ ASSISTANT_WIKI_URL: base, WIKI_INDEX_TOKEN: 'wiki-fixture', OLLAMA_URL: base, QDRANT_URL: base });
+  assert.deepEqual(await searchKnowledge(config, 'VPN'), []);
+});

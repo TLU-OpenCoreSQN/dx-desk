@@ -41,7 +41,9 @@ export function proposalStore(clock = Date.now) {
     },
     take(id, owner) {
       const offer = pending.get(id);
-      if (!offer || offer.owner !== owner || offer.expires <= clock()) return null;
+      if (!offer) return null;
+      if (offer.expires <= clock()) { pending.delete(id); return null; }
+      if (offer.owner !== owner) return null;
       pending.delete(id);
       return offer;
     },
@@ -60,9 +62,13 @@ export async function* ndjson(body) {
     const lines = pending.split('\n');
     pending = lines.pop() ?? '';
     if (pending.length > 100000) throw new Error('Assistant stream message too large');
-    for (const line of lines) if (line.trim()) yield JSON.parse(line);
+    for (const line of lines) {
+      if (line.length > 100000) throw new Error('Assistant stream message too large');
+      if (line.trim()) yield JSON.parse(line);
+    }
   }
   pending += decoder.decode();
+  if (pending.length > 100000) throw new Error('Assistant stream message too large');
   if (pending.trim()) yield JSON.parse(pending);
 }
 
@@ -71,7 +77,7 @@ export async function answer({ caller, signal, question, dependencies, emit }) {
   const references = await dependencies.knowledge(question);
   emit('sources', { items: references.map(({ title, url }) => ({ title, url })) });
   const available = await dependencies.available(caller.token);
-  const normalized = question.normalize('NFD').replace(/\p{Mark}/gu, '').toLowerCase();
+  const normalized = question.normalize('NFD').replace(/\p{Mark}/gu, '').replace(/[đĐ]/g, 'd').toLowerCase();
   const unresolved = /\bvan (bi loi|khong ket noi|chua ket noi)\b|\bchua (khac phuc|xu ly) duoc\b/.test(normalized);
   if (normalized.includes('vpn') && (normalized.includes('tao phieu') || unresolved) && available.includes('create_ticket')) {
     emit('step', { label: tools.create_ticket.label });
@@ -107,6 +113,7 @@ export async function answer({ caller, signal, question, dependencies, emit }) {
     let content = '';
     for await (const part of dependencies.complete(messages, round < 2 && !offered ? toolDefinitions(available) : [], signal)) {
       if (signal.aborted) return;
+      if (part.error) throw new Error(typeof part.error === 'string' ? part.error : 'Assistant stream error');
       const message = part.message;
       if (typeof message?.content === 'string' && message.content) {
         content += message.content;
