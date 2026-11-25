@@ -18,6 +18,14 @@ import { applyDataset, generate } from '../../../scripts/seed-synthetic.mjs';
 import { loadArticles } from '../../../scripts/setup-wiki.mjs';
 import jsonld from 'jsonld';
 
+async function sessionRequest(path,method='GET',body,who='a',scope) {
+  const proof=scope&&createHmac('sha256',process.env.ASSISTANT_ACTION_KEY).update(JSON.stringify([users[who].sub,scope,body])).digest('hex');
+  const response=await fetch(apiUrl+'/api/assistant-sessions'+path,{method,
+    headers:{Authorization:'Bearer '+tokens[who],...(body===undefined?{}:{'Content-Type':'application/json'}),...(proof?{'X-DXDesk-Assistant-Proof':proof}:{})},
+    ...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(10000)});
+  return {status:response.status,body:response.status===204?null:await response.json(),cache:response.headers.get('cache-control')};
+}
+
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
 if (!adminUrl || !new URL(adminUrl).pathname.startsWith('/dxdesk_test')) {
   throw new Error('TEST_DATABASE_ADMIN_URL must reference a disposable dxdesk_test* database.');
@@ -1401,4 +1409,152 @@ test('staff can explicitly edit and apply AI triage with a recorded audit while 
   assert.equal(updated.priority,'high');
   assert.equal(updated.assigned_team_id,values.team_id);
   assert.equal((await call(apiUrl,path + '/decision','agent',{ id, action:'ignore' })).status,409);
+});
+
+test('assistant conversations keep private history, serialize generation and delete their full context', async (t) => {
+  const previous = process.env.ASSISTANT_ACTION_KEY;
+  process.env.ASSISTANT_ACTION_KEY = 'assistant-session-integration-secret-at-least-32';
+  t.after(() => {
+    if (previous === undefined) delete process.env.ASSISTANT_ACTION_KEY;
+    else process.env.ASSISTANT_ACTION_KEY = previous;
+  });
+  assert.equal((await sessionRequest('', 'POST', [])).status, 400);
+  assert.equal((await sessionRequest('', 'POST', { owner_id: users.b.sub })).status, 400);
+  const created = await sessionRequest('', 'POST', {});
+  assert.equal(created.status, 201);
+  const id = created.body.id;
+  assert.equal((await sessionRequest('/' + id, 'GET', undefined, 'b')).status, 404);
+  assert.equal((await sessionRequest('/' + id, 'GET', undefined, 'manager')).status, 404);
+  assert.equal((await sessionRequest('/' + id, 'PATCH', { title: 'Không được' }, 'agent')).status, 404);
+  const renamed = await sessionRequest('/' + id, 'PATCH', { title: 'VPN của tôi' });
+  assert.equal(renamed.body.title, 'VPN của tôi');
+  const requestId = randomUUID(),
+    body = { request_id: requestId, question: 'Tôi dùng Windows và lỗi VPN AUTH_FAILED.' };
+  assert.equal((await sessionRequest('/' + id + '/turns/start', 'POST', body)).status, 403);
+  assert.equal(
+    (await sessionRequest('/' + id + '/turns/start', 'POST', body, 'b', 'start:' + id)).status,
+    404,
+  );
+  const starts = await Promise.all(
+    [1, 2].map(() => sessionRequest('/' + id + '/turns/start', 'POST', body, 'a', 'start:' + id)),
+  );
+  assert.deepEqual(starts.map((r) => r.status).sort(), [200, 409]);
+  assert.equal(starts.find((r) => r.status === 200).body.session.title, 'VPN của tôi');
+  const completed = {
+    answer: 'Kiểm tra mật khẩu.',
+    status: 'complete',
+    metadata: { steps: ['Tìm Wiki'], sources: [] },
+    summary: 'Người dùng dùng Windows.',
+    summarized_through: '0',
+  };
+  assert.equal(
+    (
+      await sessionRequest(
+        '/' + id + '/turns/' + requestId + '/finish',
+        'POST',
+        completed,
+        'a',
+        'finish:' + id + ':' + requestId,
+      )
+    ).status,
+    200,
+  );
+  const replay = await sessionRequest('/' + id + '/turns/start', 'POST', body, 'a', 'start:' + id);
+  assert.equal(replay.body.replay.answer, 'Kiểm tra mật khẩu.');
+  assert.equal((await sessionRequest('/' + id)).body.turns.length, 1);
+  const next = { request_id: randomUUID(), question: 'Sau đó thì sao?' };
+  const continued = await sessionRequest('/' + id + '/turns/start', 'POST', next, 'a', 'start:' + id);
+  assert.equal(continued.body.history[0].question, body.question);
+  assert.equal(continued.body.summary, 'Người dùng dùng Windows.');
+  assert.equal((await sessionRequest('/' + id)).cache, 'no-store');
+  assert.equal((await sessionRequest('/' + id, 'DELETE')).status, 204);
+  assert.equal(
+    (await admin.query('SELECT count(*)::int n FROM private.assistant_turns WHERE session_id=$1', [id]))
+      .rows[0].n,
+    0,
+  );
+  assert.equal(
+    (
+      await sessionRequest(
+        '/' + id + '/turns/' + next.request_id + '/finish',
+        'POST',
+        completed,
+        'a',
+        'finish:' + id + ':' + next.request_id,
+      )
+    ).status,
+    404,
+  );
+  assert.equal((await sessionRequest('/' + id)).status, 404);
+});
+
+test('conversation proposals survive reload, require confirmation and cannot execute after deletion', async (t) => {
+  const previous = process.env.ASSISTANT_ACTION_KEY;
+  const secret = 'assistant-proposal-integration-secret-at-least-32';
+  process.env.ASSISTANT_ACTION_KEY = secret;
+  t.after(() => {
+    if (previous === undefined) delete process.env.ASSISTANT_ACTION_KEY;
+    else process.env.ASSISTANT_ACTION_KEY = previous;
+  });
+  const id = (await sessionRequest('', 'POST', {})).body.id;
+  const turnId = randomUUID(),
+    proposalId = randomUUID();
+  const draft = {
+    category: 'vpn',
+    title: 'Hỗ trợ VPN qua hội thoại',
+    description: 'Máy báo AUTH_FAILED khi làm việc từ xa.',
+  };
+  await sessionRequest(
+    '/' + id + '/turns/start',
+    'POST',
+    { request_id: turnId, question: draft.description },
+    'a',
+    'start:' + id,
+  );
+  const metadata = {
+    steps: [],
+    sources: [],
+    proposal: {
+      id: proposalId,
+      tool: 'create_ticket',
+      label: 'Tạo phiếu',
+      fields: draft,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 300000).toISOString(),
+    },
+  };
+  await sessionRequest(
+    '/' + id + '/turns/' + turnId + '/finish',
+    'POST',
+    { answer: 'Bạn có thể xác nhận phiếu.', status: 'complete', metadata },
+    'a',
+    'finish:' + id + ':' + turnId,
+  );
+  assert.equal((await sessionRequest('/proposals/' + proposalId, 'GET', undefined, 'b')).status, 404);
+  assert.equal((await sessionRequest('/proposals/' + proposalId)).body.session_id, id);
+  const canonical = Object.fromEntries(Object.entries(draft).sort(([a], [b]) => a.localeCompare(b)));
+  const proof = createHmac('sha256', secret)
+    .update(JSON.stringify([users.a.sub, 'create_ticket', proposalId, canonical, id]))
+    .digest('hex');
+  const approve = () =>
+    fetch(apiUrl + '/api/assistant-tools/create_ticket', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + tokens.a,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': proposalId,
+        'X-DXDesk-Assistant-Proof': proof,
+        'X-DXDesk-Assistant-Session': id,
+      },
+      body: JSON.stringify(draft),
+    });
+  const first = await approve();
+  assert.equal(first.status, 200);
+  const result = await first.json();
+  assert.equal((await (await approve()).json()).ticket_id, result.ticket_id);
+  assert.equal((await sessionRequest('/' + id)).body.turns[0].metadata.proposal.status, 'applied');
+  assert.equal((await sessionRequest('/proposals/' + proposalId + '/cancel', 'POST', {})).status, 409);
+  await sessionRequest('/' + id, 'DELETE');
+  assert.equal((await approve()).status, 404);
+  assert.equal((await call(apiUrl, '/api/tickets/' + result.ticket_id)).status, 200);
 });

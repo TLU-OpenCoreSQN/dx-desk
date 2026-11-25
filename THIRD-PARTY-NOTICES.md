@@ -69,6 +69,8 @@ Metadata kiểm tại dependency đã cài ngày 21/10/2026:
   thử JSON-LD W5-04, không nằm trong image runtime.
 - Ajv 8.20.0: MIT; công cụ kiểm JSON Schema cho cấu hình doanh nghiệp W6-12,
   được ghim trong `tools/testing/package-lock.json`, không thêm vào runtime API/web.
+- react-markdown 10.1.0 và remark-gfm 4.0.1: MIT; hiển thị Markdown trong hội thoại AI.
+  License của toàn bộ dependency bắc cầu được giữ trong `dist/THIRD-PARTY-LICENSES.txt`.
 
 Build web tạo `dist/THIRD-PARTY-LICENSES.txt` từ LICENSE/NOTICE của toàn bộ cây
 runtime dependency đã cài và đóng gói cùng static assets. Docker API giữ LICENSE

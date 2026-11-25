@@ -501,6 +501,25 @@ Nếu khóa hết hạn, chạy lại `make up`. Qdrant và tiến trình đồn
 
 ### Cảnh 4 với trợ lý IT (W6-03, W6-04, W6-09)
 
+Màn `/tro-ly` lưu các cuộc trò chuyện riêng của từng tài khoản trong PostgreSQL.
+Chọn **Cuộc trò chuyện mới** để bắt đầu ngữ cảnh mới. Danh sách bên trái cho phép
+mở lại, đổi tên và xóa hội thoại. Xóa hội thoại sẽ xóa toàn bộ tin nhắn và bộ nhớ
+của hội thoại đó. Tải lại trang hoặc đăng nhập lại sẽ khôi phục lịch sử đã lưu.
+Trên điện thoại, nút **Mở lịch sử hội thoại** mở danh sách này.
+
+Mỗi lần gửi tiếp, server đọc lịch sử của chính cuộc trò chuyện đang chọn. Khi
+lịch sử vượt khoảng 48.000 ký tự, các lượt cũ được tóm tắt vào bộ nhớ của hội thoại,
+giữ các lượt gần nhất trong prompt. Lịch sử đầy đủ vẫn có thể tải qua **Tải tin nhắn cũ**.
+Nút **Dừng trả lời** giữ phần đã nhận và cho phép gửi tiếp. Một hội thoại xử lý một
+lượt tại một thời điểm. Sau sự cố tiến trình, lượt đang dở được mở lại sau lease 5 phút.
+Một tin nhắn nhận tối đa 8.000 ký tự. Enter gửi tin và Shift+Enter xuống dòng.
+
+Nghiệm thu tạo/đổi tên/xóa, ngữ cảnh liên tục, tải lại và cách ly giữa tài khoản:
+
+```sh
+node tools/testing/assistant-conversations.mjs
+```
+
 Trong hồ sơ `full`, khi đã đặt `AI_API_KEY` và chỉ mục Wiki đã sẵn sàng, mở **Trợ lý AI** từ menu Desk. Bật Mattermost và outbox demo để kiểm tra
 thông báo task của quản lý.
 

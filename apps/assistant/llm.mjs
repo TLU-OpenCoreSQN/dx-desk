@@ -78,7 +78,8 @@ export async function* sse(body) {
  */
 export async function* chatStream(config, messages, tools, signal) {
   const response = await post(config, 'chat/completions', {
-    model: config.chatModel, messages, stream: true, temperature: 0.1, max_tokens: 1024,
+    // Gemini counts reasoning toward the completion budget. Leave room for the answer too.
+    model: config.chatModel, messages, stream: true, temperature: 0.1, max_tokens: 4096,
     ...(tools.length ? { tools } : {}),
   }, AbortSignal.any([signal, AbortSignal.timeout(90000)]));
   const calls = [];
