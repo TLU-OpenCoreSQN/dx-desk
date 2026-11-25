@@ -5,6 +5,16 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { AuthRequest, JwtGuard } from './auth';
 import { createUserTicket } from './controllers';
 import { Database } from './database';
+import { parseRequirementFields } from './rules';
+
+export function defaultRequiredFields(requirementFields: unknown, description: string): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const spec of parseRequirementFields(requirementFields)) {
+    if (!spec.required) continue;
+    fields[spec.key] = spec.key === 'error_message' ? description.slice(0, 500) : 'Chưa cung cấp';
+  }
+  return fields;
+}
 
 const ticketTools = ['ticket_statistics', 'similar_tickets', 'create_ticket'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,7 +67,9 @@ export class AssistantToolsController {
         count(t.id) FILTER (WHERE t.created_at < p.start AND t.created_at < p.stop - interval '7 days')::int AS previous_week
       FROM periods p CROSS JOIN public.categories c LEFT JOIN public.tickets t
         ON t.category_id=c.id AND t.created_at >= p.start - interval '7 days' AND t.created_at < p.stop
-      WHERE c.code=$1 GROUP BY p.start`, [category])).rows[0] ?? { category, current_week: 0, previous_week: 0 });
+      WHERE c.code=$1 AND c.active GROUP BY p.start`, [category])).rows[0] ?? {
+        category, week_start: null, current_week: 0, previous_week: 0,
+      });
   }
 
   @Get('tasks/:id')
@@ -104,14 +116,10 @@ export class AssistantToolsController {
         return existing.rows[0];
       }
       if (kind === 'create_task') return { id, ticket_id: null };
-      const category = (await client.query(`SELECT id FROM public.categories WHERE code=$1 AND active`, [args.category])).rows[0];
+      const category = (await client.query(`SELECT id, requirement_fields FROM public.categories WHERE code=$1 AND active`, [args.category])).rows[0];
       if (!category) throw new BadRequestException('Danh mục công cụ không hợp lệ.');
-      // VPN drafts retain the user's description. Missing diagnostic values remain explicitly unknown.
-      const fields: Record<string,string> = {};
-      if (args.category === 'vpn') {
-        fields.client_version = 'Chưa cung cấp';
-        fields.error_message = args.description.slice(0,500);
-      }
+      // Retain the user's description for error_message; missing diagnostic/form values remain explicitly unknown.
+      const fields = defaultRequiredFields(category.requirement_fields, args.description);
       await client.query("SELECT set_config('app.assistant_action','create_ticket',true)");
       const ticket = await createUserTicket(client, request.claims, {
         category_id: category.id, title: args.title, description: args.description, fields,

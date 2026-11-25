@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpCode, NotFoundException,
   Param, ParseUUIDPipe, Post, Req, Res, ServiceUnavailableException, UseGuards } from '@nestjs/common';
+import { Transform, Type } from 'class-transformer';
+import { IsDefined, IsIn, IsObject, IsString, IsUUID, Length, ValidateIf, ValidateNested } from 'class-validator';
 import type { Response } from 'express';
 import { AuthRequest, JwtGuard } from './auth';
 import { assistantEnabled } from './config';
@@ -9,8 +11,23 @@ import { Database } from './database';
 import { checkRequirementFields } from './rules';
 
 const priorities = ['low','normal','high'] as const;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 interface Category { id: string; code: string; name: string; description: string; requirement_fields: unknown; team_id: string }
+
+export class AiSuggestionValues {
+  @IsUUID() category_id!: string;
+  @IsUUID() team_id!: string;
+  @IsIn(priorities) priority!: (typeof priorities)[number];
+  @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value)
+  @IsString() @Length(1, 2000) summary!: string;
+}
+
+export class DecideAiSuggestion {
+  @IsUUID() id!: string;
+  @IsIn(['accept', 'ignore']) action!: 'accept' | 'ignore';
+  @ValidateIf((o: DecideAiSuggestion) => o.action === 'accept')
+  @IsDefined() @IsObject() @ValidateNested() @Type(() => AiSuggestionValues)
+  values?: AiSuggestionValues;
+}
 interface Ticket { id: string; title: string; description: string; ticket_version: string; category_id: string;
   priority: string; assigned_to: string | null; status: string; sla_breached: boolean; request_fields: Record<string, unknown> }
 interface Suggestion { id: string; category_id: string; team_id: string; priority: string; summary: string }
@@ -110,18 +127,13 @@ export class TicketAiSuggestionController {
 
   @Post('decision')
   @HttpCode(204)
-  async decide(@Req() request: AuthRequest, @Param('ticketId', ParseUUIDPipe) ticketId: string, @Body() body: any) {
+  async decide(@Req() request: AuthRequest, @Param('ticketId', ParseUUIDPipe) ticketId: string, @Body() body: DecideAiSuggestion) {
     staff(request);
-    const values = body?.values;
-    const accept = body?.action === 'accept';
-    if (typeof body?.id !== 'string' || !UUID.test(body.id) || (!accept && body.action !== 'ignore') ||
-      Object.keys(body).length !== (accept ? 3 : 2) || (accept && (
-        !values || Object.keys(values).length !== 4 ||
-        !['category_id','team_id'].every(key => typeof values[key] === 'string' && UUID.test(values[key])) ||
-        !priorities.includes(values.priority) || typeof values.summary !== 'string' ||
-        values.summary.trim().length < 1 || values.summary.trim().length > 2000
-      ))) throw new BadRequestException('Quyết định đề xuất AI không hợp lệ.');
+    const accept = body.action === 'accept';
+    if (!accept && body.values !== undefined) {
+      throw new BadRequestException('Quyết định đề xuất AI không hợp lệ.');
+    }
     await this.db.asUser(request.claims, client => client.query('SELECT private.decide_ai_suggestion($1,$2,$3,$4::jsonb)',
-      [ticketId, body.id, body.action, accept ? JSON.stringify(values) : null]));
+      [ticketId, body.id, body.action, accept ? JSON.stringify(body.values) : null]));
   }
 }
