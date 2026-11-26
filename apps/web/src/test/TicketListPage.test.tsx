@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { TicketListPage } from '../modules/desk/pages/TicketListPage';
 import * as apiService from '../services/api';
 import * as authContext from '../contexts/AuthContext';
@@ -213,33 +213,52 @@ describe('TicketListPage Component', () => {
     expect(screen.queryByRole('button', { name: 'Trang trước' })).not.toBeInTheDocument();
   });
 
-  it('displays assignee_name when available and ignores stale page responses', async () => {
-    let resolvePage1!: (value: { data: Ticket[]; limit: number; offset: number }) => void;
-    const page1 = Array.from({ length: 25 }, (_, i) => ({
-      ...mockTickets[0],
-      id: `p1-${i}`,
-      title: `Phiếu trang 1 #${i}`,
-      assigned_to: 'agent-uuid-1',
-      assignee_name: 'Nguyễn Văn A',
-    }));
-    const page2 = [{ ...mockTickets[0], id: 'p2-0', title: 'Phiếu trang 2 mới nhất' }];
-
-    vi.spyOn(apiService, 'getTickets')
-      .mockResolvedValueOnce({ data: page1, limit: 25, offset: 0 })
-      .mockResolvedValueOnce({ data: page2, limit: 25, offset: 25 })
-      .mockImplementationOnce(() => new Promise((resolve) => { resolvePage1 = resolve; }));
+  it('displays assignee_name instead of the raw assigned_to id', async () => {
+    vi.spyOn(apiService, 'getTickets').mockResolvedValue({
+      data: [{ ...mockTickets[1], assigned_to: 'agent-uuid-1', assignee_name: 'Nguyễn Văn A' }],
+      limit: 25,
+      offset: 0,
+    });
 
     renderComponent();
-    await screen.findByText('Phiếu trang 1 #0');
-    expect(screen.getAllByText('Nguyễn Văn A').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
-    await screen.findByText('Phiếu trang 2 mới nhất');
+    expect((await screen.findAllByText('Nguyễn Văn A')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('agent-uuid-1')).not.toBeInTheDocument();
+  });
 
-    // Trigger refresh on page 2? Instead navigate back then forward? No, trigger refresh while slow response is pending:
-    fireEvent.click(screen.getByRole('button', { name: 'Trang trước' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
-    resolvePage1({ data: [{ ...mockTickets[0], id: 'stale', title: 'Dữ liệu cũ bị trễ' }], limit: 25, offset: 0 });
-    await waitFor(() => expect(screen.queryByText('Dữ liệu cũ bị trễ')).not.toBeInTheDocument());
+  it('ignores a stale page response that resolves after a newer one', async () => {
+    let resolveStale!: (value: { data: Ticket[]; limit: number; offset: number }) => void;
+    const getSpy = vi
+      .spyOn(apiService, 'getTickets')
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveStale = resolve; }))
+      .mockResolvedValueOnce({
+        data: [{ ...mockTickets[0], id: 'fresh', title: 'Phiếu trang 1 mới nhất' }],
+        limit: 25,
+        offset: 0,
+      });
+    let goTo!: (to: string) => void;
+    const Navigator = () => {
+      goTo = useNavigate();
+      return null;
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/tickets?page=2']}>
+        <Navigator />
+        <TicketListPage />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith(25, 25));
+
+    // Trang 2 còn đang tải thì người dùng quay về trang 1 (ví dụ nút Back của trình duyệt).
+    act(() => goTo('/tickets?page=1'));
+    await screen.findByText('Phiếu trang 1 mới nhất');
+
+    await act(async () => {
+      resolveStale({ data: [{ ...mockTickets[0], id: 'stale', title: 'Dữ liệu trang 2 bị trễ' }], limit: 25, offset: 25 });
+    });
+
+    expect(screen.getByText('Phiếu trang 1 mới nhất')).toBeInTheDocument();
+    expect(screen.queryByText('Dữ liệu trang 2 bị trễ')).not.toBeInTheDocument();
   });
 });

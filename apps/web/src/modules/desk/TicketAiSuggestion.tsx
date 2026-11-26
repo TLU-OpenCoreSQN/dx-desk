@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { getTeams } from '../../services/api';
 import type { Category, Team } from '../../types/api';
@@ -25,16 +25,18 @@ export function TicketAiSuggestion({ ticketId, ticketStatus, assignedTo, categor
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const suggestionId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const request = new AbortController();
     void getAiSuggestion(ticketId, request.signal).then(async result => {
       if (request.signal.aborted) return;
+      setError('');
+      // Bản đang sửa chỉ hợp lệ cho đúng đề xuất đã tạo ra nó.
+      if (suggestionId.current !== result?.id) setDraft(null);
+      suggestionId.current = result?.id;
       setSuggestion(result);
-      if (!result) {
-        setDraft(null);
-        return;
-      }
+      if (!result) return;
       const { data } = await getTeams();
       if (!request.signal.aborted) setTeams(data.filter(team => team.active));
     }).catch(() => { if (!request.signal.aborted) setError('Không tải được thông tin đề xuất AI.'); });
@@ -61,6 +63,7 @@ export function TicketAiSuggestion({ ticketId, ticketStatus, assignedTo, categor
     try {
       await decideAiSuggestion(ticketId, id, approve ? { ...values, summary: values.summary.trim() } : null);
       setNotice(approve ? 'Đã xác nhận đề xuất AI.' : 'Đã bỏ qua đề xuất AI.');
+      suggestionId.current = undefined;
       setSuggestion(null);
       setDraft(null);
       await refresh();

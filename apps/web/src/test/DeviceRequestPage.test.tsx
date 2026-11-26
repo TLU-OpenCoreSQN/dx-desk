@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DeviceRequestPage } from '../modules/devices/pages/DeviceRequestPage';
 import * as apiService from '../services/api';
@@ -218,7 +218,11 @@ describe('DeviceRequestPage Component', () => {
 
     await screen.findByText('Yêu cầu mới nhất từ máy chủ.');
 
-    resolveSlow({ data: [{ ...mockDeviceRequests[0], id: 'dreq-stale', reason: 'Dữ liệu cũ bị trễ.' }], limit: 25, offset: 0 });
-    await waitFor(() => expect(screen.queryByText('Dữ liệu cũ bị trễ.')).not.toBeInTheDocument());
+    await act(async () => {
+      resolveSlow({ data: [{ ...mockDeviceRequests[0], id: 'dreq-stale', reason: 'Dữ liệu cũ bị trễ.' }], limit: 25, offset: 0 });
+    });
+
+    expect(screen.getByText('Yêu cầu mới nhất từ máy chủ.')).toBeInTheDocument();
+    expect(screen.queryByText('Dữ liệu cũ bị trễ.')).not.toBeInTheDocument();
   });
 });
