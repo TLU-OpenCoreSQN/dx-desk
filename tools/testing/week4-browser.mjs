@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
 import { resolve, dirname } from 'node:path';
+// Nút xác nhận trong form chuyển trạng thái mang tên của chính thao tác, nên tìm theo vị trí trong form.
+const TRANSITION_SUBMIT='form[aria-labelledby="transition-dialog-title"] button[type="submit"]';
 import { fileURLToPath } from 'node:url';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const env={...parseEnv(await readFile(resolve(root,'.env'),'utf8')),...process.env};
@@ -20,12 +22,13 @@ async function login(username){
  await page.locator('#username').fill(username);await page.locator('#password').fill(env.DEMO_USER_PASSWORD??'DxDesk@2026');await page.locator('#kc-login').click();
  await page.waitForURL(origin+'/**');await page.getByRole('button',{name:/Đăng xuất/}).waitFor();return {context,page};
 }
-async function transition(page,label,note){
+async function transition(page,label,note,reason){
  await page.getByRole('button',{name:label,exact:true}).click();
  if(note)await page.locator('#transition-resolution-note').fill(note);
+ if(reason)await page.locator('#transition-note').fill(reason);
  const response=page.waitForResponse(r=>r.url().endsWith('/status')&&r.request().method()==='PATCH');
- await page.getByRole('button',{name:'Xác nhận chuyển trạng thái',exact:true}).click();assert.equal((await response).status(),200);
- await page.getByRole('button',{name:'Xác nhận chuyển trạng thái',exact:true}).waitFor({state:'detached'});
+ await page.locator(TRANSITION_SUBMIT).click();assert.equal((await response).status(),200);
+ await page.locator(TRANSITION_SUBMIT).waitFor({state:'detached'});
 }
 async function createAccess(page,title){
  await page.goto(origin+'/tickets/new');await page.locator('#ticket-category').selectOption('10000000-0000-4000-8000-000000000005');
@@ -63,8 +66,13 @@ try{
   await staff.screenshot({path:resolve(directory,'week4-agent-detail.png'),fullPage:true});
  });
  await check('Agent waiting/resolution and requester confirmation preserve workflow history',async()=>{
-  const staff=agent.page;await transition(staff,'Bắt đầu xử lý');await transition(staff,'Chờ người dùng phản hồi');
-  await page.reload();await transition(page,'Phản hồi, tiếp tục xử lý');
+  const staff=agent.page;await transition(staff,'Bắt đầu xử lý');await transition(staff,'Chờ người dùng phản hồi',undefined,'Gửi giúp ảnh chụp thông báo lỗi VPN đang gặp.');
+  // Người tạo phiếu trả lời ngay trong khung phản hồi, khung này trích lại câu hỏi của kỹ thuật viên.
+  await page.reload();await page.locator('blockquote').getByText('Gửi giúp ảnh chụp thông báo lỗi VPN đang gặp.',{exact:true}).waitFor();
+  await page.locator('#reply-note').fill('Đã gửi ảnh chụp lỗi qua email nội bộ.');
+  const replied=page.waitForResponse(r=>r.url().endsWith('/status')&&r.request().method()==='PATCH');
+  await page.getByRole('button',{name:'Gửi phản hồi',exact:true}).click();assert.equal((await replied).status(),200);
+  await page.locator('#reply-note').waitFor({state:'detached'});
   await staff.reload();await transition(staff,'Đánh dấu đã giải quyết','Đã cập nhật cấu hình VPN và kiểm tra kết nối ổn định.');
   await page.reload();await transition(page,'Xác nhận đã hài lòng, đóng phiếu');
   await page.getByText('Chuyển từ Đã giải quyết sang Đã đóng',{exact:true}).waitFor();
