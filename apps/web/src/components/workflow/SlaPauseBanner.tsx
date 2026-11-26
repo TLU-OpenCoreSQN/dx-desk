@@ -18,6 +18,11 @@ export interface SlaPauseBannerProps {
   className?: string;
   showProgressBar?: boolean;
   compact?: boolean;
+  /**
+   * Người xem: `staff` (Agent/Manager) thấy số liệu vận hành;
+   * `requester` thấy điều phiếu có ý nghĩa với họ, không dùng thuật ngữ SLA nội bộ.
+   */
+  audience?: 'staff' | 'requester';
 }
 
 function formatDateTime(date: Date): string {
@@ -49,7 +54,9 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
   className = '',
   showProgressBar = true,
   compact = false,
+  audience = 'staff',
 }) => {
+  const forRequester = audience === 'requester';
   const [now, setNow] = useState<number>(() => Date.now());
 
   // Tick every second for active tickets with SLA
@@ -119,7 +126,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
               : 'ĐÃ GIẢI QUYẾT NHƯNG QUÁ HẠN SLA'}
           </span>
         </div>
-        <span className="font-mono text-[11px] tabular-nums">
+        <span className="font-mono text-xs tabular-nums">
           Hạn cam kết: {formatDateTime(effectiveDueDate)}
         </span>
       </div>
@@ -127,6 +134,27 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
   }
 
   // Case 2: Paused State (status === 'waiting_user')
+  if (isPaused && forRequester) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className={`rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning shadow-2xs ${className}`}
+      >
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
+            <Pause className="h-3.5 w-3.5" aria-hidden="true" />
+          </span>
+          <h2 className="text-xs font-bold uppercase tracking-wider">Đang chờ bạn phản hồi</h2>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-content">
+          Thời hạn xử lý được tạm dừng cho tới khi bạn gửi phản hồi, nên thời gian chờ này không
+          tính là phiếu bị chậm.
+        </p>
+      </div>
+    );
+  }
+
   if (isPaused) {
     return (
       <div
@@ -139,17 +167,17 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
               <Pause className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
-            <h4 className="text-xs font-bold uppercase tracking-wider">
-              ĐỒNG HỒ SLA TẠM DỪNG (Chờ phản hồi từ người dùng)
-            </h4>
+            <h2 className="text-xs font-bold uppercase tracking-wider">
+              SLA tạm dừng · chờ người tạo phiếu phản hồi
+            </h2>
           </div>
           <span className="font-mono text-xs font-semibold tabular-nums">
             Thời gian đã dừng: {totalPausedMinutes} phút
           </span>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-content">
-          Thời hạn xử lý sẽ tự động gia hạn tương ứng với khoảng thời gian tạm dừng khi người tạo phiếu
-          gửi phản hồi. Thời hạn mới ước tính:{' '}
+          Khi người tạo phiếu phản hồi, thời hạn được cộng thêm đúng khoảng thời gian tạm dừng. Hạn
+          mới ước tính:{' '}
           <span className="font-semibold text-content">{formatDateTime(effectiveDueDate)}</span>.
         </p>
       </div>
@@ -167,28 +195,51 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
         ? `${overdueHours} giờ ${overdueMinsRem} phút`
         : `${overdueMinsRem} phút`;
 
+    // Người tạo phiếu: báo chậm một cách bình tĩnh, không dùng ngôn ngữ vận hành
+    // và không khẳng định việc leo thang mà giao diện không kiểm chứng được.
+    if (forRequester) {
+      return (
+        <div
+          role="status"
+          className={`rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning shadow-2xs ${className}`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
+              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+            <h2 className="text-xs font-bold uppercase tracking-wider">Phiếu đang chậm hơn dự kiến</h2>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-content">
+            Thời hạn xử lý dự kiến là{' '}
+            <span className="font-semibold">{formatDateTime(new Date(originalDue))}</span>. Kỹ thuật
+            viên sẽ cập nhật tiến độ ngay trên trang này; bạn không cần gửi lại yêu cầu.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div
-        role="alert"
-        className={`rounded-md border border-status-danger-border bg-status-danger-bg p-3.5 text-status-danger shadow-2xs animate-pulse ${className}`}
+        role="status"
+        className={`rounded-md border border-status-danger-border bg-status-danger-bg p-3.5 text-status-danger shadow-2xs ${className}`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-danger text-white">
               <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
-            <h4 className="text-xs font-bold uppercase tracking-wider">
-              VI PHẠM THỜI HẠN SLA
-            </h4>
+            <h2 className="text-xs font-bold uppercase tracking-wider">
+              Quá hạn SLA
+            </h2>
           </div>
           <span className="font-mono text-xs font-bold tabular-nums">
             Trễ hạn: {overdueText}
           </span>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-content">
-          Phiếu sự cố đã vượt quá thời hạn cam kết lúc{' '}
+          Hạn cam kết là{' '}
           <span className="font-semibold text-status-danger">{formatDateTime(new Date(originalDue))}</span>.
-          Thông báo leo thang khẩn cấp đã được gửi tới Quản lý dịch vụ IT.
+          Ưu tiên xử lý hoặc cập nhật cho người tạo phiếu.
         </p>
       </div>
     );
@@ -203,16 +254,16 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+          <Clock className="h-4 w-4 text-[var(--color-primary-ink)] shrink-0" aria-hidden="true" />
           <span className="text-xs font-semibold text-content">
-            Cam kết thời hạn xử lý (SLA)
+            {forRequester ? 'Thời hạn xử lý dự kiến' : 'Cam kết thời hạn xử lý (SLA)'}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold text-primary tabular-nums">
+          <span className="font-mono text-xs font-bold text-[var(--color-primary-ink)] tabular-nums">
             {formatDuration(remainingMs)} còn lại
           </span>
-          <span className="font-mono text-[11px] text-content-subtle tabular-nums">
+          <span className="font-mono text-xs text-content-muted tabular-nums">
             (Trước {formatDateTime(effectiveDueDate)})
           </span>
         </div>
@@ -220,8 +271,8 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
 
       {showProgressBar && (
         <div className="mt-2.5">
-          <div className="flex items-center justify-between text-[11px] text-content-muted mb-1">
-            <span>Tiến độ SLA</span>
+          <div className="flex items-center justify-between text-xs text-content-muted mb-1">
+            <span>{forRequester ? 'Thời gian đã dùng' : 'Tiến độ SLA'}</span>
             <span className="font-mono tabular-nums">{elapsedPercent}%</span>
           </div>
           <div

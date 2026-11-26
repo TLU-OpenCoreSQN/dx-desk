@@ -7,18 +7,16 @@ import { ArrowLeft, ClipboardList, FileText, Info } from 'lucide-react';
 import { getTicketById, getTicketEvents, getCategories } from '../../../services/api';
 import { Ticket, TicketEvent, Category } from '../../../types/api';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
-import { TicketDetailHeader } from '../../../components/ticket-detail/TicketDetailHeader';
+import { TicketDetailHeader, TicketDetailNav } from '../../../components/ticket-detail/TicketDetailHeader';
 import { TicketTimeline } from '../../../components/ticket-detail/TicketTimeline';
-import { TicketWorkflowActions } from '../../../components/ticket-detail/TicketWorkflowActions';
+import {
+  BottomBarSize,
+  TicketWorkflowActions,
+} from '../../../components/ticket-detail/TicketWorkflowActions';
 import { TicketAttachmentSection } from '../../../components/ticket-detail/TicketAttachmentSection';
 import { TicketStageTracker, SlaPauseBanner } from '../../../components/workflow';
 import { TicketAiSuggestion } from '../TicketAiSuggestion';
 import { useAuth } from '../../../contexts/AuthContext';
-import {
-  RESOLUTION_NOTE_MAX,
-  RESOLUTION_NOTE_MIN,
-  statusLabel,
-} from '../../../lib/ticketWorkflow';
 
 export const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,7 +30,7 @@ export const TicketDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<unknown>(null);
-  const [hasActiveEdge, setHasActiveEdge] = useState<boolean>(false);
+  const [bottomBar, setBottomBar] = useState<BottomBarSize>('none');
   const requestRevision = useRef(0);
 
   const loadTicketData = useCallback(async (silent = false) => {
@@ -89,7 +87,7 @@ export const TicketDetailPage: React.FC = () => {
           <div className="h-9 w-44 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
           <div className="h-9 w-24 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
         </div>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_288px] xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-5">
             <div className="rounded-[4px] border border-[var(--color-edge-subtle)] p-5">
               <div className="flex flex-wrap gap-2">
@@ -127,7 +125,7 @@ export const TicketDetailPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate('/tickets')}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-primary-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Quay lại danh sách phiếu</span>
@@ -141,45 +139,47 @@ export const TicketDetailPage: React.FC = () => {
     );
   }
 
+  const isStaff = roles.some((role) => role === 'Agent' || role === 'Manager');
   const ticketFields = ticket.request_fields || {};
   const hasFields = Object.values(ticketFields).some((value) => typeof value === 'string');
 
   return (
     <div
-      className={`w-full space-y-5 lg:space-y-6 lg:pb-6 ${
-        hasActiveEdge ? 'max-lg:pb-[75vh]' : 'max-lg:pb-40 pb-6'
+      className={`w-full space-y-5 pb-6 lg:space-y-6 ${
+        bottomBar === 'tall' ? 'max-lg:pb-[75vh]' : bottomBar === 'compact' ? 'max-lg:pb-40' : ''
       }`}
     >
-      <TicketDetailHeader
-        ticket={ticket}
-        category={category}
+      <TicketDetailNav
         isRefreshing={isRefreshing}
         onRefresh={() => void loadTicketData(true)}
         onBack={() => navigate('/tickets')}
       />
 
-      <SlaPauseBanner ticket={ticket} />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_288px] xl:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
+        {/* Cột trái là một container: tiêu đề, banner và tiến trình co theo bề rộng cột,
+            nên cột thao tác bên phải bắt đầu ngang hàng với tiêu đề phiếu. */}
+        <div className="@container min-w-0 space-y-5">
+          <TicketDetailHeader ticket={ticket} category={category} />
 
-      <TicketStageTracker ticket={ticket} events={events} />
+          <SlaPauseBanner ticket={ticket} audience={isStaff ? 'staff' : 'requester'} />
 
-      {profile?.assistant_enabled && roles.some(role => role === 'Agent' || role === 'Manager') && (
-        <TicketAiSuggestion
-          key={ticket.id}
-          ticketId={ticket.id}
-          ticket={ticket}
-          ticketStatus={ticket.status}
-          assignedTo={ticket.assigned_to}
-          categories={categories}
-          refresh={() => loadTicketData(true)}
-        />
-      )}
+          <TicketStageTracker ticket={ticket} events={events} />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
-        {/* Left column: content */}
-        <div className="min-w-0 space-y-5">
+          {profile?.assistant_enabled && isStaff && (
+            <TicketAiSuggestion
+              key={ticket.id}
+              ticketId={ticket.id}
+              ticket={ticket}
+              ticketStatus={ticket.status}
+              assignedTo={ticket.assigned_to}
+              categories={categories}
+              refresh={() => loadTicketData(true)}
+            />
+          )}
+
           <section className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
             <div className="flex items-center gap-2 border-b border-[var(--color-edge-subtle)] px-5 py-3.5">
-              <FileText className="h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
+              <FileText className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
               <h2 className="text-sm font-bold tracking-tight text-[var(--color-content)]">
                 Mô tả chi tiết nội dung sự cố
               </h2>
@@ -192,18 +192,18 @@ export const TicketDetailPage: React.FC = () => {
 
             {hasFields && (
               <div className="border-t border-[var(--color-edge-subtle)] px-5 py-4">
-                <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]">
-                  <ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary)]" aria-hidden="true" />
+                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--color-content)]">
+                  <ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
                   <span>Thông tin bổ sung theo danh mục</span>
-                </h2>
-                <dl className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                </h3>
+                <dl className="mt-2.5 grid grid-cols-1 gap-2 @md:grid-cols-2">
                   {Object.entries(ticketFields).map(([key, val]) =>
                     typeof val === 'string' ? (
                       <div
                         key={key}
                         className="min-w-0 rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-3"
                       >
-                        <dt className="mb-0.5 break-all text-[11px] text-[var(--color-content-muted)]">
+                        <dt className="mb-0.5 break-all text-xs text-[var(--color-content-muted)]">
                           {category?.requirement_fields?.find((field) => field.key === key)?.label || key}
                         </dt>
                         <dd className="whitespace-pre-wrap break-words text-xs font-semibold text-[var(--color-content)]">
@@ -218,9 +218,9 @@ export const TicketDetailPage: React.FC = () => {
 
             {ticket.resolution_note && (
               <section aria-label="Kết quả xử lý" className="border-t border-[var(--color-edge-subtle)] px-5 py-4">
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-content)]">
                   Kết quả xử lý
-                </h2>
+                </h3>
                 <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-content)]">
                   {ticket.resolution_note}
                 </p>
@@ -232,25 +232,28 @@ export const TicketDetailPage: React.FC = () => {
 
           <TicketTimeline events={events} />
 
-          {/* Role-aware guidance */}
-          <div className="flex items-start gap-3 rounded-[8px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-4 text-xs text-[var(--color-content-muted)] shadow-2xs">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
-            <p className="leading-relaxed">
-              <span className="font-bold text-[var(--color-content)]">Lưu ý:</span> Các nút chuyển trạng thái
-              hiển thị theo vai trò của bạn và máy trạng thái của phiếu. Chuyển sang “
-              {statusLabel('resolved')}” bắt buộc mô tả cách giải quyết (từ {RESOLUTION_NOTE_MIN}{' '}
-              đến {RESOLUTION_NOTE_MAX} ký tự).
-            </p>
-          </div>
+          {/* Người tạo phiếu: cho biết khi nào trang này cần họ. Quy tắc ghi chú giải quyết
+              chỉ nằm ở form "Đánh dấu đã giải quyết", nơi nó có tác dụng. */}
+          {!isStaff && (
+            <div className="flex items-start gap-3 rounded-[8px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-4 text-xs text-[var(--color-content-muted)] shadow-2xs">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
+              <p className="leading-relaxed">
+                <span className="font-bold text-[var(--color-content)]">Lưu ý:</span> Khi phiếu cần
+                bạn, thao tác sẽ xuất hiện tại đây: trả lời khi kỹ thuật viên hỏi thêm, hoặc xác nhận
+                đóng phiếu khi sự cố đã được giải quyết.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Right column: workflow actions */}
         <TicketWorkflowActions
           ticket={ticket}
+          events={events}
           onTransitionSuccess={async () => {
             await loadTicketData(true);
           }}
-          onActiveEdgeChange={setHasActiveEdge}
+          onBottomBarChange={setBottomBar}
         />
       </div>
     </div>

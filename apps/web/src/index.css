@@ -114,6 +114,9 @@
   --color-primary-tint: var(--blue-50);
   --color-primary-border: var(--blue-200);
   --color-primary-text: var(--blue-800);
+  /* Màu chủ đạo khi dùng làm CHỮ (liên kết, nhãn nhấn). Chế độ sáng giữ nguyên màu chủ đạo;
+     chế độ tối dùng primary-text vì primary (blue-500) trên nền tối chỉ đạt ~3,4:1. */
+  --color-primary-ink: var(--color-primary);
   --color-ring: var(--blue-600);
 
   /* Semantic Status: Success */
@@ -176,6 +179,7 @@
   --color-primary-tint: rgba(37, 99, 235, 0.16);
   --color-primary-border: rgba(59, 130, 246, 0.40);
   --color-primary-text: #93c5fd;
+  --color-primary-ink: var(--color-primary-text);
   --color-ring: var(--blue-500);
 
   /* Semantic Status: Success (Dark) */
