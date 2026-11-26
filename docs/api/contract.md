@@ -61,7 +61,7 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
 - `GET /api/health`: công khai, `{status:"ok",service:"dx-desk-api",version:"0.5.0"}`.
 - `GET /api/me` trả `{id,username,roles:["Employee"|"Agent"|"Manager"],assistant_enabled}`. `assistant_enabled` cho biết hồ sơ `full` đã bật các tính năng trợ lý Desk.
 - `GET /api/categories`: `{data:[{id,code,name,description,requirement_fields}]}`.
-  `requirement_fields` là mảng đối tượng `{key,label,required}` — trường động theo loại
+  `requirement_fields` là mảng đối tượng `{key,label,required,placeholder?,hint?}` — trường động theo loại
   ticket (tuần 3 thêm danh mục `access` "Cấp quyền hệ thống" và `system-error` "Lỗi hệ thống",
   tổng cộng 6 danh mục active).
 - `GET /api/categories/:id/articles` (W5-08): `{data:[{id,slug,title,summary,url}]}` — bài Wiki.js gợi ý
@@ -343,6 +343,29 @@ biên bản **không** chứa lý do đề nghị hay ghi chú duyệt.
 Hạn chế đã biết: chữ trong PDF hiển thị và in đúng tiếng Việt, nhưng sao chép/tìm kiếm văn bản trong tệp
 có thể sai dấu ở một số trình đọc (bảng ToUnicode của phông tập con).
 ## Trợ lý Desk (W6-03)
+
+### Hội thoại có lịch sử
+
+- `GET /api/assistant-sessions?offset=0` trả `{data,has_more}` theo hoạt động gần nhất, 50 hội thoại/trang.
+- `POST /api/assistant-sessions` nhận `{}` và tạo hội thoại riêng của tài khoản JWT.
+- `GET /api/assistant-sessions/:id?before=<ordinal>` trả `{session,turns,has_more}`, 40 lượt gần nhất theo thứ tự cũ đến mới.
+- `PATCH /api/assistant-sessions/:id` nhận `{title}` từ 1 đến 100 ký tự.
+- `DELETE /api/assistant-sessions/:id` trả 204 và xóa cả tin nhắn cùng bộ nhớ hội thoại.
+- `POST /api/assistant/chat` tiếp tục hỗ trợ `{question}`. Giao diện có lịch sử gửi
+  `{question,session_id,request_id}`; `request_id` là UUID do client tạo để thử lại
+  cùng một lượt mà không nhân đôi tin nhắn. Câu hỏi nhận tối đa 8.000 ký tự.
+- Luồng NDJSON có thêm sự kiện `turn` với mã lượt, mã hội thoại và tên tự động.
+  `done` được gửi sau khi lưu câu trả lời. Dừng hoặc mất kết nối lưu trạng thái
+  `interrupted`, lỗi mô hình lưu `error` kèm phần phản hồi đã có.
+- Các endpoint `POST /api/assistant-sessions/:id/turns/start` và
+  `POST /api/assistant-sessions/:id/turns/:turnId/finish` dành cho dịch vụ trợ lý.
+  Chúng yêu cầu JWT và HMAC bằng `ASSISTANT_ACTION_KEY`, ký chủ sở hữu, scope và
+  nguyên body JSON. Client web nhận quyền tạo/đổi tên/xóa hội thoại và đọc lịch sử.
+- Đề xuất trong hội thoại được lưu kèm công cụ, tham số, hạn 5 phút và trạng thái
+  xác nhận. Công cụ ghi ký thêm mã hội thoại, kiểm tra hội thoại còn tồn tại dưới
+  cùng khóa giao dịch trước khi tạo dữ liệu và cập nhật trạng thái đề xuất.
+- RLS áp dụng chủ sở hữu cho cả Employee, Agent và Manager. Hội thoại của tài khoản
+  khác trả 404. GET lịch sử dùng `Cache-Control: no-store`.
 
 - `POST /api/assistant/chat` (JWT) nhận `{question}` và trả NDJSON. Mỗi dòng có
   `type` là `step` (label), `delta` (text), `sources` (items gồm title và URL),

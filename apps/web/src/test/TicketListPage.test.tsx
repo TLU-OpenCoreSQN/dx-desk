@@ -64,6 +64,14 @@ describe('TicketListPage Component', () => {
       </MemoryRouter>
     );
 
+  it('khung bảng không tạo vùng cuộn riêng để header sticky không đè lên phiếu đầu', async () => {
+    vi.spyOn(apiService, 'getTickets').mockResolvedValue({ data: mockTickets, limit: 25, offset: 0 });
+    renderComponent();
+    const table = await screen.findByTestId('ticket-table');
+    // overflow-hidden làm khung thành scroll container của header `sticky top-14`.
+    expect(table.className).not.toMatch(/overflow-(hidden|auto|scroll)/);
+  });
+
   it('renders ticket table with real data', async () => {
     vi.spyOn(apiService, 'getTickets').mockResolvedValue({
       data: mockTickets,

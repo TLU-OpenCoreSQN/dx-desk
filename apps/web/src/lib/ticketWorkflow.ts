@@ -99,7 +99,7 @@ export interface TransitionEdge {
   hint?: string;
 }
 
-/** Cạnh được hiển thị theo vai trò — tập con của STATUS_TRANSITIONS (hợp đồng tuần 3). */
+/** Cạnh được hiển thị theo vai trò - tập con của STATUS_TRANSITIONS (hợp đồng tuần 3). */
 export const TRANSITION_EDGES: TransitionEdge[] = [
   { from: 'new', to: 'triaged', label: 'Phân loại phiếu', roles: ['Agent', 'Manager'] },
   { from: 'new', to: 'cancelled', label: 'Hủy phiếu', roles: ['Employee', 'Agent', 'Manager'], requesterOnly: true },

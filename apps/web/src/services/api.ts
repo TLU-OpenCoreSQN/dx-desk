@@ -228,6 +228,10 @@ export async function uploadAttachment(id: string, file: File): Promise<Attachme
 export function getAttachmentDownload(id: string): Promise<{ url: string; expires_at: string }> {
   return request(`/attachments/${encodeURIComponent(id)}/download-url`, { method: 'POST' });
 }
+/** Cấp liên kết đã ký, ngắn hạn để tải biên bản bàn giao thiết bị (ADR 0009). */
+export function getDeviceHandoverDownload(id: string): Promise<{ url: string; expires_at: string }> {
+  return request(`/device-requests/${encodeURIComponent(id)}/handover-url`, { method: 'POST' });
+}
 
 /**
  * Ticket status transition endpoint

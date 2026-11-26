@@ -50,6 +50,8 @@ const invalidCases = [
   ['unknown field key', c => { c.categories[0].requirement_fields[0].extra = 'ignored?'; }],
   ['unsupported field type', c => { c.categories[0].requirement_fields[0].type = 'number'; }],
   ['nonboolean required', c => { c.categories[0].requirement_fields[0].required = 'true'; }],
+  ['overlong field hint', c => { c.categories[0].requirement_fields[0].hint = 'x'.repeat(201); }],
+  ['nonstring field placeholder', c => { c.categories[0].requirement_fields[0].placeholder = 1; }],
   ['unsafe field key', c => { c.categories[0].requirement_fields[0].key = '__proto__'; }],
   ['prototype field key', c => { c.categories[0].requirement_fields[0].key = 'constructor'; }],
   ['unknown priority', c => { c.sla_policies.urgent = c.sla_policies.high; }],

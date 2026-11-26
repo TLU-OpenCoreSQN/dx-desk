@@ -87,7 +87,9 @@ node scripts/dxdesk.mjs config validate
 ```
 
 `config/schema.json` định nghĩa phiên bản 1: `teams`, `categories`/`requirement_fields`, `routing`,
-`sla_policies` theo priority và `modules.enabled`. Trường động hiện hỗ trợ chuỗi. Bắt buộc giữ module
+`sla_policies` theo priority và `modules.enabled`. Trường động hiện hỗ trợ chuỗi; mỗi trường có thể khai
+báo thêm `placeholder` (ví dụ trong ô nhập) và `hint` (dòng giải thích), tối đa 200 ký tự, để form tạo
+phiếu hướng dẫn người dùng theo cách gọi của doanh nghiệp. Bắt buộc giữ module
 `core`; mã trùng, trường lạ, JSON trùng khóa hoặc policy sai bị từ chối. Validate offline chưa xác nhận
 tham chiếu tới nhóm/danh mục hiện có trong DB; kiểm tra đó chạy trong apply.
 
@@ -144,6 +146,9 @@ ticket giả tiếng Việt với nhãn/rubric; nhãn cần reviewer độc lậ
 node tools/testing/week6-evaluate.mjs --help
 node tools/testing/week6-evaluate.mjs --timeout-ms 3000
 ```
+
+> Công cụ này vẫn gọi API Ollama và chưa chuyển sang API bên thứ ba của [ADR 0011](adr/0011-mo-hinh-ai-qua-api-ben-thu-ba.md);
+> chưa dùng được cho tới khi cập nhật.
 
 Mặc định chỉ preflight GET: kiểm gateway, role token và model đã có trong Ollama; không pull model,
 không sinh câu trả lời hoặc xác nhận hành động. Runtime/token thiếu trả exit khác 0 và
@@ -467,15 +472,26 @@ Mọi cổng được bind localhost cho phát triển. Triển khai Internet, T
 và hardening gateway là các mốc sau; không dùng cấu hình dev để công bố trực tiếp.
 ### Chỉ mục ngữ nghĩa Wiki (W6-01)
 
-Hồ sơ `full` chạy Qdrant và tiến trình `wiki-index` trong mạng Compose. Chọn
-`COMPOSE_PROFILES=full` trong `.env`, chạy `make up` rồi tải mô hình nhúng một lần.
-BGE-M3 567M hỗ trợ truy vấn đa ngôn ngữ, gồm truy vấn tiếng Việt. Trọng số mô hình
-được tải riêng và giữ trong volume Ollama.
+Hồ sơ `full` chạy Qdrant và tiến trình `wiki-index` trong mạng Compose. Mô hình AI chạy
+ở nhà cung cấp bên thứ ba qua API chuẩn OpenAI-compatible, mặc định Google Gemini
+([ADR 0011](adr/0011-mo-hinh-ai-qua-api-ben-thu-ba.md)); không cần tải mô hình về máy.
+Chọn `COMPOSE_PROFILES=full` và đặt khóa API trong `.env` (không commit), rồi chạy `make up`:
 
 ```sh
-docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull bge-m3:567m
+AI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+AI_API_KEY=<khóa API Gemini>
+ASSISTANT_CHAT_MODEL=gemini-flash-latest
+ASSISTANT_EMBED_MODEL=gemini-embedding-001
+```
+
+Đổi nhà cung cấp chỉ cần đổi bốn biến trên. Kiểm tra đồng bộ chỉ mục:
+
+```sh
 docker compose --env-file .env -f infra/compose/docker-compose.yml logs wiki-index
 ```
+
+Nội dung sáu bài hỗ trợ được gửi tới nhà cung cấp để nhúng; câu hỏi trợ lý và tiêu đề/mô tả
+phiếu (khi gợi ý phân loại) cũng được gửi đi. Chỉ dùng dữ liệu synthetic khi demo.
 
 Tiến trình đọc sáu bài hỗ trợ đã xuất bản qua GraphQL Wiki.js, kiểm tra thay đổi mỗi
 60 giây và thay thế đoạn cũ trong Qdrant. Bài bị ẩn hoặc xóa sẽ mất khỏi kết quả tìm kiếm.
@@ -485,12 +501,29 @@ Nếu khóa hết hạn, chạy lại `make up`. Qdrant và tiến trình đồn
 
 ### Cảnh 4 với trợ lý IT (W6-03, W6-04, W6-09)
 
-Trong hồ sơ `full`, tải model chat sau khi tải model nhúng. Khi chỉ mục Wiki đã
-sẵn sàng, mở **Trợ lý AI** từ menu Desk. Bật Mattermost và outbox demo để kiểm tra
+Màn `/tro-ly` lưu các cuộc trò chuyện riêng của từng tài khoản trong PostgreSQL.
+Chọn **Cuộc trò chuyện mới** để bắt đầu ngữ cảnh mới. Danh sách bên trái cho phép
+mở lại, đổi tên và xóa hội thoại. Xóa hội thoại sẽ xóa toàn bộ tin nhắn và bộ nhớ
+của hội thoại đó. Tải lại trang hoặc đăng nhập lại sẽ khôi phục lịch sử đã lưu.
+Trên điện thoại, nút **Mở lịch sử hội thoại** mở danh sách này.
+
+Mỗi lần gửi tiếp, server đọc lịch sử của chính cuộc trò chuyện đang chọn. Khi
+lịch sử vượt khoảng 48.000 ký tự, các lượt cũ được tóm tắt vào bộ nhớ của hội thoại,
+giữ các lượt gần nhất trong prompt. Lịch sử đầy đủ vẫn có thể tải qua **Tải tin nhắn cũ**.
+Nút **Dừng trả lời** giữ phần đã nhận và cho phép gửi tiếp. Một hội thoại xử lý một
+lượt tại một thời điểm. Sau sự cố tiến trình, lượt đang dở được mở lại sau lease 5 phút.
+Một tin nhắn nhận tối đa 8.000 ký tự. Enter gửi tin và Shift+Enter xuống dòng.
+
+Nghiệm thu tạo/đổi tên/xóa, ngữ cảnh liên tục, tải lại và cách ly giữa tài khoản:
+
+```sh
+node tools/testing/assistant-conversations.mjs
+```
+
+Trong hồ sơ `full`, khi đã đặt `AI_API_KEY` và chỉ mục Wiki đã sẵn sàng, mở **Trợ lý AI** từ menu Desk. Bật Mattermost và outbox demo để kiểm tra
 thông báo task của quản lý.
 
 ```sh
-docker compose --env-file .env -f infra/compose/docker-compose.yml exec ollama ollama pull qwen3:4b
 npm ci --prefix tools/testing
 npx --prefix tools/testing playwright install chromium
 node tools/testing/week6-assistant.mjs

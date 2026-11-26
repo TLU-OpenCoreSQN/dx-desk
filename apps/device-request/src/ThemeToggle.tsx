@@ -76,7 +76,7 @@ export function ThemeToggle() {
     >
       {mode === 'dark' ? (
         <svg
-          className="h-4 w-4 text-[#cb912f]"
+          className="h-4 w-4 text-status-warning"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

@@ -114,7 +114,7 @@ export function Workspace({ user }: { user: CurrentUser }) {
 
         <div className="grid content-start gap-6">
           {(isManager || isAgent) && (
-            <RequestSection id="waiting" title={isManager && !isAgent ? `Chờ bạn duyệt · đơn vị ${user.department ?? '—'}` : 'Chờ bạn xử lý'}
+            <RequestSection id="waiting" title={isManager && !isAgent ? `Chờ bạn duyệt · đơn vị ${user.department ?? '-'}` : 'Chờ bạn xử lý'}
               empty="Không có đề nghị nào đang chờ bạn." revision={revision} user={user} onChanged={reload} />
           )}
           <RequestSection id="mine" title="Đề nghị của tôi" empty="Bạn chưa gửi đề nghị nào." revision={revision}

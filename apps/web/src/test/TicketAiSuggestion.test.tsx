@@ -61,7 +61,7 @@ it('re-fetches and clears suggestion when ticketStatus or assignedTo changes', a
   rerender(
     <TicketAiSuggestion ticketId="ticket-1" ticketStatus="in_progress" assignedTo="agent-1" categories={categories} refresh={refresh} />
   );
-  await waitForElementToBeRemoved(() => screen.queryByRole('heading', { name: 'Đề xuất của AI' }));
+  await waitForElementToBeRemoved(() => screen.queryByRole('button', { name: 'Xác nhận đề xuất' }));
   expect(getAiSuggestion).toHaveBeenCalledTimes(2);
 });
 

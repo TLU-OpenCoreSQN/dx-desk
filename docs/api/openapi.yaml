@@ -92,6 +92,146 @@ paths:
             application/ld+json:
               schema: { $ref: "#/components/schemas/LinkedDataResource" }
         "404": { $ref: "#/components/responses/Error" }
+  /assistant-sessions:
+    get:
+      operationId: listAssistantSessions
+      summary: Hội thoại riêng của tài khoản hiện tại
+      parameters:
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        "200":
+          description: 50 hội thoại theo hoạt động gần nhất
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AssistantSession" } }
+                  has_more: { type: boolean }
+    post:
+      operationId: createAssistantSession
+      summary: Bắt đầu một hội thoại có ngữ cảnh riêng
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        "201":
+          description: Hội thoại mới
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantSession" }
+  /assistant-sessions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: readAssistantSession
+      summary: Đọc 40 lượt chat gần nhất và tải lịch sử cũ
+      parameters:
+        - { name: before, in: query, schema: { type: string, pattern: "^[0-9]{1,18}$" } }
+      responses:
+        "200":
+          description: Tin nhắn theo thứ tự thời gian
+          headers:
+            Cache-Control: { schema: { type: string, enum: [no-store] } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session: { $ref: "#/components/schemas/AssistantSession" }
+                  turns: { type: array, items: { $ref: "#/components/schemas/AssistantTurn" } }
+                  has_more: { type: boolean }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: renameAssistantSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        "200":
+          description: Hội thoại đã đổi tên
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssistantSession" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteAssistantSession
+      summary: Xóa hội thoại cùng tin nhắn và bộ nhớ
+      responses:
+        "204": { description: Đã xóa }
+        "404": { $ref: "#/components/responses/Error" }
+  /assistant-sessions/{id}/turns/start:
+    post:
+      operationId: beginAssistantTurn
+      description: Dịch vụ trợ lý gọi với JWT và HMAC ký [owner, start + dấu hai chấm + id, body]. Một hội thoại có một lượt pending. Lease 5 phút.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: X-DXDesk-Assistant-Proof, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id, question]
+              properties:
+                request_id: { type: string, format: uuid }
+                question: { type: string, minLength: 1, maxLength: 8000 }
+      responses:
+        "200": { description: Lịch sử tin cậy và bộ nhớ hoặc kết quả cũ của request_id }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /assistant-sessions/{id}/turns/{turnId}/finish:
+    post:
+      operationId: finishAssistantTurn
+      description: Dịch vụ trợ lý lưu kết quả với JWT và HMAC ký scope finish, id, turnId và nguyên body. Lưu hoàn tất trước sự kiện done.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: turnId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: X-DXDesk-Assistant-Proof, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer, status, metadata]
+              properties:
+                answer: { type: string, maxLength: 16000 }
+                status: { type: string, enum: [complete, error, interrupted] }
+                metadata: { type: object }
+                summary: { type: string, maxLength: 12000 }
+                summarized_through: { type: string, pattern: "^[0-9]{1,18}$" }
+      responses:
+        "200": { description: Đã lưu }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /assistant-sessions/proposals/{id}:
+    get:
+      operationId: readConversationProposal
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Đề xuất còn hiệu lực thuộc hội thoại của tài khoản }
+        "404": { $ref: "#/components/responses/Error" }
+  /assistant-sessions/proposals/{id}/cancel:
+    post:
+      operationId: cancelConversationProposal
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Đề xuất đã hủy }
+        "409": { $ref: "#/components/responses/Error" }
   /assistant/chat:
     post:
       operationId: streamAssistantChat
@@ -104,10 +244,12 @@ paths:
               type: object
               required: [question]
               properties:
-                question: { type: string, minLength: 1, maxLength: 1000 }
+                question: { type: string, minLength: 1, maxLength: 8000 }
+                session_id: { type: string, format: uuid, description: Gửi cùng request_id để tiếp tục hội thoại đã lưu }
+                request_id: { type: string, format: uuid, description: Giữ nguyên khi thử lại cùng tin nhắn }
       responses:
         "200":
-          description: Các dòng step, delta, sources, proposal, done hoặc error
+          description: Các dòng turn, step, delta, sources, proposal, done hoặc error
           content:
             application/x-ndjson:
               schema: { type: string }
@@ -259,6 +401,8 @@ paths:
                               key: { type: string }
                               label: { type: string }
                               required: { type: boolean }
+                              placeholder: { type: string, description: "Ví dụ trong ô nhập (không bắt buộc, từ cấu hình doanh nghiệp)." }
+                              hint: { type: string, description: "Dòng giải thích dưới ô nhập (không bắt buộc, từ cấu hình doanh nghiệp)." }
         "401": { $ref: "#/components/responses/Error" }
   /categories/{id}/articles:
     get:
@@ -966,6 +1110,25 @@ components:
                   - { type: string }
                   - { type: array, items: { type: string } }
   schemas:
+    AssistantSession:
+      type: object
+      required: [id, title, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, maxLength: 100 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    AssistantTurn:
+      type: object
+      required: [id, ordinal, question, answer, status, metadata, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        ordinal: { type: string }
+        question: { type: string, maxLength: 8000 }
+        answer: { type: string, maxLength: 16000 }
+        status: { type: string, enum: [pending, complete, error, interrupted] }
+        metadata: { type: object, description: Các bước xử lý và nguồn Wiki cùng đề xuất xác nhận nếu có }
+        created_at: { type: string, format: date-time }
     LinkedDataResource:
       type: object
       required: ["@context", "@id", "@type", "schema:name", "schema:identifier"]

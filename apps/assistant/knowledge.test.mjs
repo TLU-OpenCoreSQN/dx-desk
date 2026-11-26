@@ -30,10 +30,12 @@ test('Wiki revisions are embedded once, search masks stale data, and removed chu
       result = body.variables ? { data: { pages: { single: article } } } :
         { data: { pages: { list: [article, hidden, arbitrary] } } };
       if (body.variables) assert.equal(body.variables.id, article.id);
-    } else if (request.url === '/api/embed') {
+    } else if (request.url === '/v1beta/openai/embeddings') {
+      assert.equal(request.headers.authorization, 'Bearer ai-fixture');
+      assert.equal(body.model, 'embed-fixture');
       if (dependencyFailed) response.statusCode = 503;
       embeddings++;
-      result = { embeddings: body.input.map(() => [1, 2]) };
+      result = { data: body.input.map((_, index) => ({ index, embedding: [1, 2] })) };
     } else if (/\/points\/scroll$/.test(request.url)) {
       result = { result: { points: [...points.values()] } };
     } else if (/\/points\/query$/.test(request.url)) {
@@ -54,7 +56,8 @@ test('Wiki revisions are embedded once, search masks stale data, and removed chu
   t.after(() => new Promise(resolve => server.close(resolve)));
   const base = 'http://127.0.0.1:' + server.address().port;
   const config = wikiKnowledge({ ASSISTANT_WIKI_URL: base, WIKI_INDEX_TOKEN: 'wiki-fixture',
-    OLLAMA_URL: base, QDRANT_URL: base, WIKI_PUBLIC_URL: 'https://wiki.example.test' });
+    AI_API_BASE_URL: base + '/v1beta/openai', AI_API_KEY: 'ai-fixture', ASSISTANT_EMBED_MODEL: 'embed-fixture',
+    QDRANT_URL: base, WIKI_PUBLIC_URL: 'https://wiki.example.test' });
 
   assert.deepEqual(await syncKnowledge(config), { pages: 1, updated: 1, removed: 0 });
   const previous = points.size;
@@ -85,12 +88,13 @@ test('searchKnowledge handles Qdrant response without result safely', async t =>
     for await (const _ of request) { /* drain */ }
     response.setHeader('Content-Type', 'application/json');
     if (request.url === '/graphql') return response.end(JSON.stringify({ data: { pages: { list: [article] } } }));
-    if (request.url === '/api/embed') return response.end(JSON.stringify({ embeddings: [[1, 2]] }));
+    if (request.url === '/v1beta/openai/embeddings') return response.end(JSON.stringify({ data: [{ index: 0, embedding: [1, 2] }] }));
     response.end(JSON.stringify({}));
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
   const base = 'http://127.0.0.1:' + server.address().port;
-  const config = wikiKnowledge({ ASSISTANT_WIKI_URL: base, WIKI_INDEX_TOKEN: 'wiki-fixture', OLLAMA_URL: base, QDRANT_URL: base });
+  const config = wikiKnowledge({ ASSISTANT_WIKI_URL: base, WIKI_INDEX_TOKEN: 'wiki-fixture',
+    AI_API_BASE_URL: base + '/v1beta/openai', AI_API_KEY: 'ai-fixture', QDRANT_URL: base });
   assert.deepEqual(await searchKnowledge(config, 'VPN'), []);
 });

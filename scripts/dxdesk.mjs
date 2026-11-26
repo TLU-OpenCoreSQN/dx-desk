@@ -110,6 +110,11 @@ if (action === 'up') {
     await setupWiki(root, env);
   }
   compose('up', '-d', '--build', '--wait');
+  if (wikiIndexEnabled(env)) {
+    // These Node services mount source files, so an existing process must reload its modules after a pull.
+    compose('restart', 'wiki-index', 'assistant');
+    compose('up', '-d', '--wait', 'assistant');
+  }
   // PostgREST may still hold the old signing keys when the realm was recreated.
   compose('restart', 'postgrest');
   compose('up', '-d', '--wait', 'postgrest');

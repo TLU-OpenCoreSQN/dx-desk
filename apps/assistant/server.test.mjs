@@ -12,12 +12,19 @@ test('confirmation is bound to the question owner, consumes the proposal once, a
     identity: async token => ({ id: token, roles: ['Employee'] }),
     available: async () => ['create_ticket'],
     knowledge: async () => [{ title: 'VPN', url: 'https://wiki.example.test/en/ho-tro/vpn', text: 'VPN.' }],
-    async *complete(_messages, definitions) {
-      if (definitions.length) yield { message: { tool_calls: [
-        { function: { name: 'create_ticket', arguments: { ...args, role: 'Manager' } } },
-        { function: { name: 'create_ticket', arguments: args } },
-      ] } };
-      else yield { message: { content: 'Đã chuẩn bị đề xuất.' } };
+    async *complete(messages, definitions) {
+      if (definitions.length) yield { tool_calls: [
+        { id: 'call_1', name: 'create_ticket', arguments: { ...args, role: 'Manager' } },
+        { id: 'call_2', name: 'create_ticket', arguments: args, extra_content: { google: { thought_signature: 'sig' } } },
+      ] };
+      else {
+        // Lượt sau gửi lại tool call theo định dạng OpenAI, kèm thought signature và tool_call_id.
+        const replayed = messages.find(message => message.role === 'assistant');
+        assert.deepEqual(replayed.tool_calls[1], { id: 'call_2', type: 'function',
+          function: { name: 'create_ticket', arguments: JSON.stringify(args) }, extra_content: { google: { thought_signature: 'sig' } } });
+        assert.deepEqual(messages.filter(message => message.role === 'tool').map(message => message.tool_call_id), ['call_1', 'call_2']);
+        yield { content: 'Đã chuẩn bị đề xuất.' };
+      }
     },
     async invoke(...params) { mutations.push(params.slice(0, 4)); },
   });
@@ -96,6 +103,76 @@ test('a lost tool response allows retry with the same durable action ID', async 
   assert.deepEqual(ids, [offered.id, offered.id]);
 });
 
+test('guidance and deferred writes do not offer a ticket even if the model requests the tool', async () => {
+  for (const question of [
+    'Tôi dùng Windows 11. Hướng dẫn tôi kiểm tra kết nối VPN trước khi tạo phiếu hỗ trợ.',
+    'Tôi vẫn chưa kết nối được VPN, đừng tạo phiếu.',
+    'Tôi chưa muốn tạo phiếu VPN, hãy hướng dẫn thêm.',
+    'Hướng dẫn cách tạo phiếu VPN.',
+  ]) {
+    const events = [];
+    let calls = 0;
+    await answer({
+      caller: { id: 'employee', token: 'token', roles: ['Employee'] },
+      signal: new AbortController().signal,
+      question,
+      dependencies: {
+        knowledge: async () => [],
+        available: async () => ['create_ticket', 'create_task', 'similar_tickets'],
+        propose: () => assert.fail('The user deferred writes'),
+        invoke: () => assert.fail('A write must not execute'),
+        async *complete(messages, definitions) {
+          assert.ok(definitions.every(item => !['create_ticket', 'create_task'].includes(item.function.name)));
+          if (calls++ === 0) {
+            assert.ok(definitions.some(item => item.function.name === 'similar_tickets'));
+            yield { tool_calls: [{ id: 'unexpected', name: 'create_ticket', arguments: {
+              category: 'vpn', title: 'VPN', description: question,
+            } }] };
+          } else {
+            assert.match(messages.at(-1).content, /Công cụ hoặc tham số không hợp lệ/);
+            yield { content: 'Hãy kiểm tra kết nối mạng trước.' };
+          }
+        },
+      },
+      emit: (type, data) => events.push({ type, ...data }),
+    });
+    assert.equal(events.some(event => event.type === 'proposal'), false);
+    assert.equal(events.find(event => event.type === 'delta').text, 'Hãy kiểm tra kết nối mạng trước.');
+  }
+});
+
+test('an explicit VPN ticket request still offers a confirmation', async () => {
+  const events = [];
+  await answer({
+    caller: { id: 'employee', token: 'token', roles: ['Employee'] },
+    signal: new AbortController().signal,
+    question: 'Tạo phiếu VPN giúp tôi.',
+    dependencies: {
+      knowledge: async () => [], available: async () => ['create_ticket'], propose: proposalStore().offer,
+      invoke: () => assert.fail('A proposal needs confirmation'),
+    },
+    emit: (type, data) => events.push({ type, ...data }),
+  });
+  assert.equal(events.find(event => event.type === 'proposal').fields.category, 'vpn');
+});
+
+test('a Manager can request VPN statistics while deferring task creation', async () => {
+  const events = [];
+  await answer({
+    caller: { id: 'manager', token: 'token', roles: ['Manager'] },
+    signal: new AbortController().signal,
+    question: 'VPN tăng tuần này thế nào? Chưa cần tạo công việc.',
+    dependencies: {
+      knowledge: async () => [], available: async () => ['ticket_statistics', 'create_task'],
+      propose: () => assert.fail('Task creation was deferred'),
+      invoke: async name => { assert.equal(name, 'ticket_statistics'); return { current_week: 8, previous_week: 4 }; },
+    },
+    emit: (type, data) => events.push({ type, ...data }),
+  });
+  assert.match(events.find(event => event.type === 'delta').text, /tuần này 8, tuần trước 4/);
+  assert.equal(events.some(event => event.type === 'proposal'), false);
+});
+
 test('Vietnamese đ is normalized for unresolved VPN reports', async () => {
   const events = [];
   await answer({
@@ -111,24 +188,6 @@ test('Vietnamese đ is normalized for unresolved VPN reports', async () => {
     emit: (type, data) => events.push({ type, ...data }),
   });
   assert.equal(events.find(event => event.type === 'proposal')?.fields.category, 'vpn');
-});
-
-test('Ollama stream error part throws instead of completing silently', async () => {
-  await assert.rejects(
-    answer({
-      caller: { id: 'employee', token: 'token', roles: ['Employee'] },
-      signal: new AbortController().signal,
-      question: 'Xin hướng dẫn đổi mật khẩu.',
-      dependencies: {
-        knowledge: async () => [],
-        available: async () => [],
-        propose: proposalStore().offer,
-        async *complete() { yield { error: 'model not found' }; },
-      },
-      emit: () => {},
-    }),
-    /model not found/,
-  );
 });
 
 test('ndjson rejects oversized complete lines and expired proposals are evicted on take', async () => {

@@ -55,12 +55,13 @@ try {
   const source = employee.getByRole('list', { name: 'Bài Wiki tham chiếu' }).first().getByRole('link').first();
   await source.waitFor();
   assert.match(await source.getAttribute('href'), /\/en\/ho-tro\/vpn$/);
-  const answer = employee.getByRole('heading', { name: prompt, exact: true }).locator('..').locator('p.whitespace-pre-wrap');
+  const answer = employee.locator('.assistant-response').first();
   await answer.waitFor();
   await employee.getByText('Trợ lý đang xử lý…').waitFor({ state: 'detached' });
   assert.match((await stream).headers()['content-type'], /^application\/x-ndjson/);
   assert.ok((await answer.textContent())?.trim().length > 20);
   assert.equal(await employee.getByRole('alert').count(), 0);
+  await employee.getByText('Các bước xử lý', { exact: true }).first().click();
   await employee.getByRole('list', { name: 'Các bước gọi công cụ' }).getByText('Đang tìm bài Wiki liên quan').waitFor();
   pass('Employee obtains a streamed answer and a link to the Wiki VPN article');
 
@@ -80,6 +81,7 @@ try {
   await manager.getByRole('link', { name: 'Trợ lý AI' }).click();
   await question(manager, 'Tại sao ticket VPN tăng mạnh tuần này?');
   await manager.getByText(/tuần này \d+, tuần trước \d+/).first().waitFor();
+  await manager.getByText('Các bước xử lý', { exact: true }).first().click();
   await manager.getByRole('list', { name: 'Các bước gọi công cụ' }).getByText('Thống kê phiếu').waitFor();
   await manager.getByRole('heading', { name: 'Tạo công việc', exact: true }).waitFor();
   const task = (await confirm(manager)).result;
@@ -97,7 +99,7 @@ try {
 
   const agent = await login('agent.1');
   await agent.goto(base + '/tickets/' + created.result.ticket_id);
-  await agent.getByRole('heading', { name: 'Đề xuất của AI' }).waitFor();
+  await agent.getByRole('region', { name: 'So sánh đề xuất phân loại AI' }).waitFor();
   await agent.getByRole('button', { name: 'Sửa đề xuất' }).click();
   await agent.getByLabel('Tóm tắt').fill('Phiếu báo lỗi xác thực VPN từ xa.');
   await agent.getByRole('button', { name: 'Xác nhận bản đã sửa' }).click();

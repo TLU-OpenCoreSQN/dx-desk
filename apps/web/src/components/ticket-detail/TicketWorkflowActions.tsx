@@ -34,7 +34,7 @@ export interface TicketWorkflowActionsProps {
 }
 
 const TEXTAREA_CLASS =
-  'w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-3 text-xs leading-relaxed text-[var(--color-content)] focus:bg-surface focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:text-sm transition-all';
+  'w-full rounded-md border border-edge bg-surface-sidebar p-3 text-xs leading-relaxed text-content focus:bg-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm transition-all';
 
 const edgeKey = (edge: TransitionEdge): string => `${edge.from}-${edge.to}-${edge.label}`;
 
@@ -180,9 +180,9 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
           </p>
 
           {successMessage && (
-            <div className="flex items-start gap-2 rounded-[4px] border border-[#b8dcce] bg-[#e8f3ed] px-3 py-2 text-xs text-[#27553c]">
+            <div className="flex items-start gap-2 rounded-md border border-status-success-border bg-status-success-bg px-3 py-2 text-xs text-status-success">
               <CheckCircle2
-                className="mt-0.5 h-4 w-4 shrink-0 text-[#448361]"
+                className="mt-0.5 h-4 w-4 shrink-0 text-status-success"
                 aria-hidden="true"
               />
               <p className="min-w-0 flex-1 px-1 leading-relaxed">{successMessage}</p>
@@ -240,14 +240,14 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
 
               <div className="flex flex-wrap items-center gap-1.5">
                 <StatusBadge status={activeEdge.from} />
-                <ArrowRight className="h-3 w-3 shrink-0 text-[#8c8a85]" aria-hidden="true" />
+                <ArrowRight className="h-3 w-3 shrink-0 text-content-subtle" aria-hidden="true" />
                 <StatusBadge status={activeEdge.to} />
               </div>
 
               {isDestructiveActive && (
-                <div className="flex items-start gap-2 rounded-[4px] border border-[#f6c3c1] bg-[#fcedec] p-3 text-xs leading-relaxed text-[#962824]">
+                <div className="flex items-start gap-2 rounded-md border border-status-danger-border bg-status-danger-bg p-3 text-xs leading-relaxed text-status-danger">
                   <AlertTriangle
-                    className="mt-0.5 h-4 w-4 shrink-0 text-[#d44c47]"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-status-danger"
                     aria-hidden="true"
                   />
                   <p>
@@ -259,18 +259,18 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
               )}
 
               {activeEdge.resolutionNoteRequired && (
-                <div className="rounded-[4px] border border-[var(--color-primary-border)] bg-surface p-3">
+                <div className="rounded-md border border-primary-border bg-surface p-3">
                   <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                     <label
                       htmlFor="transition-resolution-note"
-                      className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]"
+                      className="text-[11px] font-bold uppercase tracking-wider text-content"
                     >
                       Mô tả cách giải quyết{' '}
-                      <span className="text-[#d44c47]" aria-hidden="true">
+                      <span className="text-status-danger" aria-hidden="true">
                         *
                       </span>
                     </label>
-                    <span className="font-mono text-[10px] text-[var(--color-content-muted)]">
+                    <span className="font-mono text-[10px] text-content-muted">
                       {resolutionNote.trim().length} / {RESOLUTION_NOTE_MAX}
                     </span>
                   </div>
@@ -287,19 +287,19 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                     placeholder="Mô tả nguyên nhân gốc, cách khắc phục và kết quả kiểm tra..."
                     className={`${TEXTAREA_CLASS} ${
                       resolutionNoteError
-                        ? 'border-[#f6c3c1] focus:border-[#d44c47] focus:ring-[#d44c47]'
+                        ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
                         : ''
                     }`}
                   />
                   <p
                     id="transition-resolution-note-help"
-                    className="mt-1 text-[11px] leading-relaxed text-[var(--color-content-muted)]"
+                    className="mt-1 text-[11px] leading-relaxed text-content-muted"
                   >
                     Bắt buộc khi chuyển sang “{statusLabel(activeEdge.to)}”, từ{' '}
                     {RESOLUTION_NOTE_MIN} đến {RESOLUTION_NOTE_MAX} ký tự.
                   </p>
                   {resolutionNoteError && (
-                    <p className="mt-1 text-[11px] font-medium text-[#d44c47]">
+                    <p className="mt-1 text-[11px] font-medium text-status-danger">
                       {resolutionNoteError}
                     </p>
                   )}
@@ -310,16 +310,16 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                   <label
                     htmlFor="transition-note"
-                    className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content)]"
+                    className="text-[11px] font-bold uppercase tracking-wider text-content"
                   >
                     Ghi chú chuyển trạng thái{' '}
-                    <span className="font-normal normal-case tracking-normal text-[#8c8a85]">
+                    <span className="font-normal normal-case tracking-normal text-content-muted">
                       {rejectionNoteRequired
                         ? '(bắt buộc khi từ chối, ít nhất 5 ký tự)'
                         : '(không bắt buộc)'}
                     </span>
                   </label>
-                  <span className="font-mono text-[10px] text-[var(--color-content-muted)]">
+                  <span className="font-mono text-[10px] text-content-muted">
                     {note.trim().length} / 2000 ký tự
                   </span>
                 </div>
@@ -401,9 +401,9 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
               </div>
             </>
           ) : (
-            <div className="flex items-start gap-2 rounded-[4px] border border-[var(--color-edge)] bg-[var(--color-surface-warm)]/80 px-3 py-2.5">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#8c8a85]" aria-hidden="true" />
-              <p className="text-xs leading-relaxed text-[var(--color-content-muted)]">
+            <div className="flex items-start gap-2 rounded-md border border-edge bg-surface-muted/80 px-3 py-2.5">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-content-subtle" aria-hidden="true" />
+              <p className="text-xs leading-relaxed text-content-muted">
                 Hiện không có thao tác chuyển trạng thái nào khả dụng cho bạn với phiếu ở trạng thái
                 «{statusLabel(ticket.status)}».
               </p>
@@ -411,7 +411,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
           )}
 
           {!activeEdge && (
-            <div className="rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)]/70 p-3 max-lg:hidden">
+            <div className="rounded-md border border-edge-subtle bg-surface-muted/60 p-3 max-lg:hidden">
               <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-content)]">
                 <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary)]" aria-hidden="true" />
                 Biên bản giải quyết

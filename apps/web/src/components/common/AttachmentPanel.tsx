@@ -57,7 +57,7 @@ export const AttachmentPanel: React.FC<{ ticketId: string }> = ({ ticketId }) =>
     </li>)}</ul>
     {items.length === 0 && <p>Chưa có tệp đính kèm.</p>}
     {readyLink && <p><a href={readyLink.url} download rel="noreferrer" className="text-primary underline">Tải {readyLink.name}</a>
-      {' '}— liên kết có hạn 2 phút; lấy liên kết mới nếu hết hạn.</p>}
+      {' '}- liên kết có hạn 2 phút; lấy liên kết mới nếu hết hạn.</p>}
     <label className="block">Bổ sung tệp (PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB)
       <input type="file" className="block w-full min-w-0" accept={ATTACHMENT_TYPES.join(',')} disabled={busy} onChange={event => {
         const chosen = event.target.files?.[0] ?? null;
