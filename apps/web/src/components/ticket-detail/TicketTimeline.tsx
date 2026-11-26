@@ -144,7 +144,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                         <li key={evt.id || idx} className="relative pl-10">
                           <span
                             aria-hidden="true"
-                            className="absolute left-0 top-0 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] text-[var(--color-primary-ink)] shadow-2xs ring-4 ring-surface"
+                            className="absolute left-0 top-0 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] shadow-2xs ring-4 ring-surface"
                           >
                             {Icon ? (
                               <Icon className="h-3.5 w-3.5" />

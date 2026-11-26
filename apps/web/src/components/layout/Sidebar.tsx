@@ -103,7 +103,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             isCompact ? 'justify-center px-2' : ''
           } ${
             isActive
-              ? 'bg-primary-tint text-primary font-semibold shadow-2xs border-l-2 border-primary'
+              ? 'bg-primary-tint text-[var(--color-primary-ink)] font-semibold shadow-2xs border-l-2 border-primary'
               : 'text-content-muted hover:bg-surface-muted hover:text-content'
           }`
         }
@@ -173,7 +173,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {!isCompact ? (
             <div className="bg-surface/80 p-2.5 rounded-md border border-edge shadow-2xs">
               <div className="flex items-center gap-2 font-semibold text-content">
-                <div className="w-5 h-5 rounded-sm bg-primary-tint flex items-center justify-center text-primary">
+                <div className="w-5 h-5 rounded-sm bg-primary-tint flex items-center justify-center text-[var(--color-primary-text)]">
                   <Shield size={13} />
                 </div>
                 <span className="text-xs">TLU-OpenCoreSQN</span>
@@ -184,7 +184,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           ) : (
             <div className="flex justify-center py-1" title="TLU-OpenCoreSQN: Hệ thống hỗ trợ IT">
-              <div className="w-7 h-7 rounded-sm bg-surface border border-edge flex items-center justify-center text-primary shadow-2xs">
+              <div className="w-7 h-7 rounded-sm bg-surface border border-edge flex items-center justify-center text-[var(--color-primary-ink)] shadow-2xs">
                 <Shield size={15} />
               </div>
             </div>

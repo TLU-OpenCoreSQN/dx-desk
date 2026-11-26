@@ -65,7 +65,7 @@ export const KANBAN_COLUMNS: KanbanColumnDef[] = [
     label: 'Đang xử lý',
     sublabel: 'in_progress',
     icon: Wrench,
-    accentColor: 'text-primary',
+    accentColor: 'text-[var(--color-primary-ink)]',
   },
   {
     key: 'waiting',
@@ -257,7 +257,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                       >
                         {/* Top: ID & SLA Badge */}
                         <div className="flex items-center justify-between gap-1 text-[11px]">
-                          <span className="font-mono font-bold text-primary tabular-nums">
+                          <span className="font-mono font-bold text-[var(--color-primary-ink)] tabular-nums">
                             #{ticket.id.slice(0, 8).toUpperCase()}
                           </span>
                           <span
@@ -274,7 +274,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                         </div>
 
                         {/* Title */}
-                        <h4 className="mt-1.5 line-clamp-2 text-xs font-semibold text-content group-hover:text-primary transition-colors">
+                        <h4 className="mt-1.5 line-clamp-2 text-xs font-semibold text-content group-hover:text-[var(--color-primary-ink)] transition-colors">
                           {ticket.title}
                         </h4>
 
@@ -362,7 +362,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge-subtle pb-4 mb-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 font-bold text-sm text-content">
-            <Layers className="h-4 w-4 text-primary" aria-hidden="true" />
+            <Layers className="h-4 w-4 text-[var(--color-primary-ink)]" aria-hidden="true" />
             <span>KANBAN VẬN HÀNH IT</span>
           </div>
           <span className="font-mono text-xs text-content-subtle tabular-nums">
@@ -403,7 +403,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
             onClick={() => setSwimlanesEnabled(!swimlanesEnabled)}
             className={`inline-flex h-[34px] items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-2xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               swimlanesEnabled
-                ? 'border-primary bg-primary-tint text-primary'
+                ? 'border-primary bg-primary-tint text-[var(--color-primary-ink)]'
                 : 'border-edge bg-surface text-content hover:bg-surface-muted'
             }`}
           >
@@ -438,7 +438,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-md border border-edge bg-surface-muted px-3.5 py-2 text-content-muted">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
+                <Clock className="h-4 w-4 text-[var(--color-primary-ink)]" />
                 <span className="text-xs font-bold uppercase tracking-wider">
                   HÀNG ĐỢI TIÊU CHUẨN / STANDARD SWIMLANE
                 </span>

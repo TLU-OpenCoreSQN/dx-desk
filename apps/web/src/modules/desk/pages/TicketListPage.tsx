@@ -566,7 +566,7 @@ export const TicketListPage: React.FC = () => {
                     <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-auto lg:row-auto">
                       <p
                         title={ticket.title}
-                        className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-content)] transition-colors group-hover:text-[var(--color-primary)]"
+                        className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-content)] transition-colors group-hover:text-[var(--color-primary-ink)]"
                       >
                         {ticket.title}
                       </p>
@@ -591,7 +591,7 @@ export const TicketListPage: React.FC = () => {
                       {ticket.assigned_to ? (
                         <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-content-muted)] lg:text-xs">
                           <UserCheck
-                            className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary)]"
+                            className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-ink)]"
                             aria-hidden="true"
                           />
                           <span

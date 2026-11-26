@@ -69,7 +69,7 @@ const AccessGuard: React.FC<{ access: ModuleAccess; when?: ModulePage['when']; c
       <section className="max-w-md mx-auto my-12 rounded-lg border border-edge bg-surface p-6 text-center" role="alert">
         <h1 className="text-xl font-bold text-content">Không có quyền truy cập</h1>
         <p className="mt-2 text-sm text-content-muted">Trang này dành cho {access === 'Manager' ? 'Quản lý' : access === 'Agent' ? 'kỹ thuật viên và Quản lý' : 'người dùng đã được cấp vai trò trong DX-Desk'}.</p>
-        <Link className="mt-4 inline-block text-primary underline" to="/">Về trang chủ</Link>
+        <Link className="mt-4 inline-block text-[var(--color-primary-ink)] underline" to="/">Về trang chủ</Link>
       </section>
     );
   }

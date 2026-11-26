@@ -47,13 +47,13 @@ const DEVICE_META: Record<DeviceType, DeviceMeta> = {
     label: 'Máy tính xách tay (Laptop)',
     icon: Laptop,
     tint: 'bg-[var(--color-primary-tint)]',
-    iconColor: 'text-[var(--color-primary)]',
+    iconColor: 'text-[var(--color-primary-ink)]',
   },
   monitor: {
     label: 'Màn hình máy tính (Monitor)',
     icon: Monitor,
     tint: 'bg-[var(--color-primary-tint)]',
-    iconColor: 'text-[var(--color-primary)]',
+    iconColor: 'text-[var(--color-primary-ink)]',
   },
   keyboard: {
     label: 'Bàn phím làm việc (Keyboard)',
@@ -346,7 +346,7 @@ export const DeviceRequestPage: React.FC = () => {
                 Vui lòng nêu rõ lý do và nhu cầu sử dụng thực tế.
               </p>
             </div>
-            <span className="text-[11px] px-2.5 py-1 rounded-[4px] bg-[var(--color-primary-tint)] text-[var(--color-primary)] font-mono font-semibold border border-[var(--color-primary-border)]">
+            <span className="text-[11px] px-2.5 py-1 rounded-[4px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] font-mono font-semibold border border-[var(--color-primary-border)]">
               POST /api/device-requests
             </span>
           </div>

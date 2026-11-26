@@ -68,7 +68,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge-subtle pb-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-semibold tracking-wider text-primary">
+          <span className="font-mono text-xs font-semibold tracking-wider text-[var(--color-primary-ink)]">
             TIẾN TRÌNH CẤP PHÁT
           </span>
           <span className="font-mono text-xs text-content-subtle tabular-nums">
@@ -158,7 +158,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
                   <span
                     className={`text-xs font-semibold ${
                       isCurrent
-                        ? 'text-primary font-bold'
+                        ? 'text-[var(--color-primary-ink)] font-bold'
                         : isCompleted
                         ? 'text-content'
                         : 'text-content-subtle'

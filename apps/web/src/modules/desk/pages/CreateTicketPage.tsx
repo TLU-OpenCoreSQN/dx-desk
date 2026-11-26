@@ -46,7 +46,7 @@ const Legend: React.FC<{ step: string; icon: React.ReactNode; children: React.Re
   children,
 }) => (
   <legend className="mb-3 flex w-full items-center gap-2 border-b border-edge-subtle pb-2">
-    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-primary-tint text-[10px] font-bold text-primary">
+    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-primary-tint text-[10px] font-bold text-[var(--color-primary-text)]">
       {step}
     </span>
     {icon}
@@ -404,12 +404,12 @@ export const CreateTicketPage: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="-ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-[4px] px-1 text-xs font-semibold text-content-muted transition-colors hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+          className="-ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-[4px] px-1 text-xs font-semibold text-content-muted transition-colors hover:text-[var(--color-primary-ink)] focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           <span>Quay lại</span>
         </button>
-        <span className="hidden items-center gap-1.5 rounded-[4px] border border-edge-subtle bg-primary-subtle px-2 py-1 text-[11px] font-semibold text-primary sm:inline-flex">
+        <span className="hidden items-center gap-1.5 rounded-[4px] border border-edge-subtle bg-primary-subtle px-2 py-1 text-[11px] font-semibold text-[var(--color-primary-ink)] sm:inline-flex">
           <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
           Biểu mẫu tiếp nhận IT
         </span>
@@ -430,7 +430,7 @@ export const CreateTicketPage: React.FC = () => {
           className="flex items-center justify-between gap-3 rounded-[6px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-4 py-2.5 text-xs text-[var(--color-primary-text)]"
         >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
             <span>
               Đã khôi phục nội dung nháp chưa gửi
               {initialDraft?.savedAt
@@ -472,7 +472,7 @@ export const CreateTicketPage: React.FC = () => {
           </h2>
           <p className="mx-auto max-w-md text-xs leading-relaxed text-[var(--color-content-muted)] sm:text-sm">
             Phiếu của bạn đã được ghi nhận vào hệ thống với mã định danh{' '}
-            <code className="break-all rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2 py-0.5 font-mono font-bold text-[var(--color-primary)]">
+            <code className="break-all rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2 py-0.5 font-mono font-bold text-[var(--color-primary-text)]">
               {successTicketId}
             </code>
             . Đội ngũ kỹ thuật IT sẽ xem xét theo mức ưu tiên đã định.
@@ -586,7 +586,7 @@ export const CreateTicketPage: React.FC = () => {
                 <fieldset className="min-w-0">
                   <Legend
                     step="2"
-                    icon={<ClipboardList className="h-3.5 w-3.5 text-primary" aria-hidden="true" />}
+                    icon={<ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />}
                   >
                     Nội dung sự cố
                   </Legend>
@@ -674,7 +674,7 @@ export const CreateTicketPage: React.FC = () => {
                 <fieldset className="min-w-0">
                   <Legend
                     step="3"
-                    icon={<Clock className="h-3.5 w-3.5 text-primary" aria-hidden="true" />}
+                    icon={<Clock className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />}
                   >
                     Mức độ ưu tiên
                   </Legend>
@@ -713,7 +713,7 @@ export const CreateTicketPage: React.FC = () => {
                                 isSelected
                                   ? isCritical
                                     ? 'text-status-danger'
-                                    : 'text-primary'
+                                    : 'text-[var(--color-primary-ink)]'
                                   : 'text-content'
                               }`}
                             >
@@ -823,7 +823,7 @@ export const CreateTicketPage: React.FC = () => {
                   }`}
                 >
                   <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-edge bg-surface text-content-muted transition-colors group-hover:border-primary-border group-hover:text-primary"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-edge bg-surface text-content-muted transition-colors group-hover:border-primary-border group-hover:text-[var(--color-primary-ink)]"
                     aria-hidden="true"
                   >
                     <Paperclip className="h-5 w-5" />
@@ -845,7 +845,7 @@ export const CreateTicketPage: React.FC = () => {
                       PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.
                     </span>
                   </span>
-                  <span className="hidden shrink-0 rounded-md border border-edge bg-surface px-3 py-1.5 font-semibold text-content shadow-2xs transition-colors group-hover:border-primary group-hover:text-primary sm:inline-flex">
+                  <span className="hidden shrink-0 rounded-md border border-edge bg-surface px-3 py-1.5 font-semibold text-content shadow-2xs transition-colors group-hover:border-primary group-hover:text-[var(--color-primary-ink)] sm:inline-flex">
                     {attachmentFile ? 'Đổi tệp' : 'Chọn tệp'}
                   </span>
                   <input
@@ -928,7 +928,7 @@ export const CreateTicketPage: React.FC = () => {
                 <h2 className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
                   Tóm tắt phiếu
                 </h2>
-                <span className="font-mono text-[11px] font-semibold text-primary bg-primary-tint px-2 py-0.5 rounded-[4px] border border-[var(--color-primary-border)]">
+                <span className="font-mono text-[11px] font-semibold text-[var(--color-primary-text)] bg-primary-tint px-2 py-0.5 rounded-[4px] border border-[var(--color-primary-border)]">
                   {completedRequired}/{requiredChecklist.length} bắt buộc
                 </span>
               </div>
@@ -939,7 +939,7 @@ export const CreateTicketPage: React.FC = () => {
                     Danh mục
                   </dt>
                   <dd className="mt-1 flex min-w-0 items-center gap-2">
-                    <Tag className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+                    <Tag className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
                     <span className="min-w-0 flex-1 break-words text-xs font-semibold text-content">
                       {selectedCategory ? selectedCategory.name : 'Chưa chọn'}
                     </span>
@@ -956,8 +956,8 @@ export const CreateTicketPage: React.FC = () => {
                     Mức ưu tiên
                   </dt>
                   <dd className="mt-1 flex items-start gap-2">
-                    <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-                    <span className="text-xs font-semibold text-primary">
+                    <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
+                    <span className="text-xs font-semibold text-[var(--color-primary-ink)]">
                       {PRIORITY_META[priority].name}
                     </span>
                   </dd>
@@ -1000,7 +1000,7 @@ export const CreateTicketPage: React.FC = () => {
 
             <section className="rounded-[4px] border border-edge bg-surface-muted/60 p-4">
               <h2 className="flex items-center gap-1.5 text-xs font-bold text-content">
-                <HelpCircle className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                <HelpCircle className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
                 <span>Mẹo viết phiếu nhanh được xử lý</span>
               </h2>
               <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-content-muted">

@@ -8,7 +8,7 @@ import { HelpCircle, Home } from 'lucide-react';
 export const NotFoundPage: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center max-w-md mx-auto px-4">
-      <div className="w-16 h-16 rounded-[12px] bg-gradient-to-br from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] text-[var(--color-primary)] flex items-center justify-center mb-5 border border-[var(--color-primary-border)] shadow-sm">
+      <div className="w-16 h-16 rounded-[12px] bg-gradient-to-br from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] text-[var(--color-primary-text)] flex items-center justify-center mb-5 border border-[var(--color-primary-border)] shadow-sm">
         <HelpCircle className="w-8 h-8" aria-hidden="true" />
       </div>
       <h1 className="text-5xl font-black text-[var(--color-content)] mb-2 tracking-tight">404</h1>

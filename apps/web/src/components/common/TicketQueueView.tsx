@@ -115,7 +115,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
     <section className="rounded-lg border border-edge bg-surface p-6">
       <h1 className="text-xl font-bold text-content">Không có quyền truy cập</h1>
       <p className="mt-2 text-sm text-content-muted">{approvals ? 'Hàng đợi phê duyệt dành cho Quản lý.' : 'Bảng việc dành cho kỹ thuật viên và Quản lý.'}</p>
-      <Link className="mt-4 inline-block text-primary underline" to="/tickets">Về danh sách phiếu</Link>
+      <Link className="mt-4 inline-block text-[var(--color-primary-ink)] underline" to="/tickets">Về danh sách phiếu</Link>
     </section>
   );
 
@@ -196,7 +196,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
               {tickets.map(ticket => <li key={ticket.id} className="min-w-0 rounded-lg border border-edge bg-surface p-4 shadow-xs sm:p-5">
                 <article aria-label={ticket.title} className="space-y-3">
                   <div className="flex flex-wrap gap-2"><StatusBadge status={ticket.status} /><PriorityBadge priority={ticket.priority} /></div>
-                  <h2 className="break-words font-bold text-content"><Link className="hover:text-primary hover:underline" to={`/tickets/${encodeURIComponent(ticket.id)}`}>{ticket.title}</Link></h2>
+                  <h2 className="break-words font-bold text-content"><Link className="hover:text-[var(--color-primary-ink)] hover:underline" to={`/tickets/${encodeURIComponent(ticket.id)}`}>{ticket.title}</Link></h2>
                   <p className="break-words text-sm text-content-muted">{ticket.description}</p>
                   <dl className="space-y-1 break-words text-xs text-content-muted">
                     <div><dt className="inline">Người yêu cầu: </dt><dd className="inline font-semibold text-content">{ticket.requester_name || ticket.requester_id}</dd></div>

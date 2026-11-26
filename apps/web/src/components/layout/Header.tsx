@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isMobileNavOp
               DX
             </div>
             <div className="hidden sm:flex flex-col">
-              <span className="text-base font-bold tracking-tight text-content leading-tight group-hover:text-primary transition-colors">
+              <span className="text-base font-bold tracking-tight text-content leading-tight group-hover:text-[var(--color-primary-ink)] transition-colors">
                 DX-Desk
               </span>
               <span className="text-xs text-content-muted hidden lg:block leading-none">
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isMobileNavOp
                   ) : (
                     <Link
                       to={crumb.to}
-                      className="hover:text-primary hover:bg-surface-muted px-1.5 py-0.5 rounded-sm transition-colors truncate"
+                      className="hover:text-[var(--color-primary-ink)] hover:bg-surface-muted px-1.5 py-0.5 rounded-sm transition-colors truncate"
                     >
                       {crumb.label}
                     </Link>
@@ -158,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isMobileNavOp
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
               <div className="hidden lg:flex max-w-64 2xl:max-w-md items-center gap-2 h-9 px-3 bg-surface-muted border border-edge rounded-md shadow-2xs">
-                <div className="w-5 h-5 rounded-full bg-primary-tint border border-primary-border text-primary font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="w-5 h-5 rounded-full bg-primary-tint border border-primary-border text-[var(--color-primary-text)] font-bold text-xs flex items-center justify-center shrink-0">
                   {username ? username.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
                 </div>
                 <span className="min-w-0 truncate text-xs font-semibold text-content" title={username || 'Người dùng'}>

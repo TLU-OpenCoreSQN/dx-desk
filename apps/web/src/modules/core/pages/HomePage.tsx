@@ -150,7 +150,7 @@ export function HomePage() {
 
         <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)] lg:items-start lg:gap-8 lg:p-10">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--color-primary)] shadow-2xs">
+            <div className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--color-primary-text)] shadow-2xs">
               <Shield className="h-3.5 w-3.5" aria-hidden="true" />
               <span>KHÔNG GIAN HỖ TRỢ CỦA BẠN</span>
             </div>
@@ -159,7 +159,7 @@ export function HomePage() {
               id="home-hero-title"
               className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-[var(--color-content)] sm:text-3xl lg:text-4xl"
             >
-              Hệ thống hỗ trợ IT nội bộ <span className="text-[var(--color-primary)] bg-clip-text">DX-Desk</span>
+              Hệ thống hỗ trợ IT nội bộ <span className="text-[var(--color-primary-ink)] bg-clip-text">DX-Desk</span>
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-content-muted)] sm:mt-4 sm:text-base">
@@ -170,13 +170,13 @@ export function HomePage() {
             {isAuthenticated ? (
               <div className="mt-6 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface/90 backdrop-blur-xs p-5 shadow-2xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] border border-[var(--color-primary-border)] text-[var(--color-primary)] font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] border border-[var(--color-primary-border)] text-[var(--color-primary-text)] font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
                     {username ? username.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <div>
                     <p className="text-xs text-[var(--color-content-muted)]">Xin chào,</p>
                     <p className="truncate text-base font-bold text-[var(--color-content)] sm:text-lg">
-                      <strong className="font-bold text-[var(--color-primary)]">{username}</strong>
+                      <strong className="font-bold text-[var(--color-primary-ink)]">{username}</strong>
                     </p>
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export function HomePage() {
                 type="button"
                 onClick={() => setAttempt((value) => value + 1)}
                 disabled={checking}
-                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-[4px] px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary-tint)]/50 transition-colors duration-150 hover:text-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-[4px] px-2 py-1 text-xs font-semibold text-[var(--color-primary-ink)] hover:bg-[var(--color-primary-tint)]/50 transition-colors duration-150 hover:text-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
               >
                 <RefreshCw size={13} className={checking ? 'animate-spin' : ''} aria-hidden="true" />
                 <span>Kiểm tra lại</span>
@@ -316,7 +316,7 @@ export function HomePage() {
       {/* Dải thẻ chỉ số nổi bật tận dụng không gian rộng */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 w-full">
         <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[6px] bg-[var(--color-primary-tint)] text-[var(--color-primary)] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-[6px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -376,16 +376,16 @@ export function HomePage() {
                 >
                   <div>
                     <div className="flex items-center gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-primary-tint)] text-[var(--color-primary)] transition-all duration-200 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:scale-105 group-focus-visible:bg-[var(--color-primary)] group-focus-visible:text-white motion-reduce:transition-none shadow-2xs">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] transition-all duration-200 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:scale-105 group-focus-visible:bg-[var(--color-primary)] group-focus-visible:text-white motion-reduce:transition-none shadow-2xs">
                         <Icon size={22} aria-hidden="true" />
                       </span>
-                      <h3 className="min-w-0 text-sm font-bold text-[var(--color-content)] transition-colors duration-150 group-hover:text-[var(--color-primary)] motion-reduce:transition-none sm:text-base">
+                      <h3 className="min-w-0 text-sm font-bold text-[var(--color-content)] transition-colors duration-150 group-hover:text-[var(--color-primary-ink)] motion-reduce:transition-none sm:text-base">
                         {title}
                       </h3>
                     </div>
                     <p className="mt-3 text-xs leading-relaxed text-[var(--color-content-muted)]">{text}</p>
                   </div>
-                  <span className="mt-4 inline-flex items-center text-xs font-semibold text-[var(--color-primary)]">
+                  <span className="mt-4 inline-flex items-center text-xs font-semibold text-[var(--color-primary-ink)]">
                     Mở chức năng
                     <ArrowRight
                       size={14}
@@ -428,7 +428,7 @@ export function HomePage() {
                 className="group min-w-0 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-edge)] hover:shadow-xs"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="rounded-[4px] bg-[var(--color-primary-tint)] px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--color-primary)] border border-[var(--color-primary-border)]/60">
+                  <span className="rounded-[4px] bg-[var(--color-primary-tint)] px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--color-primary-text)] border border-[var(--color-primary-border)]/60">
                     {step}
                   </span>
                   <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]/40 group-hover:bg-[var(--color-primary)] transition-colors" />

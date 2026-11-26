@@ -101,7 +101,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge-subtle pb-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-tint text-primary">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-tint text-[var(--color-primary-text)]">
             <Bot className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
@@ -115,7 +115,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
           </div>
         </div>
         {confidenceScore !== undefined && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary-border bg-primary-tint px-2.5 py-0.5 font-mono text-xs font-bold text-primary tabular-nums">
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary-border bg-primary-tint px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--color-primary-text)] tabular-nums">
             Độ tin cậy: {confidenceScore}%
           </span>
         )}
@@ -148,7 +148,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
                     <span
                       className={`rounded-xs px-2 py-1 font-mono text-[11px] font-semibold transition-colors ${
                         item.isChanged
-                          ? 'border border-primary-border bg-primary-tint text-primary'
+                          ? 'border border-primary-border bg-primary-tint text-[var(--color-primary-ink)]'
                           : 'border border-edge bg-surface text-content'
                       }`}
                     >
