@@ -151,10 +151,9 @@ try {
           await staff.waitForTimeout(2000); await staff.reload();
         }
       }
-      await staff.getByRole('heading',{name:'Thao tác',exact:true}).waitFor();
-      for(const label of ['Phân loại phiếu','Phân công xử lý','Bắt đầu xử lý']) {
-        if(await staff.getByRole('button',{name:label,exact:true}).count()) await transition(staff,label);
-      }
+      // Tắt tự động hóa: tự đi đủ ba bước; mỗi lần bấm đều chờ nút xuất hiện sau khi trang tải lại.
+      const manualSteps=env.AUTOMATION_ENABLED==='true' ? ['Bắt đầu xử lý'] : ['Phân loại phiếu','Phân công xử lý','Bắt đầu xử lý'];
+      for(const label of manualSteps) await transition(staff,label);
       await transition(staff,'Chờ người dùng phản hồi',undefined,'Gửi giúp ảnh chụp thông báo lỗi VPN đang gặp.');
       await page.reload(); await reply(page,'Đã cài lại chứng chỉ VPN theo hướng dẫn.');
       await staff.reload(); await staff.getByRole('button',{name:'Đánh dấu đã giải quyết',exact:true}).click();
