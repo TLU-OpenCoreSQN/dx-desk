@@ -55,11 +55,11 @@ try{
   assert.ok(found,'automated team label');report.assignment_ms=Date.now()-createdAt;assert.ok(report.assignment_ms<=60000);report.ticket_id=ticketId;
  });
  await check('Agent server queue claims the routed ticket and shows its real assignee',async()=>{
-  const staff=agent.page;activePage=staff;await staff.goto(origin+'/work-queue');await staff.getByRole('button',{name:'Nhóm của tôi · Chưa nhận',exact:true}).click();
-  const card=staff.getByRole('article',{name:title});await card.waitFor();
+  const staff=agent.page;activePage=staff;await staff.goto(origin+'/work-queue');await staff.getByRole('button',{name:/^Nhóm của tôi · Chưa nhận/}).click();
+  const card=staff.getByRole('listitem').filter({has:staff.getByRole('button',{name:title,exact:true})});await card.waitFor();
   const response=staff.waitForResponse(r=>r.url().endsWith('/claim')&&r.request().method()==='POST');
   await card.getByRole('button',{name:/Nhận/}).click();assert.equal((await response).status(),200);
-  await staff.getByRole('button',{name:'Đang phụ trách',exact:true}).click();await staff.getByRole('link',{name:title,exact:true}).click();
+  await staff.getByRole('button',{name:/^Đang phụ trách/}).click();await staff.getByRole('button',{name:title,exact:true}).click();await staff.getByRole('complementary',{name:title}).getByRole('link',{name:/Mở chi tiết và lịch sử/}).click();
   await staff.waitForURL(origin+'/tickets/'+ticketId);
   await staff.getByRole('heading',{name:title,level:1,exact:true}).waitFor();
   await staff.locator('dt').filter({hasText:'Phụ trách:'}).locator('..').getByText('agent.1',{exact:true}).waitFor();
