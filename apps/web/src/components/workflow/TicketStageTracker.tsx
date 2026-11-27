@@ -111,8 +111,8 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
       {/* Header section with ticket title and current status */}
       {/* Trạng thái và mã phiếu đã có ở header; ở đây chỉ còn tên khối. */}
       <div className="border-b border-edge-subtle pb-3">
-        <h2 className="font-mono text-xs font-semibold tracking-wider text-[var(--color-primary-ink)]">
-          TIẾN TRÌNH XỬ LÝ PHIẾU
+        <h2 className="dx-section-title">
+          Tiến trình xử lý phiếu
         </h2>
       </div>
 
@@ -234,7 +234,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
                   <span className="text-xs text-content-muted hidden @2xl:inline">
                     {step.description}
                   </span>
-                  <span className="font-mono text-xs text-content-muted tabular-nums mt-0.5">
+                  <span className="tabular-nums text-xs text-content-muted mt-0.5">
                     {timestamp
                       ? formatTime(timestamp)
                       : isCurrent
@@ -267,7 +267,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
               </h3>
             </div>
             {pausedMinutes > 0 && (
-              <span className="font-mono text-xs font-semibold tabular-nums">
+              <span className="tabular-nums text-xs font-semibold">
                 Thời gian đã dừng: {pausedMinutes} phút
               </span>
             )}

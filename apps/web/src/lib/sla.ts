@@ -65,10 +65,9 @@ export function computeSlaSnapshot(ticket: Ticket, now: number = Date.now()): Sl
 
 /** Lớp màu thanh tiến độ SLA cho phiếu đang chạy. */
 export function slaGaugeColor(elapsedPercent: number, isBreached: boolean): string {
-  if (isBreached) return 'bg-status-danger';
-  if (elapsedPercent >= 80) return 'bg-orange-500 animate-pulse';
-  if (elapsedPercent >= 60) return 'bg-amber-500';
-  return 'bg-emerald-500';
+  if (isBreached) return 'bg-status-danger-solid';
+  if (elapsedPercent >= SLA_AT_RISK_PERCENT) return 'bg-status-warning-solid';
+  return 'bg-status-success-solid';
 }
 
 /** Ngưỡng "sắp quá SLA": cùng ngưỡng 80% mà thanh SLA đã dùng để chuyển màu cảnh báo. */

@@ -126,7 +126,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
               : 'ĐÃ GIẢI QUYẾT NHƯNG QUÁ HẠN SLA'}
           </span>
         </div>
-        <span className="font-mono text-xs tabular-nums">
+        <span className="tabular-nums text-xs">
           Hạn cam kết: {formatDateTime(effectiveDueDate)}
         </span>
       </div>
@@ -171,7 +171,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
               SLA tạm dừng · chờ người tạo phiếu phản hồi
             </h2>
           </div>
-          <span className="font-mono text-xs font-semibold tabular-nums">
+          <span className="tabular-nums text-xs font-semibold">
             Thời gian đã dừng: {totalPausedMinutes} phút
           </span>
         </div>
@@ -232,7 +232,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
               Quá hạn SLA
             </h2>
           </div>
-          <span className="font-mono text-xs font-bold tabular-nums">
+          <span className="tabular-nums text-xs font-bold">
             Trễ hạn: {overdueText}
           </span>
         </div>
@@ -260,10 +260,10 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold text-[var(--color-primary-ink)] tabular-nums">
+          <span className="tabular-nums text-xs font-bold text-[var(--color-primary-ink)]">
             {formatDuration(remainingMs)} còn lại
           </span>
-          <span className="font-mono text-xs text-content-muted tabular-nums">
+          <span className="tabular-nums text-xs text-content-muted">
             (Trước {formatDateTime(effectiveDueDate)})
           </span>
         </div>
@@ -273,7 +273,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
         <div className="mt-2.5">
           <div className="flex items-center justify-between text-xs text-content-muted mb-1">
             <span>{forRequester ? 'Thời gian đã dùng' : 'Tiến độ SLA'}</span>
-            <span className="font-mono tabular-nums">{elapsedPercent}%</span>
+            <span className="tabular-nums">{elapsedPercent}%</span>
           </div>
           <div
             className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted"

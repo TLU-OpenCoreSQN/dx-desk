@@ -72,14 +72,14 @@ export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, 
           {/* Mã ngắn giống danh sách phiếu; mã đầy đủ vẫn có trong title và cho trình đọc màn hình. */}
           <span
             title={ticket.id}
-            className="font-mono text-xs font-semibold tabular-nums text-[var(--color-content-muted)]"
+            className="tabular-nums text-xs font-semibold text-[var(--color-content-muted)]"
           >
             <span className="sr-only">Mã phiếu {ticket.id}</span>
             <span aria-hidden="true">#{ticket.id.slice(0, 8)}</span>
           </span>
         </div>
 
-        <h1 className="mt-3 break-words text-lg font-bold leading-snug tracking-tight text-[var(--color-content)] sm:text-2xl">
+        <h1 className="dx-page-title mt-3 break-words">
           {ticket.title}
         </h1>
 
@@ -87,7 +87,7 @@ export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, 
           <div className="flex min-w-0 items-start gap-1.5">
             <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
             <dt className="shrink-0 text-[var(--color-content-muted)]">Người tạo:</dt>
-            <dd className="min-w-0 break-all font-mono font-semibold text-[var(--color-content)]">
+            <dd className="min-w-0 break-all tabular-nums font-semibold text-[var(--color-content)]">
               {ticket.requester_name || ticket.requester_id}
             </dd>
           </div>

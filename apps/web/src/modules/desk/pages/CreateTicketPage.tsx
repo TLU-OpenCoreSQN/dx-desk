@@ -416,7 +416,7 @@ export const CreateTicketPage: React.FC = () => {
       </div>
 
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-content sm:text-2xl">
+        <h1 className="dx-page-title">
           Tạo phiếu yêu cầu hỗ trợ IT
         </h1>
         <p className="mt-1 text-xs text-content-muted sm:text-sm">
@@ -467,7 +467,7 @@ export const CreateTicketPage: React.FC = () => {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg border border-status-success-border bg-status-success-bg text-status-success shadow-2xs">
             <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
           </div>
-          <h2 className="text-lg font-bold tracking-tight text-[var(--color-content)] sm:text-xl">
+          <h2 className="dx-section-title">
             Tạo phiếu yêu cầu thành công!
           </h2>
           <p className="mx-auto max-w-md text-xs leading-relaxed text-[var(--color-content-muted)] sm:text-sm">
@@ -493,7 +493,7 @@ export const CreateTicketPage: React.FC = () => {
                   )}
                   <button
                     type="button"
-                    className="text-teal-700 underline"
+                    className="text-[var(--color-primary-ink)] underline"
                     disabled={isSubmitting}
                     onClick={async () => {
                       setIsSubmitting(true);
@@ -514,7 +514,7 @@ export const CreateTicketPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(`/tickets/${successTicketId}`)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] px-5 text-xs font-bold text-white shadow-xs transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-primary hover:bg-primary-hover active:bg-primary-active px-5 text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               Xem chi tiết phiếu
             </button>
@@ -601,7 +601,7 @@ export const CreateTicketPage: React.FC = () => {
                           Tiêu đề phiếu <span className="text-danger" aria-hidden="true">*</span>
                         </label>
                         <span
-                          className={`font-mono text-[11px] ${
+                          className={`tabular-nums text-[11px] ${
                             titleLength > 200 || (titleLength > 0 && titleLength < 5)
                               ? 'font-semibold text-danger'
                               : 'text-content-subtle'
@@ -637,7 +637,7 @@ export const CreateTicketPage: React.FC = () => {
                           <span className="text-danger" aria-hidden="true">*</span>
                         </label>
                         <span
-                          className={`font-mono text-[11px] ${
+                          className={`tabular-nums text-[11px] ${
                             descriptionLength > 5000 ||
                             (descriptionLength > 0 && descriptionLength < 10)
                               ? 'font-semibold text-danger'
@@ -898,7 +898,7 @@ export const CreateTicketPage: React.FC = () => {
                   }
                   className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] px-5 text-xs font-bold text-white shadow-xs transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:flex-none lg:min-h-[40px] ${
                     canSubmit && !isSubmitting && !categoriesLoading
-                      ? 'bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)]'
+                      ? 'bg-primary hover:bg-primary-hover active:bg-primary-active'
                       : 'cursor-not-allowed bg-primary opacity-50'
                   }`}
                 >
@@ -928,7 +928,7 @@ export const CreateTicketPage: React.FC = () => {
                 <h2 className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
                   Tóm tắt phiếu
                 </h2>
-                <span className="font-mono text-[11px] font-semibold text-[var(--color-primary-text)] bg-primary-tint px-2 py-0.5 rounded-[4px] border border-[var(--color-primary-border)]">
+                <span className="tabular-nums text-[11px] font-semibold text-[var(--color-primary-text)] bg-primary-tint px-2 py-0.5 rounded-[4px] border border-[var(--color-primary-border)]">
                   {completedRequired}/{requiredChecklist.length} bắt buộc
                 </span>
               </div>
@@ -944,7 +944,7 @@ export const CreateTicketPage: React.FC = () => {
                       {selectedCategory ? selectedCategory.name : 'Chưa chọn'}
                     </span>
                     {selectedCategory && (
-                      <span className="shrink-0 rounded-[4px] border border-edge bg-surface-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-content-muted">
+                      <span className="shrink-0 rounded-[4px] border border-edge bg-surface-muted px-1.5 py-0.5 tabular-nums text-[10px] font-semibold uppercase tracking-wide text-content-muted">
                         {selectedCategory.code}
                       </span>
                     )}

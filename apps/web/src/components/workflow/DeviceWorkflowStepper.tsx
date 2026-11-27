@@ -68,10 +68,10 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge-subtle pb-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-semibold tracking-wider text-[var(--color-primary-ink)]">
+          <span className="tabular-nums text-xs font-semibold tracking-wider text-[var(--color-primary-ink)]">
             TIẾN TRÌNH CẤP PHÁT
           </span>
-          <span className="font-mono text-xs text-content-subtle tabular-nums">
+          <span className="tabular-nums text-xs text-content-subtle">
             #{request.id.slice(0, 8).toUpperCase()}
           </span>
         </div>
@@ -166,7 +166,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
                   >
                     {step.label}
                   </span>
-                  <span className="font-mono text-[10px] text-content-subtle tabular-nums mt-0.5 max-w-[140px] truncate">
+                  <span className="tabular-nums text-[10px] text-content-subtle mt-0.5 max-w-[140px] truncate">
                     {stepDetail}
                   </span>
                 </div>
@@ -192,7 +192,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
               </h4>
             </div>
             {request.decided_at && (
-              <span className="font-mono text-xs tabular-nums text-status-danger">
+              <span className="tabular-nums text-xs text-status-danger">
                 Thời gian: {formatTime(request.decided_at)}
               </span>
             )}

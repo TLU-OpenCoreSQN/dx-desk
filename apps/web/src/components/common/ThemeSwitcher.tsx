@@ -217,7 +217,7 @@ export const ThemeSwitcher: React.FC = () => {
                 {mode === 'light' ? (
                   <Moon className="w-4 h-4 text-content-muted" />
                 ) : (
-                  <Sun className="w-4 h-4 text-amber-500" />
+                  <Sun className="w-4 h-4 text-status-warning-solid" />
                 )}
                 <span>Chế độ tối</span>
               </div>

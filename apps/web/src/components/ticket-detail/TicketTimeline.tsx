@@ -100,11 +100,11 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] px-5 py-3.5">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
-          <h2 className="text-sm font-bold tracking-tight text-[var(--color-content)]">
+          <h2 className="dx-section-title">
             Dòng thời gian xử lý
           </h2>
         </div>
-        <span className="rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-2 py-0.5 font-mono text-xs font-semibold text-[var(--color-content-muted)]">
+        <span className="rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-2 py-0.5 tabular-nums text-xs font-semibold text-[var(--color-content-muted)]">
           {events.length} sự kiện
         </span>
       </div>
@@ -123,7 +123,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                 <h3 className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-content-muted">
                   <Calendar className="h-3 w-3" aria-hidden="true" />
                   <span>{group.label}</span>
-                  <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 font-mono text-xs normal-case tracking-normal text-content-muted">
+                  <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 tabular-nums text-xs normal-case tracking-normal text-content-muted">
                     {group.items.length} sự kiện
                   </span>
                 </h3>
@@ -160,7 +160,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                               </p>
                               <time
                                 dateTime={evt.created_at}
-                                className="shrink-0 font-mono text-xs text-content-muted"
+                                className="shrink-0 tabular-nums text-xs text-content-muted"
                               >
                                 {formatTimeOnly(evt.created_at)}
                               </time>
@@ -168,7 +168,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
 
                             <p className="mt-0.5 text-xs text-content-muted">
                               Thực hiện bởi{' '}
-                              <span className="break-all font-mono font-semibold text-content">
+                              <span className="break-all tabular-nums font-semibold text-content">
                                 {evt.actor_type === 'system' || evt.actor_type === 'ai'
                                   ? `${evt.actor_type === 'ai' ? 'AI' : 'Hệ thống'}${evt.actor_name ? ` (${evt.actor_name})` : ''}`
                                   : evt.actor_name || evt.actor_id || 'Không có thông tin tác nhân'}

@@ -180,7 +180,7 @@ export const TicketDetailPage: React.FC = () => {
           <section className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
             <div className="flex items-center gap-2 border-b border-[var(--color-edge-subtle)] px-5 py-3.5">
               <FileText className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
-              <h2 className="text-sm font-bold tracking-tight text-[var(--color-content)]">
+              <h2 className="dx-section-title">
                 Mô tả chi tiết nội dung sự cố
               </h2>
             </div>

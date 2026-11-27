@@ -126,27 +126,8 @@ export function HomePage() {
       {/* Hero */}
       <section
         aria-labelledby="home-hero-title"
-        className="relative overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-gradient-to-br from-[var(--color-surface)] via-[var(--color-surface-sidebar)] to-[var(--color-surface-warm)] shadow-[0_2px_8px_rgba(0,0,0,0.03)] w-full"
+        className="relative overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface w-full"
       >
-        {/* Lưới chấm mờ trang trí tinh tế */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 1px 1px, rgba(10, 120, 190, 0.25) 1px, transparent 0)',
-            backgroundSize: '24px 24px',
-            opacity: 0.18,
-          }}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-gradient-to-br from-[var(--color-primary-tint)]/40 to-transparent blur-2xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-primary-active)]"
-        />
 
         <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)] lg:items-start lg:gap-8 lg:p-10">
           <div className="min-w-0">
@@ -157,7 +138,7 @@ export function HomePage() {
 
             <h1
               id="home-hero-title"
-              className="mt-4 text-2xl font-extrabold leading-tight tracking-tight text-[var(--color-content)] sm:text-3xl lg:text-4xl"
+              className="dx-page-title mt-4"
             >
               Hệ thống hỗ trợ IT nội bộ <span className="text-[var(--color-primary-ink)] bg-clip-text">DX-Desk</span>
             </h1>
@@ -170,7 +151,7 @@ export function HomePage() {
             {isAuthenticated ? (
               <div className="mt-6 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface/90 backdrop-blur-xs p-5 shadow-2xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] border border-[var(--color-primary-border)] text-[var(--color-primary-text)] font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary-tint)] border border-[var(--color-primary-border)] text-[var(--color-primary-text)] font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
                     {username ? username.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <div>
@@ -241,7 +222,7 @@ export function HomePage() {
                   onClick={() => void login()}
                   disabled={isLoading || isKeycloakOffline}
                   aria-describedby={isKeycloakOffline ? 'sso-offline-note' : undefined}
-                  className="mt-5 inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-[6px] px-6 py-2.5 text-sm font-semibold text-white shadow-xs transition-all duration-150 active:scale-[0.98] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border disabled:border-[var(--color-edge-subtle)] disabled:bg-[var(--color-surface-warm)] disabled:text-[var(--color-content-subtle)] disabled:shadow-none motion-reduce:transition-none sm:w-auto"
+                  className="mt-5 inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-[6px] px-6 py-2.5 text-sm font-semibold text-white shadow-xs transition-all duration-150 active:scale-[0.98] bg-primary hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border disabled:border-[var(--color-edge-subtle)] disabled:bg-[var(--color-surface-warm)] disabled:text-[var(--color-content-subtle)] disabled:shadow-none motion-reduce:transition-none sm:w-auto"
                 >
                   <LogIn size={18} aria-hidden="true" />
                   <span>{isLoading ? 'Đang kiểm tra đăng nhập…' : 'Đăng nhập hệ thống (SSO)'}</span>
@@ -294,7 +275,7 @@ export function HomePage() {
 
               <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--color-edge-subtle)] pt-3">
                 {health && !checking ? (
-                  <span className="rounded-sm border border-status-success-border bg-status-success-bg px-2 py-0.5 font-mono text-[11px] font-semibold text-status-success">
+                  <span className="rounded-sm border border-status-success-border bg-status-success-bg px-2 py-0.5 tabular-nums text-[11px] font-semibold text-status-success">
                     {health.version}
                   </span>
                 ) : (
@@ -428,7 +409,7 @@ export function HomePage() {
                 className="group min-w-0 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-edge)] hover:shadow-xs"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="rounded-[4px] bg-[var(--color-primary-tint)] px-2.5 py-0.5 font-mono text-xs font-bold text-[var(--color-primary-text)] border border-[var(--color-primary-border)]/60">
+                  <span className="rounded-[4px] bg-[var(--color-primary-tint)] px-2.5 py-0.5 tabular-nums text-xs font-bold text-[var(--color-primary-text)] border border-[var(--color-primary-border)]/60">
                     {step}
                   </span>
                   <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]/40 group-hover:bg-[var(--color-primary)] transition-colors" />

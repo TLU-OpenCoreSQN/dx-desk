@@ -32,7 +32,7 @@ const AccessGuard: React.FC<{ access: ModuleAccess; when?: ModulePage['when']; c
         <div className="w-12 h-12 rounded-lg bg-status-warning-bg text-status-warning flex items-center justify-center mx-auto mb-4 border border-status-warning-border shadow-2xs">
           <ShieldAlert className="w-6 h-6 text-status-warning" aria-hidden="true" />
         </div>
-        <h2 className="text-base font-bold text-content mb-2 tracking-tight">
+        <h2 className="dx-section-title mb-2">
           Yêu cầu đăng nhập xác thực
         </h2>
         <p className="text-xs sm:text-sm text-content-muted mb-6 leading-relaxed">
@@ -67,7 +67,7 @@ const AccessGuard: React.FC<{ access: ModuleAccess; when?: ModulePage['when']; c
   if (!canAccess(access, { isAuthenticated, roles })) {
     return (
       <section className="max-w-md mx-auto my-12 rounded-lg border border-edge bg-surface p-6 text-center" role="alert">
-        <h1 className="text-xl font-bold text-content">Không có quyền truy cập</h1>
+        <h1 className="dx-page-title">Không có quyền truy cập</h1>
         <p className="mt-2 text-sm text-content-muted">Trang này dành cho {access === 'Manager' ? 'Quản lý' : access === 'Agent' ? 'kỹ thuật viên và Quản lý' : 'người dùng đã được cấp vai trò trong DX-Desk'}.</p>
         <Link className="mt-4 inline-block text-[var(--color-primary-ink)] underline" to="/">Về trang chủ</Link>
       </section>

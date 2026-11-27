@@ -347,7 +347,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
         <div className="flex items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] px-4 py-3 max-lg:hidden bg-[var(--color-surface-sidebar)]">
           <div className="flex min-w-0 items-center gap-2">
             <GitBranch className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
-            <h2 className="truncate text-sm font-bold tracking-tight text-[var(--color-content)]">
+            <h2 className="dx-section-title truncate">
               Thao tác
             </h2>
           </div>
@@ -459,7 +459,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                         *
                       </span>
                     </label>
-                    <span className="font-mono text-xs text-content-muted">
+                    <span className="tabular-nums text-xs text-content-muted">
                       {resolutionNote.trim().length} / {RESOLUTION_NOTE_MAX}
                     </span>
                   </div>
@@ -517,7 +517,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                         : '(không bắt buộc)'}
                     </span>
                   </label>
-                  <span className="font-mono text-xs text-content-muted">
+                  <span className="tabular-nums text-xs text-content-muted">
                     {note.trim().length} / 2000 ký tự
                   </span>
                 </div>

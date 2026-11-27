@@ -17,8 +17,8 @@ import { TicketKanbanBoard } from '../workflow';
 
 const PAGE_SIZE = 25;
 const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary';
-const BUTTON_BASE = `min-h-11 rounded-md border px-3 py-2 text-xs font-semibold ${FOCUS} disabled:cursor-not-allowed disabled:opacity-50`;
-const BUTTON = `${BUTTON_BASE} border-edge bg-surface text-content hover:bg-surface-muted`;
+const BUTTON_BASE = `min-h-11 rounded-md border px-3 py-2 text-sm font-semibold ${FOCUS} disabled:cursor-not-allowed disabled:opacity-50`;
+const BUTTON = `${BUTTON_BASE} border-edge-strong bg-surface text-content hover:bg-state-hover`;
 const PRIMARY = `${BUTTON_BASE} border-primary bg-primary text-white hover:bg-primary-hover`;
 const FIELD = `min-h-11 w-full rounded-md border border-edge bg-surface px-3 text-sm text-content ${FOCUS}`;
 const QUEUES: { key: Exclude<TicketQueue, 'pending_approval'>; label: string }[] = [
@@ -35,7 +35,7 @@ type SortKey = 'sla' | 'newest';
 const RISK_RANK: Record<SlaRisk, number> = { breached: 0, at_risk: 1, running: 2, paused: 3, none: 4, finished: 5 };
 const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, normal: 2, low: 3 };
 /** Lưới cột khi khung danh sách đủ rộng (container query, nên vẫn đúng khi khung xem nhanh đang mở). */
-const ROW_GRID = '@3xl:grid-cols-[minmax(0,1fr)_104px_128px_minmax(0,150px)_150px_112px]';
+const ROW_GRID = '@3xl:grid-cols-[minmax(0,1fr)_124px_148px_minmax(0,150px)_176px_auto]';
 
 const shortId = (id: string) => id.slice(0, 8);
 const ticketHref = (ticket: Ticket) => `/tickets/${encodeURIComponent(ticket.id)}`;
@@ -238,7 +238,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
 
   if (!permitted) return (
     <section className="rounded-lg border border-edge bg-surface p-6">
-      <h1 className="text-xl font-bold text-content">Không có quyền truy cập</h1>
+      <h1 className="dx-page-title">Không có quyền truy cập</h1>
       <p className="mt-2 text-sm text-content-muted">{approvals ? 'Hàng đợi phê duyệt dành cho Quản lý.' : 'Bảng việc dành cho kỹ thuật viên và Quản lý.'}</p>
       <Link className="mt-4 inline-block text-[var(--color-primary-ink)] underline" to="/tickets">Về danh sách phiếu</Link>
     </section>
@@ -263,7 +263,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-edge-subtle pb-4">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-content sm:text-2xl">Phê duyệt phiếu hỗ trợ</h1>
+          <h1 className="dx-page-title">Phê duyệt phiếu hỗ trợ</h1>
           <p className="mt-1 text-sm text-content-muted">Các phiếu hỗ trợ đang chờ quyết định; yêu cầu cấp thiết bị được quản lý riêng.</p>
         </div>
         <button type="button" className={BUTTON} disabled={loading || busyId !== null} onClick={refresh}>Làm mới hàng đợi</button>
@@ -271,7 +271,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
       {feedback}
       {loading ? <LoadingSpinner label="Đang tải hàng đợi phiếu..." /> : error == null && (
         <>
-          <p className="text-xs text-content-muted" aria-live="polite">{countLabel} · Trang {page}</p>
+          <p className="text-[13px] text-content-muted" aria-live="polite">{countLabel} · Trang {page}</p>
           {tickets.length === 0 ? <p className="rounded-lg border border-edge bg-surface p-6 text-sm text-content-muted">Không có phiếu trong hàng đợi này.</p> : (
             <ul className="grid min-w-0 gap-4 xl:grid-cols-2">
               {tickets.map(ticket => <li key={ticket.id} className="min-w-0 rounded-lg border border-edge bg-surface p-4 shadow-xs sm:p-5">
@@ -319,7 +319,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
     return (
       <button type="button" aria-pressed={active} disabled={count === 0 && !active}
         onClick={() => setParams({ sla: active ? 'all' : key, ticket: null })}
-        className={`inline-flex min-h-9 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold ${FOCUS} disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`inline-flex min-h-9 items-center gap-1.5 rounded-md border px-2.5 text-[13px] font-semibold ${FOCUS} disabled:cursor-not-allowed disabled:opacity-60 ${
           active ? 'border-primary bg-primary text-white' : count > 0 ? tone : 'border-edge bg-surface text-content-muted'}`}>
         <span className="tabular-nums">{count}</span> {label}
       </button>
@@ -330,15 +330,15 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-content sm:text-2xl">Bảng việc kỹ thuật viên</h1>
+          <h1 className="dx-page-title">Bảng việc kỹ thuật viên</h1>
           <p className="mt-1 text-sm text-content-muted">Phiếu quá hạn và sắp quá hạn SLA được xếp lên đầu.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div role="group" aria-label="Chế độ xem hàng đợi" className="inline-flex rounded-md border border-edge bg-surface p-0.5">
             {([['table', 'Bảng danh sách', LayoutList], ['kanban', 'Kanban luồng việc', Kanban]] as const).map(([key, label, Icon]) => (
               <button key={key} type="button" aria-pressed={viewMode === key} onClick={() => setParams({ view: key })}
-                className={`inline-flex min-h-10 items-center gap-1.5 rounded-[4px] px-3 text-xs font-semibold transition-colors ${FOCUS} ${
-                  viewMode === key ? 'bg-primary text-white' : 'text-content-muted hover:bg-surface-muted hover:text-content'}`}>
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-[4px] px-3 text-sm font-medium transition-colors ${FOCUS} ${
+                  viewMode === key ? 'bg-primary text-white' : 'text-content-muted hover:bg-state-hover hover:text-content'}`}>
                 <Icon className="h-3.5 w-3.5" aria-hidden="true" />{label}
               </button>
             ))}
@@ -371,21 +371,21 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="min-w-0 flex-1 basis-56 text-xs font-semibold text-content">Tìm trong hàng đợi
+        <label className="min-w-0 flex-1 basis-56 text-[13px] font-medium text-content">Tìm trong hàng đợi
           <span className="relative mt-1 block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" aria-hidden="true" />
             <input type="search" value={searchInput} placeholder="Tiêu đề, mã phiếu, người yêu cầu…" className={`${FIELD} pl-9`}
               onChange={event => { setSearchInput(event.target.value); setParams({ q: event.target.value, ticket: null }); }} />
           </span>
         </label>
-        {queue !== 'my_open' && <label className="w-[calc(50%-6px)] text-xs font-semibold text-content sm:w-56">Nhóm xử lý
+        {queue !== 'my_open' && <label className="w-[calc(50%-6px)] text-[13px] font-medium text-content sm:w-56">Nhóm xử lý
           <select className={`${FIELD} mt-1 block`} value={teamId} disabled={busyId !== null}
             onChange={event => setParams({ team: event.target.value, page: null, ticket: null }, false)}>
             <option value="">Tất cả nhóm của tôi</option>
             {myTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
           </select>
         </label>}
-        <label className="w-[calc(50%-6px)] text-xs font-semibold text-content sm:w-48">Sắp xếp
+        <label className="w-[calc(50%-6px)] text-[13px] font-medium text-content sm:w-48">Sắp xếp
           <select className={`${FIELD} mt-1 block`} value={sortKey} onChange={event => setParams({ sort: event.target.value })}>
             <option value="sla">Hạn SLA gần nhất</option>
             <option value="newest">Mới tạo trước</option>
@@ -398,11 +398,11 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
       {loading ? <LoadingSpinner label="Đang tải hàng đợi phiếu..." /> : error == null && (
         <>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <p className="text-xs text-content-muted" aria-live="polite">
+            <p className="text-[13px] text-content-muted" aria-live="polite">
               {filtersActive ? `${visibleRows.length}/${tickets.length} phiếu khớp bộ lọc · ` : ''}{countLabel} · Trang {page}
             </p>
             {tickets.length > 0 && <div role="group" aria-label={`Lọc theo SLA ${scopeNote}`} className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-content-muted">Cần chú ý {scopeNote}:</span>
+              <span className="text-[13px] text-content-muted">Cần chú ý {scopeNote}:</span>
               {attentionButton('breached', breachedCount, 'quá hạn SLA', 'border-status-danger-border bg-status-danger-bg text-status-danger hover:brightness-95')}
               {attentionButton('at_risk', atRiskCount, 'sắp quá hạn', 'border-status-warning-border bg-status-warning-bg text-status-warning hover:brightness-95')}
             </div>}
@@ -425,7 +425,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
           ) : (
             <div className={`grid items-start gap-4 ${selected ? 'xl:grid-cols-[minmax(0,1fr)_380px]' : ''}`}>
               <div className="@container min-w-0 overflow-clip rounded-lg border border-edge bg-surface">
-                <div aria-hidden="true" className={`hidden gap-x-4 border-b border-edge bg-surface-warm px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-content-muted @3xl:grid ${ROW_GRID}`}>
+                <div aria-hidden="true" className={`hidden gap-x-4 border-b border-edge bg-surface-warm px-4 py-2.5 text-xs font-semibold text-content-muted @3xl:grid ${ROW_GRID}`}>
                   <span>Phiếu</span><span>Ưu tiên</span><span>Trạng thái</span><span>Phụ trách</span><span>SLA</span><span className="sr-only">Thao tác</span>
                 </div>
                 <ul aria-label="Phiếu trong hàng đợi" className="divide-y divide-edge-subtle">
@@ -462,23 +462,23 @@ function QueueRow({ row, selected, canClaim, busy, disabled, onPreview, onClaim 
   const assignee = assigneeLabel(ticket);
   return (
     <li className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-4 py-3 @3xl:items-center @3xl:gap-x-4 ${ROW_GRID} ${
-      selected ? 'bg-primary-tint' : 'hover:bg-surface-muted'}`}>
+      selected ? 'bg-state-selected' : 'hover:bg-state-hover'}`}>
       <div className="col-span-2 min-w-0 @3xl:col-span-1">
         <button type="button" aria-expanded={selected} aria-controls="queue-preview" onClick={event => onPreview(ticket, event.currentTarget)}
           className={`block max-w-full rounded-sm text-left text-sm font-semibold text-content hover:text-[var(--color-primary-ink)] hover:underline ${FOCUS}`}>
           <span className="break-words">{ticket.title}</span>
         </button>
         <p className="mt-0.5 truncate text-xs text-content-muted">
-          <span className="font-mono" title={ticket.id}>#{shortId(ticket.id)}</span> · {ticket.requester_name || 'Người yêu cầu chưa có tên'}
+          <span className="tabular-nums" title={ticket.id}>#{shortId(ticket.id)}</span> · {ticket.requester_name || 'Người yêu cầu chưa có tên'}
         </p>
       </div>
       <div className="col-span-2 flex flex-wrap items-center gap-2 @3xl:contents">
         <div><PriorityBadge priority={ticket.priority} /></div>
         <div><StatusBadge status={ticket.status} /></div>
       </div>
-      <div className="min-w-0 text-xs">
-        <p className={`truncate ${assignee ? 'font-medium text-content' : 'font-semibold text-status-warning'}`}>{assignee ?? 'Chưa có người nhận'}</p>
-        <p className="truncate text-content-muted">{teamLabel(ticket)}</p>
+      <div className="min-w-0">
+        <p className={`truncate text-[13px] ${assignee ? 'font-medium text-content' : 'font-semibold text-status-warning'}`}>{assignee ?? 'Chưa có người nhận'}</p>
+        <p className="truncate text-xs text-content-muted">{teamLabel(ticket)}</p>
       </div>
       <div className="min-w-0 text-right @3xl:text-left"><SlaRemaining snapshot={sla} risk={risk} /></div>
       {canClaim && <div className="col-span-2 flex justify-end @3xl:col-span-1">
@@ -504,8 +504,8 @@ function PreviewPanel({ row, headingRef, onClose, canClaim, busy, disabled, onCl
       className="order-first min-w-0 rounded-lg border border-edge bg-surface xl:sticky xl:top-20 xl:order-none xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
       <div className="flex items-start justify-between gap-3 border-b border-edge-subtle px-4 py-3">
         <div className="min-w-0">
-          <p className="font-mono text-xs text-content-muted" title={ticket.id}>#{shortId(ticket.id)}</p>
-          <h2 id="queue-preview-title" ref={headingRef} tabIndex={-1} className="mt-0.5 break-words text-base font-bold text-content focus:outline-none">{ticket.title}</h2>
+          <p className="tabular-nums text-xs text-content-muted" title={ticket.id}>#{shortId(ticket.id)}</p>
+          <h2 id="queue-preview-title" ref={headingRef} tabIndex={-1} className="dx-section-title mt-0.5 break-words focus:outline-none">{ticket.title}</h2>
         </div>
         <button type="button" aria-label="Đóng xem nhanh" onClick={onClose} className={`-mr-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-content-muted hover:bg-surface-muted hover:text-content ${FOCUS}`}>
           <X className="h-4 w-4" aria-hidden="true" />
@@ -531,7 +531,7 @@ function PreviewPanel({ row, headingRef, onClose, canClaim, busy, disabled, onCl
           <dt className="text-content-muted">Cập nhật</dt><dd className="text-content">{when(ticket.updated_at)}</dd>
         </dl>
         <section aria-label="Mô tả" className="border-t border-edge-subtle pt-4">
-          <h3 className="text-xs font-semibold text-content-muted">Mô tả</h3>
+          <h3 className="text-[13px] font-semibold text-content-muted">Mô tả</h3>
           <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-content">{ticket.description || 'Không có mô tả.'}</p>
         </section>
         {fields.length > 0 && <dl className="space-y-1.5 border-t border-edge-subtle pt-4 text-sm">

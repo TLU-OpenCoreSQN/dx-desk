@@ -116,7 +116,7 @@ export const AttachmentPanel: React.FC<{ ticketId: string }> = ({ ticketId }) =>
     >
       <div className="flex items-center gap-2 border-b border-[var(--color-edge-subtle)] py-1.5 pl-5 pr-2">
         <Paperclip className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
-        <h2 id="attachments-title" className="text-sm font-bold tracking-tight text-[var(--color-content)]">
+        <h2 id="attachments-title" className="dx-section-title">
           Tệp đính kèm
           {items.length > 0 && (
             <span className="ml-1.5 font-normal text-[var(--color-content-muted)]">({items.length})</span>

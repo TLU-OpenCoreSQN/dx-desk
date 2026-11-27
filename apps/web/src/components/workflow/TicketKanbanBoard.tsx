@@ -51,14 +51,14 @@ export const KANBAN_COLUMNS: KanbanColumnDef[] = [
     label: 'Mới tiếp nhận',
     sublabel: 'new / triaged',
     icon: Inbox,
-    accentColor: 'text-blue-500',
+    accentColor: 'text-status-info-solid',
   },
   {
     key: 'team_queue',
     label: 'Hàng đợi nhóm',
     sublabel: 'Chưa nhận',
     icon: UserCheck,
-    accentColor: 'text-violet-500',
+    accentColor: 'text-status-pending-solid',
   },
   {
     key: 'in_progress',
@@ -72,7 +72,7 @@ export const KANBAN_COLUMNS: KanbanColumnDef[] = [
     label: 'Chờ phản hồi / duyệt',
     sublabel: 'waiting / approval',
     icon: Pause,
-    accentColor: 'text-amber-500',
+    accentColor: 'text-status-warning-solid',
   },
   {
     key: 'resolved',
@@ -221,7 +221,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                   <ColIcon className={`h-4 w-4 ${col.accentColor}`} aria-hidden="true" />
                   <span className="text-xs font-semibold text-content">{col.label}</span>
                 </div>
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-surface px-1.5 font-mono text-[11px] font-bold text-content-muted shadow-2xs">
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-surface px-1.5 tabular-nums text-[11px] font-bold text-content-muted shadow-2xs">
                   {colTickets.length}
                 </span>
               </div>
@@ -257,11 +257,11 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                       >
                         {/* Top: ID & SLA Badge */}
                         <div className="flex items-center justify-between gap-1 text-[11px]">
-                          <span className="font-mono font-bold text-[var(--color-primary-ink)] tabular-nums">
+                          <span className="tabular-nums font-bold text-[var(--color-primary-ink)]">
                             #{ticket.id.slice(0, 8).toUpperCase()}
                           </span>
                           <span
-                            className={`font-mono text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-xs ${
+                            className={`tabular-nums text-[10px] font-semibold px-1.5 py-0.5 rounded-xs ${
                               sla.isBreached
                                 ? 'bg-status-danger-bg text-status-danger'
                                 : sla.isPaused
@@ -365,7 +365,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
             <Layers className="h-4 w-4 text-[var(--color-primary-ink)]" aria-hidden="true" />
             <span>KANBAN VẬN HÀNH IT</span>
           </div>
-          <span className="font-mono text-xs text-content-subtle tabular-nums">
+          <span className="tabular-nums text-xs text-content-subtle">
             ({filteredTickets.length} phiếu)
           </span>
         </div>
@@ -426,7 +426,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                     HÀNG ĐỢI KHẨN CẤP / CRITICAL SWIMLANE (SLA RỦI RO CAO)
                   </span>
                 </div>
-                <span className="font-mono text-xs font-bold tabular-nums">
+                <span className="tabular-nums text-xs font-bold">
                   {criticalTickets.length} phiếu đang mở
                 </span>
               </div>
@@ -443,7 +443,7 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                   HÀNG ĐỢI TIÊU CHUẨN / STANDARD SWIMLANE
                 </span>
               </div>
-              <span className="font-mono text-xs font-semibold tabular-nums">
+              <span className="tabular-nums text-xs font-semibold">
                 {standardTickets.length} phiếu
               </span>
             </div>

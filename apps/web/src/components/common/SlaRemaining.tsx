@@ -14,44 +14,44 @@ function dueLabel(ms: number): string {
  * Màu chỉ dùng cho hai trạng thái cần chú ý: đã quá hạn và sắp quá hạn.
  */
 export function SlaRemaining({ snapshot, risk, size = 'sm' }: { snapshot: SlaSnapshot; risk: SlaRisk; size?: 'sm' | 'md' }) {
-  const main = size === 'md' ? 'text-sm' : 'text-xs';
+  const main = size === 'md' ? 'text-sm' : 'text-[13px]';
   const due = snapshot.hasSla ? `Hạn ${dueLabel(snapshot.effectiveDue)}` : null;
   switch (risk) {
     case 'breached':
       return (
-        <div className="min-w-0">
+        <div className="min-w-0 tabular-nums">
           <p className={`inline-flex items-center gap-1 font-semibold text-status-danger ${main}`}>
             <AlertOctagon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {snapshot.isFinished || snapshot.remainingMs >= 0 ? 'Đã vi phạm SLA' : `Quá hạn ${formatSlaDuration(snapshot.remainingMs)}`}
           </p>
-          {due && <p className="text-[11px] text-content-muted">{due}</p>}
+          {due && <p className="text-xs text-content-muted">{due}</p>}
         </div>
       );
     case 'at_risk':
       return (
-        <div className="min-w-0">
+        <div className="min-w-0 tabular-nums">
           <p className={`inline-flex items-center gap-1 font-semibold text-status-warning ${main}`}>
             <Clock3 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            Còn {formatSlaDuration(snapshot.remainingMs)}
+            Sắp quá SLA · còn {formatSlaDuration(snapshot.remainingMs)}
           </p>
-          <p className="text-[11px] text-content-muted">Sắp quá hạn · {due}</p>
+          <p className="text-xs text-content-muted">{due}</p>
         </div>
       );
     case 'running':
       return (
-        <div className="min-w-0">
+        <div className="min-w-0 tabular-nums">
           <p className={`font-medium text-content ${main}`}>Còn {formatSlaDuration(snapshot.remainingMs)}</p>
-          <p className="text-[11px] text-content-muted">{due}</p>
+          <p className="text-xs text-content-muted">{due}</p>
         </div>
       );
     case 'paused':
       return (
-        <div className="min-w-0">
+        <div className="min-w-0 tabular-nums">
           <p className={`inline-flex items-center gap-1 font-medium text-content ${main}`}>
             <PauseCircle className="h-3.5 w-3.5 shrink-0 text-content-muted" aria-hidden="true" />
             Tạm dừng
           </p>
-          <p className="text-[11px] text-content-muted">Chờ người yêu cầu phản hồi</p>
+          <p className="text-xs text-content-muted">Chờ người yêu cầu phản hồi</p>
         </div>
       );
     case 'finished':

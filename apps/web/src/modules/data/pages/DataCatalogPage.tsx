@@ -92,14 +92,14 @@ export function DataCatalogPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <header className="rounded-xl border border-edge bg-surface p-5 sm:p-7">
         <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary-ink)]">Dữ liệu mở · DCAT / JSON-LD</p>
-        <h1 className="mt-2 text-2xl font-bold text-content sm:text-3xl">Danh mục dữ liệu DX-Desk</h1>
+        <h1 className="dx-page-title mt-2">Danh mục dữ liệu DX-Desk</h1>
         <p className="mt-2 max-w-3xl text-sm text-content-muted">Khám phá các bộ dữ liệu giả lập và tài nguyên tham chiếu dùng trong bản demo.</p>
         {(catalog?.sample || Object.values(collections).some(group => group?.sample)) && <p className="mt-2 text-xs text-content-muted">Đang hiển thị danh mục mẫu đi kèm bản demo.</p>}
         <a href="/ld/catalog" className="mt-4 inline-block text-sm font-semibold text-[var(--color-primary-ink)] underline">Mở danh mục DCAT (JSON-LD)</a>
       </header>
 
       <section aria-labelledby="datasets-title" className="space-y-3">
-        <h2 id="datasets-title" className="text-lg font-bold text-content">Ba bộ dữ liệu DCAT</h2>
+        <h2 id="datasets-title" className="dx-section-title">Ba bộ dữ liệu DCAT</h2>
         {catalogError ? <p role="alert">{catalogError}</p> : !catalog && <p role="status">Đang tải danh mục…</p>}
         <ul className="grid gap-3 lg:grid-cols-3">
           {datasets.map(dataset => (
@@ -118,7 +118,7 @@ export function DataCatalogPage() {
       </section>
 
       <section aria-labelledby="resources-title" className="rounded-xl border border-edge bg-surface p-4 sm:p-6">
-        <h2 id="resources-title" className="text-lg font-bold text-content">Tài nguyên tham chiếu</h2>
+        <h2 id="resources-title" className="dx-section-title">Tài nguyên tham chiếu</h2>
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {resourceGroups.map(group => {
             const collection = collections[group.path];

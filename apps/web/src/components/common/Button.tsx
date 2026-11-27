@@ -15,24 +15,24 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary:
-    'border border-[var(--color-primary)] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] text-white shadow-xs hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] focus-visible:ring-[var(--color-primary)]',
+    'border border-[var(--color-primary)] bg-primary hover:bg-primary-hover active:bg-primary-active text-white shadow-xs hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] focus-visible:ring-[var(--color-primary)]',
   secondary:
-    'border border-[var(--color-edge-subtle)] bg-[var(--color-surface,#ffffff)] text-[var(--color-content,#211f1b)] hover:bg-[var(--color-surface-muted,#f1f1ef)] focus-visible:ring-[var(--color-primary)] shadow-2xs',
+    'border border-[var(--color-edge-subtle)] bg-[var(--color-surface)] text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] focus-visible:ring-[var(--color-primary)] shadow-2xs',
   success:
-    'border border-[var(--color-success,#448361)] bg-[var(--color-success,#448361)] text-white shadow-xs hover:bg-[var(--color-success-hover,#36694e)] focus-visible:ring-[var(--color-success,#448361)]',
+    'border border-[var(--color-success)] bg-[var(--color-success)] text-white shadow-xs hover:bg-[var(--color-success-hover)] focus-visible:ring-[var(--color-success)]',
   danger:
-    'border border-[var(--color-danger,#d44c47)] bg-[var(--color-danger,#d44c47)] text-white shadow-xs hover:bg-[var(--color-danger-hover,#b53c37)] focus-visible:ring-[var(--color-danger,#d44c47)]',
+    'border border-[var(--color-danger)] bg-[var(--color-danger)] text-white shadow-xs hover:bg-[var(--color-danger-hover)] focus-visible:ring-[var(--color-danger)]',
   dangerOutline:
-    'border border-[var(--color-danger-border,#f6c3c1)] bg-[var(--color-surface,#ffffff)] text-[var(--color-danger,#d44c47)] hover:bg-[var(--color-danger-tint,#fbe4e4)] focus-visible:ring-[var(--color-danger,#d44c47)]',
+    'border border-[var(--color-danger-border)] bg-[var(--color-surface)] text-[var(--color-danger)] hover:bg-[var(--color-danger-tint)] focus-visible:ring-[var(--color-danger)]',
   ghost:
-    'border border-transparent bg-transparent text-[var(--color-content-muted,#5f5e5a)] hover:bg-[var(--color-surface-muted,#f1f1ef)] hover:text-[var(--color-content,#211f1b)] focus-visible:ring-[var(--color-primary)]',
+    'border border-transparent bg-transparent text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] focus-visible:ring-[var(--color-primary)]',
   outline:
-    'border border-[var(--color-edge,#d6d5d2)] bg-transparent text-[var(--color-content,#211f1b)] hover:bg-[var(--color-surface-warm,#f7f6f3)] hover:border-[var(--color-edge-strong,#9e9d99)] focus-visible:ring-[var(--color-primary)]',
+    'border border-[var(--color-edge)] bg-transparent text-[var(--color-content)] hover:bg-[var(--color-surface-warm)] hover:border-[var(--color-edge-strong)] focus-visible:ring-[var(--color-primary)]',
 };
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
   // Chỉ dùng min-h: giữ vùng chạm 44px tới breakpoint lg và cho nhãn dài xuống dòng không bị cắt.
-  sm: 'min-h-[44px] px-3 py-1.5 text-xs gap-1.5 lg:min-h-8',
+  sm: 'min-h-[44px] px-3 py-1.5 text-[13px] gap-1.5 lg:min-h-8',
   md: 'min-h-[44px] px-3.5 py-2 text-sm font-semibold gap-2 lg:min-h-10',
   lg: 'min-h-[44px] px-5 py-2.5 text-sm gap-2.5 lg:min-h-11',
 };

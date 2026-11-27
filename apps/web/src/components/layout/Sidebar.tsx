@@ -103,8 +103,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             isCompact ? 'justify-center px-2' : ''
           } ${
             isActive
-              ? 'bg-primary-tint text-[var(--color-primary-ink)] font-semibold shadow-2xs border-l-2 border-primary'
-              : 'text-content-muted hover:bg-surface-muted hover:text-content'
+              ? 'bg-state-selected text-[var(--color-primary-ink)] font-semibold'
+              : 'text-content-muted hover:bg-state-hover hover:text-content'
           }`
         }
       >

@@ -8,11 +8,11 @@ import { HelpCircle, Home } from 'lucide-react';
 export const NotFoundPage: React.FC = () => {
   return (
     <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center max-w-md mx-auto px-4">
-      <div className="w-16 h-16 rounded-[12px] bg-gradient-to-br from-[var(--color-primary-tint)] to-[var(--color-primary-tint)] text-[var(--color-primary-text)] flex items-center justify-center mb-5 border border-[var(--color-primary-border)] shadow-sm">
+      <div className="w-16 h-16 rounded-[12px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] flex items-center justify-center mb-5 border border-[var(--color-primary-border)] shadow-sm">
         <HelpCircle className="w-8 h-8" aria-hidden="true" />
       </div>
       <h1 className="text-5xl font-black text-[var(--color-content)] mb-2 tracking-tight">404</h1>
-      <h2 className="text-base sm:text-lg font-bold text-[var(--color-content)] mb-2">
+      <h2 className="dx-section-title mb-2">
         Không tìm thấy trang yêu cầu
       </h2>
       <p className="text-xs sm:text-sm text-[var(--color-content-muted)] mb-6 leading-relaxed">
@@ -20,7 +20,7 @@ export const NotFoundPage: React.FC = () => {
       </p>
       <Link
         to="/"
-        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] text-white text-xs sm:text-sm font-semibold rounded-[6px] shadow-xs active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] min-h-[40px]"
+        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover active:bg-primary-active text-white text-sm font-semibold rounded-[6px] shadow-xs active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] min-h-[40px]"
       >
         <Home className="w-4 h-4" />
         <span>Về trang chủ</span>

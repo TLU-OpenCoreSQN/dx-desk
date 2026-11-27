@@ -282,7 +282,7 @@ export const DeviceRequestPage: React.FC = () => {
       {/* Page Title & Top Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-3 border-b border-[var(--color-edge-subtle)]">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-content)] tracking-tight">
+          <h1 className="dx-page-title">
             Yêu cầu cấp phát thiết bị IT
           </h1>
           <p className="text-xs sm:text-sm text-[var(--color-content-muted)] mt-1">
@@ -307,7 +307,7 @@ export const DeviceRequestPage: React.FC = () => {
             onClick={toggleForm}
             aria-expanded={showForm}
             aria-controls="device-request-form"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] text-white text-xs font-semibold rounded-[6px] shadow-xs active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] transition-all min-h-[40px]"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover active:bg-primary-active text-white text-sm font-semibold rounded-[6px] shadow-xs active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] transition-all min-h-[40px]"
           >
             {showForm ? (
               <X className="w-4 h-4" aria-hidden="true" />
@@ -346,7 +346,7 @@ export const DeviceRequestPage: React.FC = () => {
                 Vui lòng nêu rõ lý do và nhu cầu sử dụng thực tế.
               </p>
             </div>
-            <span className="text-[11px] px-2.5 py-1 rounded-[4px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] font-mono font-semibold border border-[var(--color-primary-border)]">
+            <span className="text-[11px] px-2.5 py-1 rounded-[4px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] tabular-nums font-semibold border border-[var(--color-primary-border)]">
               POST /api/device-requests
             </span>
           </div>
@@ -472,7 +472,7 @@ export const DeviceRequestPage: React.FC = () => {
                       Lý do đề xuất <span className="text-status-danger" aria-hidden="true">*</span>
                     </label>
                     <span
-                      className={`text-[11px] font-mono ${
+                      className={`text-[11px] tabular-nums ${
                         reasonLength > MAX_REASON_LENGTH ||
                         (reasonLength > 0 && reasonLength < MIN_REASON_LENGTH)
                           ? 'text-status-danger font-semibold'
@@ -524,7 +524,7 @@ export const DeviceRequestPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] text-white text-xs font-bold rounded-[6px] shadow-xs active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] transition-all disabled:opacity-50 min-h-[40px]"
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover active:bg-primary-active text-white text-sm font-semibold rounded-[6px] shadow-xs active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] transition-all disabled:opacity-50 min-h-[40px]"
                 >
                   {isSubmitting ? (
                     <>
@@ -547,7 +547,7 @@ export const DeviceRequestPage: React.FC = () => {
       {/* Requests List */}
       <section aria-labelledby="device-request-list-title" aria-busy={isLoading} className="min-w-0">
         <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-          <h2 id="device-request-list-title" className="text-sm font-bold text-[var(--color-content)] tracking-tight">
+          <h2 id="device-request-list-title" className="dx-section-title">
             Danh sách yêu cầu đã gửi
           </h2>
           <span className="text-[11px] text-[var(--color-content-muted)]">Tối đa {PAGE_SIZE} yêu cầu mỗi trang</span>
@@ -614,7 +614,7 @@ export const DeviceRequestPage: React.FC = () => {
                           <h3 className="text-sm font-bold text-[var(--color-content)] leading-snug">
                             {meta.label}
                           </h3>
-                          <p className="text-[11px] font-mono text-[var(--color-content-subtle)] mt-0.5 break-all">
+                          <p className="text-[11px] tabular-nums text-[var(--color-content-subtle)] mt-0.5 break-all">
                             ID: {req.id}
                           </p>
                         </div>
