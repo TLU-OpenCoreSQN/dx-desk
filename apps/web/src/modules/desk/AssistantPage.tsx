@@ -156,24 +156,40 @@ export function AssistantPage() {
 
   useEffect(() => {
     if (!selected || busy || !remotePending) return;
-    const request = new AbortController();
-    const timer = window.setTimeout(() => {
-      getAssistantSession(selected, request.signal)
-        .then((detail) => {
-          if (!request.signal.aborted) {
-            setTurns(detail.turns);
-            setMoreTurns(detail.has_more);
-          }
-        })
-        .catch((failure) => {
-          if (!request.signal.aborted) setError(failure.message);
-        });
-    }, 1500);
-    return () => {
-      clearTimeout(timer);
-      request.abort();
+    let stopped = false;
+    let request: AbortController | undefined;
+    let timer: number;
+    let failures = 0;
+    let pollingError = '';
+    const poll = async () => {
+      request = new AbortController();
+      let again = true;
+      try {
+        const detail = await getAssistantSession(selected, request.signal);
+        if (stopped) return;
+        setTurns(detail.turns);
+        setMoreTurns(detail.has_more);
+        const previousPollingError = pollingError;
+        if (previousPollingError) setError((current) => current === previousPollingError ? '' : current);
+        pollingError = '';
+        failures = 0;
+        again = detail.turns.some((turn) => turn.status === 'pending');
+      } catch (failure) {
+        if (stopped) return;
+        pollingError = (failure as Error).message;
+        setError(pollingError);
+        failures = Math.min(failures + 1, 3);
+      } finally {
+        if (!stopped && again) timer = window.setTimeout(poll, Math.min(12000, 1500 * 2 ** failures));
+      }
     };
-  }, [selected, busy, remotePending, turns]);
+    timer = window.setTimeout(poll, 1500);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      request?.abort();
+    };
+  }, [selected, busy, remotePending]);
 
   useEffect(() => {
     if (follow.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;

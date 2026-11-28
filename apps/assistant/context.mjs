@@ -55,12 +55,23 @@ export async function conversationContext(
         content: JSON.stringify({ previous_memory: memory, transcript: older.flatMap(transcript) }),
       },
     ];
-    for await (const part of complete(messages, [], signal)) {
-      if (part.content) nextMemory += part.content;
-      if (nextMemory.length > 12000) throw new Error('Conversation memory exceeds the storage limit');
+    try {
+      for await (const part of complete(messages, [], signal)) {
+        if (part.content) nextMemory += part.content;
+        if (nextMemory.length >= 12000) { nextMemory = nextMemory.slice(0, 12000); break; }
+      }
+      if (!nextMemory.trim()) throw new Error('Conversation memory is empty');
+    } catch (error) {
+      if (signal.aborted) throw signal.reason;
+      // A failed summarizer must not poison the conversation. Use a recent window for this
+      // answer, keep the previous checkpoint, and retry the original history on the next turn.
+      emit('step', { label: 'Đang dùng các lượt trao đổi gần nhất' });
+      while (remaining.length > 2 && remaining.reduce((sum, turn) => sum + turn.question.length + turn.answer.length, memory.length) > 48000) {
+        remaining.shift();
+      }
+      break;
     }
     if (signal.aborted) throw signal.reason;
-    if (!nextMemory.trim()) throw new Error('Conversation memory is empty');
     memory = nextMemory;
     through = older.at(-1).ordinal;
     length = remaining.reduce(
