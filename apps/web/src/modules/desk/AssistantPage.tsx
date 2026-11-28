@@ -528,7 +528,7 @@ export function AssistantPage() {
             <button
               onClick={() => void olderSessions()}
               disabled={mutating}
-              className="w-full rounded-lg p-3 text-xs text-primary"
+              className="w-full rounded-lg p-3 text-xs text-[var(--color-primary-ink)]"
             >
               Tải thêm hội thoại
             </button>
@@ -577,14 +577,14 @@ export function AssistantPage() {
                   <button
                     onClick={() => void olderTurns()}
                     disabled={mutating}
-                    className="mx-auto mt-4 block rounded-lg border border-edge px-4 py-2 text-xs text-primary"
+                    className="mx-auto mt-4 block rounded-lg border border-edge px-4 py-2 text-xs text-[var(--color-primary-ink)]"
                   >
                     Tải tin nhắn cũ
                   </button>
                 )}
                 {!turns.length && (
                   <div className="flex min-h-64 flex-col items-center justify-center gap-3 py-12 text-center">
-                    <MessageSquare size={28} className="text-primary" />
+                    <MessageSquare size={28} className="text-[var(--color-primary-ink)]" />
                     <h2 className="text-xl font-semibold">Bạn cần hỗ trợ việc gì?</h2>
                     <p className="max-w-sm text-sm leading-6 text-content-muted">
                       Hỏi về sự cố IT hoặc tiếp tục trao đổi trong cuộc trò chuyện của bạn.

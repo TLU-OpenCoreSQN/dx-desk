@@ -101,13 +101,13 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge-subtle pb-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-tint text-primary">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-tint text-[var(--color-primary-text)]">
             <Bot className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-content flex items-center gap-1.5">
               <span>ĐỀ XUẤT PHÂN LOẠI & GÁN NHÓM TỰ ĐỘNG TỪ AI TRỢ LÝ</span>
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <Sparkles className="h-3.5 w-3.5 text-status-warning-solid" />
             </h3>
             <p className="text-[11px] text-content-muted">
               Đề xuất do AI tạo, cần người xử lý xác nhận trước khi áp dụng
@@ -115,7 +115,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
           </div>
         </div>
         {confidenceScore !== undefined && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary-border bg-primary-tint px-2.5 py-0.5 font-mono text-xs font-bold text-primary tabular-nums">
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary-border bg-primary-tint px-2.5 py-0.5 tabular-nums text-xs font-bold text-[var(--color-primary-text)]">
             Độ tin cậy: {confidenceScore}%
           </span>
         )}
@@ -138,7 +138,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
                   {item.label}
                 </td>
                 <td className="py-2.5 px-3 text-content-muted">
-                  <span className="rounded-xs border border-edge bg-surface-muted px-2 py-1 font-mono text-[11px]">
+                  <span className="rounded-xs border border-edge bg-surface-muted px-2 py-1 tabular-nums text-[11px]">
                     {item.current}
                   </span>
                 </td>
@@ -146,9 +146,9 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
                   <div className="flex flex-wrap items-center gap-2">
                     <ArrowRight className="h-3.5 w-3.5 text-content-subtle shrink-0" />
                     <span
-                      className={`rounded-xs px-2 py-1 font-mono text-[11px] font-semibold transition-colors ${
+                      className={`rounded-xs px-2 py-1 tabular-nums text-[11px] font-semibold transition-colors ${
                         item.isChanged
-                          ? 'border border-primary-border bg-primary-tint text-primary'
+                          ? 'border border-primary-border bg-primary-tint text-[var(--color-primary-ink)]'
                           : 'border border-edge bg-surface text-content'
                       }`}
                     >
@@ -171,7 +171,7 @@ export const AiTriageDiff: React.FC<AiTriageDiffProps> = ({
       {(rationale || summary) && (
         <div className="mt-4 rounded-md border border-edge bg-surface-muted/40 p-3 sm:p-3.5 text-xs text-content leading-relaxed">
           <div className="font-semibold text-content mb-1 flex items-center gap-1.5">
-            <span className="font-mono text-[11px] text-content-muted uppercase tracking-wider">
+            <span className="tabular-nums text-[11px] text-content-muted uppercase tracking-wider">
               GIẢI TRÌNH TỪ MÔ HÌNH:
             </span>
           </div>

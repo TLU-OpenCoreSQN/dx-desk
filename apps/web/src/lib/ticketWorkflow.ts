@@ -64,16 +64,25 @@ export const STATUS_ICONS: Record<TicketStatus, StatusIcon> = {
   cancelled: XCircle,
 };
 
+/**
+ * Màu theo ý nghĩa, dùng token trạng thái chung với Badge: xanh dương = thông tin/đang chạy,
+ * hổ phách = cần chú ý, tím = chờ phê duyệt, xanh lá = hoàn tất, xám = trung tính/kết thúc.
+ * Đỏ để dành cho lỗi và quá hạn SLA, nên "Đã hủy" là trung tính.
+ */
+const tone = (name: 'info' | 'neutral' | 'warning' | 'pending' | 'success') => ({
+  badge: `bg-status-${name}-bg text-status-${name} border-status-${name}-border`,
+  timeline: `bg-status-${name}-bg text-status-${name}`,
+});
 export const STATUS_TONES: Record<TicketStatus, { badge: string; timeline: string }> = {
-  new: { badge: 'bg-cyan-100 text-cyan-800 border-cyan-200', timeline: 'bg-cyan-100 text-cyan-700' },
-  triaged: { badge: 'bg-slate-100 text-slate-700 border-slate-200', timeline: 'bg-slate-100 text-slate-600' },
-  assigned: { badge: 'bg-slate-100 text-slate-700 border-slate-200', timeline: 'bg-slate-100 text-slate-600' },
-  in_progress: { badge: 'bg-blue-100 text-blue-800 border-blue-200', timeline: 'bg-blue-100 text-blue-700' },
-  waiting_user: { badge: 'bg-amber-100 text-amber-800 border-amber-200', timeline: 'bg-amber-100 text-amber-700' },
-  pending_approval: { badge: 'bg-violet-100 text-violet-800 border-violet-200', timeline: 'bg-violet-100 text-violet-700' },
-  resolved: { badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', timeline: 'bg-emerald-100 text-emerald-700' },
-  closed: { badge: 'bg-slate-100 text-slate-700 border-slate-200', timeline: 'bg-slate-200 text-slate-600' },
-  cancelled: { badge: 'bg-slate-100 text-slate-700 border-slate-200', timeline: 'bg-rose-100 text-rose-700' },
+  new: tone('info'),
+  triaged: tone('neutral'),
+  assigned: tone('neutral'),
+  in_progress: tone('info'),
+  waiting_user: tone('warning'),
+  pending_approval: tone('pending'),
+  resolved: tone('success'),
+  closed: tone('neutral'),
+  cancelled: tone('neutral'),
 };
 
 /** Đồ thị chuyển tiếp hợp lệ (máy trạng thái), độc lập với vai trò. */

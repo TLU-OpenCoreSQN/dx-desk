@@ -63,6 +63,9 @@ Metadata kiểm tại dependency đã cài ngày 21/10/2026:
 - Phông Noto Sans Regular/Bold (W5-03): SIL Open Font License 1.1, © 2022 The Noto Project Authors. Tệp `.ttf` nguyên
   bản lấy từ gói npm `@expo-google-fonts/noto-sans` 0.4.2, đặt ở `apps/api/assets/fonts/` kèm `OFL.txt`; biên bản PDF
   nhúng tập con của phông. Văn bản giấy phép: `LICENSES/OFL-1.1.txt`.
+- Phông Be Vietnam Pro (giao diện web, 11/2026): SIL Open Font License 1.1, © 2021 The Be Vietnam Pro Project
+  Authors. Tự host qua gói npm `@fontsource/be-vietnam-pro` 5.3.0 trong `apps/web`, không tải từ CDN. Văn bản giấy
+  phép: `LICENSES/OFL-1.1.txt`; build web chép LICENSE của gói vào `dist/THIRD-PARTY-LICENSES.txt`.
 - Ứng dụng 2 (`apps/device-request`, W5-01) chỉ dùng React/React DOM 18.3.1 và keycloak-js 26.2.4 cùng phiên bản
   với web; không thêm thư viện runtime mới. Build cũng tạo `dist/THIRD-PARTY-LICENSES.txt`.
 - jsonld 9.0.0 (Digital Bazaar): BSD-3-Clause; chỉ là devDependency của API để kiểm

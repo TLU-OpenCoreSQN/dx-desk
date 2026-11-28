@@ -40,7 +40,7 @@ function resourceItems(group: string, document: Document) {
 }
 
 function Playground({ document, origin }: { document: Document; origin: string }) {
-  return <a className="font-semibold text-primary underline" href={playgroundUrl(document, origin)}
+  return <a className="font-semibold text-[var(--color-primary-ink)] underline" href={playgroundUrl(document, origin)}
     target="_blank" rel="noopener noreferrer">Kiểm tra trên JSON-LD Playground</a>;
 }
 
@@ -91,15 +91,15 @@ export function DataCatalogPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <header className="rounded-xl border border-edge bg-surface p-5 sm:p-7">
-        <p className="text-xs font-bold uppercase tracking-wider text-primary">Dữ liệu mở · DCAT / JSON-LD</p>
-        <h1 className="mt-2 text-2xl font-bold text-content sm:text-3xl">Danh mục dữ liệu DX-Desk</h1>
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary-ink)]">Dữ liệu mở · DCAT / JSON-LD</p>
+        <h1 className="dx-page-title mt-2">Danh mục dữ liệu DX-Desk</h1>
         <p className="mt-2 max-w-3xl text-sm text-content-muted">Khám phá các bộ dữ liệu giả lập và tài nguyên tham chiếu dùng trong bản demo.</p>
         {(catalog?.sample || Object.values(collections).some(group => group?.sample)) && <p className="mt-2 text-xs text-content-muted">Đang hiển thị danh mục mẫu đi kèm bản demo.</p>}
-        <a href="/ld/catalog" className="mt-4 inline-block text-sm font-semibold text-primary underline">Mở danh mục DCAT (JSON-LD)</a>
+        <a href="/ld/catalog" className="mt-4 inline-block text-sm font-semibold text-[var(--color-primary-ink)] underline">Mở danh mục DCAT (JSON-LD)</a>
       </header>
 
       <section aria-labelledby="datasets-title" className="space-y-3">
-        <h2 id="datasets-title" className="text-lg font-bold text-content">Ba bộ dữ liệu DCAT</h2>
+        <h2 id="datasets-title" className="dx-section-title">Ba bộ dữ liệu DCAT</h2>
         {catalogError ? <p role="alert">{catalogError}</p> : !catalog && <p role="status">Đang tải danh mục…</p>}
         <ul className="grid gap-3 lg:grid-cols-3">
           {datasets.map(dataset => (
@@ -107,10 +107,10 @@ export function DataCatalogPage() {
               <span className="self-start rounded-full bg-surface-muted px-2 py-1 text-xs font-semibold">Dữ liệu giả lập</span>
               <h3 className="font-bold text-content">{dataset.title}</h3>
               <p className="flex-1 text-content-muted">{dataset.description}</p>
-              <p>Giấy phép <a className="text-primary underline" href={dataset.license}
+              <p>Giấy phép <a className="text-[var(--color-primary-ink)] underline" href={dataset.license}
                 target="_blank" rel="noopener noreferrer">{dataset.license.includes('/zero/1.0') ? 'CC0 1.0' : dataset.license}</a></p>
               <p>Cập nhật <time dateTime={dataset.updated}>{dataset.updated}</time></p>
-              <a className="font-semibold text-primary underline" href={dataset.download} download>Tải {dataset.title.toLowerCase()}</a>
+              <a className="font-semibold text-[var(--color-primary-ink)] underline" href={dataset.download} download>Tải {dataset.title.toLowerCase()}</a>
               <Playground document={dataset.document} origin={origin} />
             </li>
           ))}
@@ -118,7 +118,7 @@ export function DataCatalogPage() {
       </section>
 
       <section aria-labelledby="resources-title" className="rounded-xl border border-edge bg-surface p-4 sm:p-6">
-        <h2 id="resources-title" className="text-lg font-bold text-content">Tài nguyên tham chiếu</h2>
+        <h2 id="resources-title" className="dx-section-title">Tài nguyên tham chiếu</h2>
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {resourceGroups.map(group => {
             const collection = collections[group.path];
@@ -132,7 +132,7 @@ export function DataCatalogPage() {
               <ul className="mt-2 space-y-1.5">
                 {items.map(({ path, name }) => {
                   return <li key={path}><button type="button" aria-pressed={selection?.path === path}
-                    className="min-h-10 w-full rounded-md border border-edge px-2 py-1 text-left text-sm text-primary hover:bg-surface-muted aria-pressed:bg-surface-muted"
+                    className="min-h-10 w-full rounded-md border border-edge px-2 py-1 text-left text-sm text-[var(--color-primary-ink)] hover:bg-surface-muted aria-pressed:bg-surface-muted"
                     onClick={() => { setResource(null); setResourceError(''); setCopyStatus(''); setSelection({ path, name, sample: !!collection?.sample }); }}>{name}</button></li>;
                 })}
               </ul>
@@ -151,7 +151,7 @@ export function DataCatalogPage() {
           <p role="status" className="text-sm text-content-muted">{copyStatus}</p>
           {resource ? <>
             <div className="flex flex-wrap gap-3 text-sm">
-              <a className="text-primary underline" href={selection.path}>Mở tài nguyên JSON-LD</a>
+              <a className="text-[var(--color-primary-ink)] underline" href={selection.path}>Mở tài nguyên JSON-LD</a>
               <Playground document={resource.document} origin={origin} />
               {resource.sample && <span className="text-content-muted">Tài nguyên mẫu</span>}
             </div>

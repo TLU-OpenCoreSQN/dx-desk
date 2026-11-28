@@ -31,7 +31,8 @@ describe('Common UI Primitives - Button', () => {
   it('renders all variants with proper color and outline classes', () => {
     const { rerender } = render(<Button variant="primary">Primary</Button>);
     let btn = screen.getByRole('button', { name: 'Primary' });
-    expect(btn.className).toContain('bg-gradient-to-r');
+    expect(btn.className).toContain('bg-primary');
+    expect(btn.className).not.toContain('bg-gradient');
 
     rerender(<Button variant="secondary">Secondary</Button>);
     btn = screen.getByRole('button', { name: 'Secondary' });
@@ -39,11 +40,11 @@ describe('Common UI Primitives - Button', () => {
 
     rerender(<Button variant="success">Success</Button>);
     btn = screen.getByRole('button', { name: 'Success' });
-    expect(btn.className).toContain('bg-[var(--color-success,#448361)]');
+    expect(btn.className).toContain('bg-[var(--color-success)]');
 
     rerender(<Button variant="danger">Danger</Button>);
     btn = screen.getByRole('button', { name: 'Danger' });
-    expect(btn.className).toContain('bg-[var(--color-danger,#d44c47)]');
+    expect(btn.className).toContain('bg-[var(--color-danger)]');
 
     rerender(<Button variant="ghost">Ghost</Button>);
     btn = screen.getByRole('button', { name: 'Ghost' });
@@ -51,7 +52,7 @@ describe('Common UI Primitives - Button', () => {
 
     rerender(<Button variant="outline">Outline</Button>);
     btn = screen.getByRole('button', { name: 'Outline' });
-    expect(btn.className).toContain('border-[var(--color-edge,#d6d5d2)]');
+    expect(btn.className).toContain('border-[var(--color-edge)]');
   });
 
   it('renders all sizes with mobile touch target minimum (44px)', () => {

@@ -1,18 +1,19 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
   GitBranch,
   Info,
-  ShieldCheck,
+  MessageSquare,
+  Send,
   X,
 } from 'lucide-react';
 import { ApiClientError, updateTicketStatus } from '../../services/api';
-import { Ticket, UpdateTicketStatusPayload } from '../../types/api';
+import { Ticket, TicketEvent, UpdateTicketStatusPayload } from '../../types/api';
 import { StatusBadge } from '../common/Badge';
 import { Alert } from '../common/Alert';
 import { Button } from '../common/Button';
@@ -27,11 +28,40 @@ import {
   validateResolutionNote,
 } from '../../lib/ticketWorkflow';
 
+/** Chiều cao thanh thao tác dính đáy trên màn hình hẹp, để trang chừa đủ khoảng trống. */
+export type BottomBarSize = 'none' | 'compact' | 'tall';
+
 export interface TicketWorkflowActionsProps {
   ticket: Ticket;
+  events?: TicketEvent[];
   onTransitionSuccess: (message: string) => Promise<void> | void;
-  onActiveEdgeChange?: (hasActiveEdge: boolean) => void;
+  onBottomBarChange?: (size: BottomBarSize) => void;
 }
+
+export const REPLY_NOTE_MIN = 5;
+
+/** Ghi chú gần nhất khi phiếu được chuyển sang chờ người dùng: điều kỹ thuật viên cần biết thêm. */
+export function findInfoRequest(events: TicketEvent[]): TicketEvent | null {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const payload = events[i].payload;
+    if (payload?.to === 'waiting_user' || payload?.to_status === 'waiting_user') return events[i];
+  }
+  return null;
+}
+
+const eventNote = (event: TicketEvent | null): string | null => {
+  const note = event?.payload?.note;
+  return typeof note === 'string' && note.trim() ? note.trim() : null;
+};
+
+const formatRequestTime = (iso: string): string =>
+  new Date(iso).toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 
 const TEXTAREA_CLASS =
   'w-full rounded-md border border-edge bg-surface-sidebar p-3 text-xs leading-relaxed text-content focus:bg-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm transition-all';
@@ -41,28 +71,81 @@ const edgeKey = (edge: TransitionEdge): string => `${edge.from}-${edge.to}-${edg
 const isDestructiveEdge = (edge: TransitionEdge): boolean =>
   edge.to === 'cancelled' || (edge.from === 'pending_approval' && edge.to === 'new');
 
+const isRejectEdge = (edge: TransitionEdge): boolean =>
+  edge.from === 'pending_approval' && edge.to === 'new';
+
+/** Nút xác nhận gọi đúng tên việc sẽ xảy ra, không dùng "Xác nhận" chung chung. */
+export function confirmLabel(edge: TransitionEdge): string {
+  if (edge.to === 'cancelled') return 'Hủy phiếu này';
+  if (isRejectEdge(edge)) return 'Từ chối yêu cầu';
+  if (edge.to === 'waiting_user') return 'Gửi yêu cầu bổ sung';
+  if (edge.to === 'closed') return 'Đóng phiếu';
+  return edge.label;
+}
+
+/** Độ dài tối thiểu của lý do/ghi chú khi thao tác bắt buộc phải giải thích. */
+export const TRANSITION_NOTE_MIN = 5;
+
+/**
+ * Hủy, từ chối và yêu cầu bổ sung đều phải có lý do: người tạo phiếu đọc lại ghi chú này
+ * để biết vì sao phiếu dừng lại hoặc cần trả lời điều gì.
+ */
+export function noteRequired(edge: TransitionEdge): boolean {
+  return isRejectEdge(edge) || edge.to === 'cancelled' || edge.to === 'waiting_user';
+}
+
+function noteRequiredMessage(edge: TransitionEdge): string {
+  if (isRejectEdge(edge)) return `Lý do từ chối cần ít nhất ${TRANSITION_NOTE_MIN} ký tự.`;
+  if (edge.to === 'cancelled') return `Lý do hủy cần ít nhất ${TRANSITION_NOTE_MIN} ký tự.`;
+  return `Hãy ghi rõ thông tin cần bổ sung, ít nhất ${TRANSITION_NOTE_MIN} ký tự.`;
+}
+
+/** Nhãn ô ghi chú nói rõ ghi chú dùng để làm gì trong từng thao tác. */
+function noteLabel(edge: TransitionEdge): string {
+  if (isRejectEdge(edge)) return 'Lý do từ chối';
+  if (edge.to === 'cancelled') return 'Lý do hủy';
+  if (edge.to === 'waiting_user') return 'Thông tin cần người tạo phiếu bổ sung';
+  return 'Ghi chú';
+}
+
+function notePlaceholder(edge: TransitionEdge): string {
+  if (isRejectEdge(edge)) return 'VD: Yêu cầu cấp quyền cần trưởng phòng xác nhận trước.';
+  if (edge.to === 'cancelled') return 'VD: Sự cố đã tự hết sau khi khởi động lại máy.';
+  if (edge.to === 'waiting_user') return 'VD: Gửi giúp ảnh chụp thông báo lỗi và phiên bản Office đang dùng.';
+  return 'VD: Đã gọi điện hướng dẫn người dùng khởi động lại modem.';
+}
+
 export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
   ticket,
+  events = [],
   onTransitionSuccess,
-  onActiveEdgeChange,
+  onBottomBarChange,
 }) => {
   const { roles, profile } = useAuth();
 
   const [activeEdge, setActiveEdge] = useState<TransitionEdge | null>(null);
   const [note, setNote] = useState<string>('');
   const [resolutionNote, setResolutionNote] = useState<string>('');
+  const [replyNote, setReplyNote] = useState<string>('');
+  const [replyTouched, setReplyTouched] = useState<boolean>(false);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
   const [transitionError, setTransitionError] = useState<unknown>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    onActiveEdgeChange?.(Boolean(activeEdge));
-  }, [activeEdge, onActiveEdgeChange]);
+  /** Lỗi nhập liệu chỉ hiện sau khi người dùng rời ô hoặc bấm xác nhận, không hiện ngay khi mở form. */
+  const [touched, setTouched] = useState({ note: false, resolution: false });
+  const formHeadingRef = useRef<HTMLHeadingElement>(null);
+  const resolutionFieldRef = useRef<HTMLTextAreaElement>(null);
+  const noteFieldRef = useRef<HTMLTextAreaElement>(null);
+  /** Nút đã mở form, để trả con trỏ về đó khi người dùng quay lại (Esc, "Quay lại", nút đóng). */
+  const returnFocusKey = useRef<string | null>(null);
 
   useEffect(() => {
     setActiveEdge(null);
     setNote('');
     setResolutionNote('');
+    setReplyNote('');
+    setReplyTouched(false);
+    setTouched({ note: false, resolution: false });
     setTransitionError(null);
   }, [ticket.id, ticket.status]);
 
@@ -99,19 +182,79 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
   const resolutionNoteError = activeEdge?.resolutionNoteRequired
     ? validateResolutionNote(resolutionNote)
     : null;
-  const rejectionNoteRequired = activeEdge?.from === 'pending_approval' && activeEdge.to === 'new';
-  const rejectionNoteError =
-    rejectionNoteRequired && note.trim().length < 5
-      ? 'Lý do từ chối cần ít nhất 5 ký tự.'
+  const isNoteRequired = activeEdge ? noteRequired(activeEdge) : false;
+  const noteError =
+    activeEdge && isNoteRequired && note.trim().length < TRANSITION_NOTE_MIN
+      ? noteRequiredMessage(activeEdge)
       : null;
-  const canConfirmTransition = !isTransitioning && !resolutionNoteError && !rejectionNoteError;
+  const showResolutionError = touched.resolution && Boolean(resolutionNoteError);
+  const showNoteError = touched.note && Boolean(noteError);
   const isDestructiveActive = activeEdge ? isDestructiveEdge(activeEdge) : false;
-  const isBottomBar = allowedTransitions.length > 0 || activeEdge !== null;
+
+  /** Người tạo phiếu đang được hỏi thêm thông tin: trả lời trực tiếp thay vì mở form chuyển trạng thái. */
+  const replyEdge = useMemo(
+    () =>
+      allowedTransitions.find(
+        (edge) => edge.from === 'waiting_user' && edge.to === 'in_progress' && edge.requesterOnly
+      ) ?? null,
+    [allowedTransitions]
+  );
+  const showReplyComposer = replyEdge !== null && activeEdge === null;
+  const infoRequest = useMemo(() => (replyEdge ? findInfoRequest(events) : null), [replyEdge, events]);
+  const infoRequestNote = eventNote(infoRequest);
+  const replyNoteError =
+    replyNote.trim().length < REPLY_NOTE_MIN
+      ? `Nội dung phản hồi cần ít nhất ${REPLY_NOTE_MIN} ký tự.`
+      : null;
+
+  /** Thao tác tiến tới nằm trên thanh dính đáy; thao tác không hoàn tác được đặt riêng, cuối trang. */
+  const forwardTransitions = orderedTransitions.filter(
+    (edge) => !isDestructiveEdge(edge) && edge !== replyEdge
+  );
+  const destructiveTransitions = orderedTransitions.filter(isDestructiveEdge);
+  const barSize: BottomBarSize =
+    activeEdge !== null || showReplyComposer
+      ? 'tall'
+      : forwardTransitions.length > 0
+        ? 'compact'
+        : 'none';
+  const isBottomBar = barSize !== 'none';
+
+  useEffect(() => {
+    onBottomBarChange?.(barSize);
+  }, [barSize, onBottomBarChange]);
+
+  const activeEdgeKey = activeEdge ? edgeKey(activeEdge) : null;
+
+  // Mở form: đưa con trỏ vào ô phải nhập đầu tiên; nếu không có ô bắt buộc thì vào tiêu đề form,
+  // để không bật bàn phím điện thoại khi người dùng chỉ cần bấm xác nhận.
+  useEffect(() => {
+    if (!activeEdge) return;
+    const target = activeEdge.resolutionNoteRequired
+      ? resolutionFieldRef.current
+      : noteRequired(activeEdge)
+        ? noteFieldRef.current
+        : formHeadingRef.current;
+    target?.focus();
+    // Chỉ chạy khi mở một thao tác khác, không chạy lại mỗi lần gõ.
+  }, [activeEdgeKey]);
+
+  // Đóng form bằng Esc/"Quay lại": trả con trỏ về đúng nút đã mở form.
+  useEffect(() => {
+    if (activeEdge || !returnFocusKey.current) return;
+    const key = returnFocusKey.current;
+    returnFocusKey.current = null;
+    const opener = Array.from(document.querySelectorAll<HTMLElement>('[data-edge-key]')).find(
+      (el) => el.dataset.edgeKey === key
+    );
+    opener?.focus();
+  }, [activeEdge]);
 
   const openTransitionForm = (edge: TransitionEdge) => {
     setActiveEdge(edge);
     setNote('');
     setResolutionNote('');
+    setTouched({ note: false, resolution: false });
     setTransitionError(null);
     setSuccessMessage(null);
   };
@@ -120,24 +263,35 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
     setActiveEdge(null);
     setNote('');
     setResolutionNote('');
+    setTouched({ note: false, resolution: false });
     setTransitionError(null);
   };
 
-  const confirmTransition = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeEdge || !ticket.id || !canConfirmTransition) return;
-    const target = activeEdge.to;
+  /** Người dùng tự quay lại (không phải sau khi gửi thành công): trả con trỏ về nút đã mở form. */
+  const cancelTransitionForm = () => {
+    if (isTransitioning) return;
+    returnFocusKey.current = activeEdgeKey;
+    closeTransitionForm();
+  };
+
+  const submitTransition = async (
+    edge: TransitionEdge,
+    noteText: string,
+    successText: string
+  ) => {
     setTransitionError(null);
     setSuccessMessage(null);
     try {
       setIsTransitioning(true);
-      const body: UpdateTicketStatusPayload = { to: activeEdge.to };
+      const body: UpdateTicketStatusPayload = { to: edge.to };
       if (ticket.ticket_version !== undefined) body.expected_version = ticket.ticket_version;
-      if (note.trim()) body.note = note.trim();
-      if (activeEdge.resolutionNoteRequired) body.resolution_note = resolutionNote.trim();
+      if (noteText.trim()) body.note = noteText.trim();
+      if (edge.resolutionNoteRequired) body.resolution_note = resolutionNote.trim();
       await updateTicketStatus(ticket.id, body);
       closeTransitionForm();
-      const msg = `Đã chuyển phiếu sang “${statusLabel(target)}”.`;
+      setReplyNote('');
+      setReplyTouched(false);
+      const msg = successText;
       setSuccessMessage(msg);
       await onTransitionSuccess(msg);
     } catch (err) {
@@ -155,18 +309,45 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
     }
   };
 
+  const confirmTransition = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeEdge || !ticket.id || isTransitioning) return;
+    if (resolutionNoteError || noteError) {
+      setTouched({ note: true, resolution: true });
+      (resolutionNoteError ? resolutionFieldRef.current : noteFieldRef.current)?.focus();
+      return;
+    }
+    await submitTransition(activeEdge, note, `Đã chuyển phiếu sang “${statusLabel(activeEdge.to)}”.`);
+  };
+
+  const sendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReplyTouched(true);
+    if (replyNoteError) {
+      document.getElementById('reply-note')?.focus();
+      return;
+    }
+    if (!replyEdge || !ticket.id || isTransitioning) return;
+    await submitTransition(
+      replyEdge,
+      replyNote,
+      'Đã gửi phản hồi. Kỹ thuật viên sẽ tiếp tục xử lý phiếu.'
+    );
+  };
+
   return (
-    <aside
-      aria-label="Thao tác chuyển trạng thái"
-      className={`z-10 lg:sticky lg:top-20 lg:self-start ${
-        isBottomBar ? 'max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20' : ''
-      }`}
-    >
-      <div className="max-lg:max-h-[70vh] max-lg:overflow-y-auto max-lg:border-t max-lg:border-[var(--color-edge-subtle)] max-lg:bg-surface/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-3 max-lg:shadow-[0_-8px_24px_rgba(33,31,27,0.12)] max-lg:backdrop-blur-sm lg:max-h-[calc(100vh_-_6rem)] lg:overflow-y-auto lg:rounded-[8px] lg:border lg:border-[var(--color-edge-subtle)] lg:bg-surface lg:shadow-2xs">
+    <aside aria-label="Thao tác chuyển trạng thái" className="z-10 lg:sticky lg:top-20 lg:self-start">
+      <div
+        className={`lg:max-h-[calc(100vh_-_6rem)] lg:overflow-y-auto lg:rounded-[8px] lg:border lg:border-[var(--color-edge-subtle)] lg:bg-surface lg:shadow-2xs ${
+          isBottomBar
+            ? 'max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:max-h-[70vh] max-lg:overflow-y-auto max-lg:border-t max-lg:border-[var(--color-edge-subtle)] max-lg:bg-surface/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-3 max-lg:shadow-[0_-8px_24px_rgba(33,31,27,0.12)] max-lg:backdrop-blur-sm'
+            : ''
+        }`}
+      >
         <div className="flex items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] px-4 py-3 max-lg:hidden bg-[var(--color-surface-sidebar)]">
           <div className="flex min-w-0 items-center gap-2">
-            <GitBranch className="h-4 w-4 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
-            <h2 className="truncate text-sm font-bold tracking-tight text-[var(--color-content)]">
+            <GitBranch className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
+            <h2 className="dx-section-title truncate">
               Thao tác
             </h2>
           </div>
@@ -210,7 +391,13 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
           {activeEdge ? (
             <form
               onSubmit={confirmTransition}
-              role="dialog"
+              noValidate
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  cancelTransitionForm();
+                }
+              }}
               aria-labelledby="transition-dialog-title"
               className="space-y-3 rounded-[4px] border border-[var(--color-primary-border)] bg-surface-warm p-3 sm:p-4"
             >
@@ -218,7 +405,9 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 <div className="min-w-0">
                   <h3
                     id="transition-dialog-title"
-                    className="break-words text-sm font-bold leading-snug text-[var(--color-content)]"
+                    ref={formHeadingRef}
+                    tabIndex={-1}
+                    className="break-words outline-none text-sm font-bold leading-snug text-[var(--color-content)]"
                   >
                     Chuyển phiếu sang “{statusLabel(activeEdge.to)}”
                   </h3>
@@ -230,7 +419,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={closeTransitionForm}
+                  onClick={cancelTransitionForm}
                   aria-label="Đóng form chuyển trạng thái"
                   className="-mr-1 -mt-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[4px] text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-content)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
                 >
@@ -263,43 +452,52 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                   <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                     <label
                       htmlFor="transition-resolution-note"
-                      className="text-[11px] font-bold uppercase tracking-wider text-content"
+                      className="text-xs font-bold uppercase tracking-wider text-content"
                     >
                       Mô tả cách giải quyết{' '}
                       <span className="text-status-danger" aria-hidden="true">
                         *
                       </span>
                     </label>
-                    <span className="font-mono text-[10px] text-content-muted">
+                    <span className="tabular-nums text-xs text-content-muted">
                       {resolutionNote.trim().length} / {RESOLUTION_NOTE_MAX}
                     </span>
                   </div>
                   <textarea
                     id="transition-resolution-note"
+                    ref={resolutionFieldRef}
                     rows={4}
                     required
                     aria-required="true"
-                    aria-invalid={Boolean(resolutionNoteError)}
-                    aria-describedby="transition-resolution-note-help"
+                    aria-invalid={showResolutionError}
+                    aria-describedby={
+                      showResolutionError
+                        ? 'transition-resolution-note-help transition-resolution-note-error'
+                        : 'transition-resolution-note-help'
+                    }
                     value={resolutionNote}
                     onChange={(e) => setResolutionNote(e.target.value)}
+                    onBlur={() => setTouched((t) => ({ ...t, resolution: true }))}
                     maxLength={2100}
                     placeholder="Mô tả nguyên nhân gốc, cách khắc phục và kết quả kiểm tra..."
                     className={`${TEXTAREA_CLASS} ${
-                      resolutionNoteError
+                      showResolutionError
                         ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
                         : ''
                     }`}
                   />
                   <p
                     id="transition-resolution-note-help"
-                    className="mt-1 text-[11px] leading-relaxed text-content-muted"
+                    className="mt-1 text-xs leading-relaxed text-content-muted"
                   >
                     Bắt buộc khi chuyển sang “{statusLabel(activeEdge.to)}”, từ{' '}
                     {RESOLUTION_NOTE_MIN} đến {RESOLUTION_NOTE_MAX} ký tự.
                   </p>
-                  {resolutionNoteError && (
-                    <p className="mt-1 text-[11px] font-medium text-status-danger">
+                  {showResolutionError && (
+                    <p
+                      id="transition-resolution-note-error"
+                      className="mt-1 text-xs font-medium text-status-danger"
+                    >
                       {resolutionNoteError}
                     </p>
                   )}
@@ -310,34 +508,41 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                   <label
                     htmlFor="transition-note"
-                    className="text-[11px] font-bold uppercase tracking-wider text-content"
+                    className="text-xs font-bold uppercase tracking-wider text-content"
                   >
-                    Ghi chú chuyển trạng thái{' '}
+                    {noteLabel(activeEdge)}{' '}
                     <span className="font-normal normal-case tracking-normal text-content-muted">
-                      {rejectionNoteRequired
-                        ? '(bắt buộc khi từ chối, ít nhất 5 ký tự)'
+                      {isNoteRequired
+                        ? `(bắt buộc, ít nhất ${TRANSITION_NOTE_MIN} ký tự)`
                         : '(không bắt buộc)'}
                     </span>
                   </label>
-                  <span className="font-mono text-[10px] text-content-muted">
+                  <span className="tabular-nums text-xs text-content-muted">
                     {note.trim().length} / 2000 ký tự
                   </span>
                 </div>
                 <textarea
                   id="transition-note"
+                  ref={noteFieldRef}
                   rows={3}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, note: true }))}
                   maxLength={2000}
-                  required={rejectionNoteRequired}
-                  aria-invalid={Boolean(rejectionNoteError)}
-                  aria-describedby={rejectionNoteError ? 'transition-note-error' : undefined}
-                  placeholder="VD: Đã gọi điện hướng dẫn người dùng khởi động lại modem."
-                  className={TEXTAREA_CLASS}
+                  required={isNoteRequired}
+                  aria-required={isNoteRequired || undefined}
+                  aria-invalid={showNoteError}
+                  aria-describedby={showNoteError ? 'transition-note-error' : undefined}
+                  placeholder={notePlaceholder(activeEdge)}
+                  className={`${TEXTAREA_CLASS} ${
+                    showNoteError
+                      ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
+                      : ''
+                  }`}
                 />
-                {rejectionNoteError && (
-                  <p id="transition-note-error" className="mt-1 text-xs text-danger">
-                    {rejectionNoteError}
+                {showNoteError && (
+                  <p id="transition-note-error" className="mt-1 text-xs font-medium text-status-danger">
+                    {noteError}
                   </p>
                 )}
               </div>
@@ -345,10 +550,10 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
               <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                 <Button
                   variant="secondary"
-                  onClick={closeTransitionForm}
+                  onClick={cancelTransitionForm}
                   className="w-full sm:w-auto"
                 >
-                  Hủy bỏ
+                  Quay lại
                 </Button>
                 <Button
                   type="submit"
@@ -360,36 +565,94 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                         : 'primary'
                   }
                   isLoading={isTransitioning}
-                  disabled={!canConfirmTransition}
+                  disabled={isTransitioning}
                   className="w-full sm:w-auto"
                 >
-                  {isTransitioning ? 'Đang cập nhật...' : 'Xác nhận chuyển trạng thái'}
+                  {isTransitioning ? 'Đang cập nhật...' : confirmLabel(activeEdge)}
                 </Button>
               </div>
             </form>
-          ) : allowedTransitions.length > 0 ? (
+          ) : showReplyComposer ? (
+            <form onSubmit={sendReply} noValidate aria-labelledby="reply-composer-title" className="space-y-3">
+              <h3
+                id="reply-composer-title"
+                className="flex items-center gap-2 text-sm font-bold leading-snug text-[var(--color-content)]"
+              >
+                <MessageSquare className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
+                Trả lời kỹ thuật viên
+              </h3>
+
+              <figure className="rounded-md border border-status-warning-border bg-status-warning-bg px-3 py-2.5">
+                <figcaption className="text-xs font-semibold text-[var(--color-content)]">
+                  {infoRequest?.actor_name ? `${infoRequest.actor_name} cần bạn bổ sung` : 'Kỹ thuật viên cần bạn bổ sung'}
+                  {infoRequest && (
+                    <span className="font-normal text-[var(--color-content-muted)]">
+                      {' · '}
+                      <time dateTime={infoRequest.created_at}>{formatRequestTime(infoRequest.created_at)}</time>
+                    </span>
+                  )}
+                </figcaption>
+                <blockquote className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--color-content)]">
+                  {infoRequestNote ??
+                    'Kỹ thuật viên chưa ghi cụ thể. Hãy mô tả tình trạng hiện tại hoặc thông tin bạn có thể cung cấp.'}
+                </blockquote>
+              </figure>
+
+              <div>
+                <label
+                  htmlFor="reply-note"
+                  className="mb-1.5 block text-xs font-semibold text-[var(--color-content)]"
+                >
+                  Nội dung phản hồi
+                </label>
+                <textarea
+                  id="reply-note"
+                  rows={3}
+                  value={replyNote}
+                  onChange={(e) => setReplyNote(e.target.value)}
+                  onBlur={() => setReplyTouched(true)}
+                  maxLength={2000}
+                  required
+                  aria-required="true"
+                  aria-invalid={replyTouched && Boolean(replyNoteError)}
+                  aria-describedby={replyTouched && replyNoteError ? 'reply-note-error' : undefined}
+                  placeholder="VD: Mình đã cài lại chứng chỉ VPN, giờ báo lỗi khác: ..."
+                  className={`${TEXTAREA_CLASS} text-sm ${
+                    replyTouched && replyNoteError
+                      ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
+                      : ''
+                  }`}
+                />
+                {replyTouched && replyNoteError && (
+                  <p id="reply-note-error" className="mt-1 text-xs font-medium text-status-danger">
+                    {replyNoteError}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={isTransitioning}
+                disabled={isTransitioning}
+                leftIcon={<Send className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                className="w-full"
+              >
+                {isTransitioning ? 'Đang gửi...' : 'Gửi phản hồi'}
+              </Button>
+            </form>
+          ) : forwardTransitions.length > 0 ? (
             <>
-              <p className="text-[11px] leading-relaxed text-[var(--color-content-muted)] max-lg:hidden">
-                Chọn thao tác phù hợp với vai trò của bạn.
-              </p>
               <div className="flex flex-col gap-2">
-                {orderedTransitions.map((edge) => {
-                  const destructive = isDestructiveEdge(edge);
+                {forwardTransitions.map((edge) => {
                   const isPrimary = edgeKey(edge) === primaryEdgeKey;
                   const isFinish = edge.to === 'resolved' || edge.to === 'closed';
                   const Icon = STATUS_ICONS[edge.to];
                   return (
                     <Button
                       key={edgeKey(edge)}
-                      variant={
-                        destructive
-                          ? 'dangerOutline'
-                          : isPrimary
-                            ? isFinish
-                              ? 'success'
-                              : 'primary'
-                            : 'secondary'
-                      }
+                      data-edge-key={edgeKey(edge)}
+                      variant={isPrimary ? (isFinish ? 'success' : 'primary') : 'secondary'}
                       leftIcon={<Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
                       onClick={() => openTransitionForm(edge)}
                       className="w-full"
@@ -400,7 +663,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 })}
               </div>
             </>
-          ) : (
+          ) : destructiveTransitions.length > 0 ? null : (
             <div className="flex items-start gap-2 rounded-md border border-edge bg-surface-muted/80 px-3 py-2.5">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-content-subtle" aria-hidden="true" />
               <p className="text-xs leading-relaxed text-content-muted">
@@ -409,21 +672,28 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
               </p>
             </div>
           )}
-
-          {!activeEdge && (
-            <div className="rounded-md border border-edge-subtle bg-surface-muted/60 p-3 max-lg:hidden">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-content)]">
-                <ShieldCheck className="h-3.5 w-3.5 text-[var(--color-primary)]" aria-hidden="true" />
-                Biên bản giải quyết
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-[var(--color-content-muted)]">
-                Bắt buộc mô tả cách giải quyết từ {RESOLUTION_NOTE_MIN} đến {RESOLUTION_NOTE_MAX}{' '}
-                ký tự khi chuyển phiếu sang “{statusLabel('resolved')}”.
-              </p>
-            </div>
-          )}
         </div>
       </div>
+
+      {!activeEdge && destructiveTransitions.length > 0 && (
+        <div className="mt-3 flex flex-col gap-2 max-lg:border-t max-lg:border-[var(--color-edge-subtle)] max-lg:pt-4">
+          {destructiveTransitions.map((edge) => {
+            const Icon = STATUS_ICONS[edge.to];
+            return (
+              <Button
+                key={edgeKey(edge)}
+                data-edge-key={edgeKey(edge)}
+                variant="dangerOutline"
+                leftIcon={<Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                onClick={() => openTransitionForm(edge)}
+                className="w-full"
+              >
+                {edge.label}
+              </Button>
+            );
+          })}
+        </div>
+      )}
     </aside>
   );
 };

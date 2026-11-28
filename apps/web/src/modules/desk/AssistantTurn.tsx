@@ -77,7 +77,7 @@ export const AssistantTurn = memo(function AssistantTurn({
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary underline"
+                      className="text-[var(--color-primary-ink)] underline"
                     >
                       {children}
                     </a>
@@ -114,7 +114,7 @@ export const AssistantTurn = memo(function AssistantTurn({
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-2.5 py-1.5 text-xs text-primary"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-2.5 py-1.5 text-xs text-[var(--color-primary-ink)]"
                   >
                     {source.title}
                     <ExternalLink size={12} aria-hidden="true" />
@@ -173,7 +173,7 @@ export const AssistantTurn = memo(function AssistantTurn({
           )}
           {result?.ticket_id && (
             <Link
-              className="inline-block text-primary underline"
+              className="inline-block text-[var(--color-primary-ink)] underline"
               to={'/tickets/' + encodeURIComponent(result.ticket_id)}
             >
               Xem phiếu vừa tạo

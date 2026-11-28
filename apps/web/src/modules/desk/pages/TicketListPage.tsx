@@ -277,7 +277,7 @@ export const TicketListPage: React.FC = () => {
       <div className="flex flex-col gap-3 border-b border-[var(--color-edge-subtle)] pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-[var(--color-content)] sm:text-2xl">
+            <h1 className="dx-page-title">
               Danh sách phiếu yêu cầu IT
             </h1>
             <span className="inline-flex items-center rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-primary-text)] shadow-2xs">
@@ -336,7 +336,7 @@ export const TicketListPage: React.FC = () => {
 
           <Link
             to="/tickets/new"
-            className={`inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[6px] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary-hover)] hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] px-4 text-xs font-semibold text-white shadow-xs transition-all active:scale-[0.98] sm:min-h-[38px] ${FOCUS_RING}`}
+            className={`inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[6px] bg-primary hover:bg-primary-hover active:bg-primary-active px-4 text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] sm:min-h-[38px] ${FOCUS_RING}`}
           >
             <PlusCircle className="h-4 w-4" aria-hidden="true" />
             <span>Tạo phiếu mới</span>
@@ -550,13 +550,13 @@ export const TicketListPage: React.FC = () => {
                   {/* The whole row is a real link: middle-click / Ctrl+click open a new tab. */}
                   <Link
                     to={ticketHref}
-                    className={`group grid min-h-[44px] items-start gap-x-3 gap-y-1.5 px-4 py-3.5 transition-all hover:bg-[var(--color-primary-subtle)]/70 hover:shadow-[inset_3px_0_0_0_#0a78be] focus-visible:bg-[var(--color-primary-subtle)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] lg:min-h-[58px] lg:items-center lg:gap-x-4 lg:gap-y-0 lg:py-0 ${MOBILE_GRID} ${TABLE_GRID}`}
+                    className={`group grid min-h-[44px] items-start gap-x-3 gap-y-1.5 px-4 py-3.5 transition-all hover:bg-state-hover focus-visible:bg-state-selected focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] lg:min-h-[58px] lg:items-center lg:gap-x-4 lg:gap-y-0 lg:py-0 ${MOBILE_GRID} ${TABLE_GRID}`}
                   >
                     {/* Short ticket code */}
                     <div className="col-start-1 row-start-1 lg:col-auto lg:row-auto">
                       <span
                         title={ticket.id}
-                        className="inline-flex items-center rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-tight text-[var(--color-content-muted)] group-hover:border-[var(--color-primary-border)] group-hover:bg-[var(--color-primary-tint)] group-hover:text-[var(--color-primary-text)] transition-colors"
+                        className="inline-flex items-center rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-1.5 py-0.5 tabular-nums text-[10px] font-bold tracking-tight text-[var(--color-content-muted)] group-hover:border-[var(--color-primary-border)] group-hover:bg-[var(--color-primary-tint)] group-hover:text-[var(--color-primary-text)] transition-colors"
                       >
                         #{shortTicketId(ticket.id)}
                       </span>
@@ -566,7 +566,7 @@ export const TicketListPage: React.FC = () => {
                     <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-auto lg:row-auto">
                       <p
                         title={ticket.title}
-                        className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-content)] transition-colors group-hover:text-[var(--color-primary)]"
+                        className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-content)] transition-colors group-hover:text-[var(--color-primary-ink)]"
                       >
                         {ticket.title}
                       </p>
@@ -591,7 +591,7 @@ export const TicketListPage: React.FC = () => {
                       {ticket.assigned_to ? (
                         <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-content-muted)] lg:text-xs">
                           <UserCheck
-                            className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary)]"
+                            className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-ink)]"
                             aria-hidden="true"
                           />
                           <span
@@ -610,10 +610,10 @@ export const TicketListPage: React.FC = () => {
 
                     {/* Created at */}
                     <div className="col-start-3 row-start-3 justify-self-end text-right lg:col-auto lg:row-auto lg:text-left">
-                      <p className="whitespace-nowrap font-mono text-[11px] leading-tight text-[var(--color-content-muted)]">
+                      <p className="whitespace-nowrap tabular-nums text-[11px] leading-tight text-[var(--color-content-muted)]">
                         {created.date}
                       </p>
-                      <p className="whitespace-nowrap font-mono text-[10px] leading-tight text-[var(--color-content-subtle)]">
+                      <p className="whitespace-nowrap tabular-nums text-[10px] leading-tight text-[var(--color-content-subtle)]">
                         {created.time}
                       </p>
                     </div>

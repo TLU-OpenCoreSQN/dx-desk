@@ -39,13 +39,13 @@ export interface AccentPreset {
 }
 
 export const ACCENT_PRESETS: AccentPreset[] = [
-  { key: 'corporate-blue', label: 'Doanh nghiệp', swatch: '#2563eb', swatchBg: '#eff6ff' },
+  { key: 'corporate-blue', label: 'Doanh nghiệp', swatch: '#1d4ed8', swatchBg: '#eff6ff' },
   { key: 'blue', label: 'Xanh dương', swatch: '#0a78be', swatchBg: '#deeef8' },
   { key: 'green', label: 'Xanh lá', swatch: '#059669', swatchBg: '#ecfdf5' },
   { key: 'yellow', label: 'Vàng', swatch: '#d97706', swatchBg: '#fefce8' },
   { key: 'gray', label: 'Xám', swatch: '#64748b', swatchBg: '#f1f5f9' },
   { key: 'purple', label: 'Tím', swatch: '#7c3aed', swatchBg: '#f5f3ff' },
-  { key: 'default', label: 'Mặc định', swatch: '#2563eb', swatchBg: '#eff6ff' },
+  { key: 'default', label: 'Mặc định', swatch: '#1d4ed8', swatchBg: '#eff6ff' },
   { key: 'orange', label: 'Cam', swatch: '#d9730d', swatchBg: '#fbecdd' },
   { key: 'brown', label: 'Nâu', swatch: '#9f6b53', swatchBg: '#f4eeee' },
   { key: 'pink', label: 'Hồng', swatch: '#db2777', swatchBg: '#fdf2f8' },
