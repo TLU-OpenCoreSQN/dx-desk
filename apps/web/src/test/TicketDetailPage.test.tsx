@@ -116,7 +116,7 @@ describe('TicketDetailPage Component', () => {
     expect(screen.getByText('Người yêu cầu Một')).toBeInTheDocument();
     // SLA chỉ được nói một lần, ở banner; header không lặp lại hạn gốc hay thời gian tạm dừng.
     expect(screen.getByText('SLA tạm dừng · chờ người tạo phiếu phản hồi')).toBeInTheDocument();
-    expect(screen.getByText(/Thời gian đã dừng: [\d.]+ phút/)).toBeInTheDocument();
+    expect(screen.getByText(/Thời gian đã dừng: (dưới 1 phút|\d+ (ngày|giờ|phút))/)).toBeInTheDocument();
     expect(screen.queryByText(/Hạn SLA ban đầu/)).not.toBeInTheDocument();
     expect(screen.queryByText(/SLA đang tạm dừng từ/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Đang chờ người tạo phiếu phản hồi/)).not.toBeInTheDocument();

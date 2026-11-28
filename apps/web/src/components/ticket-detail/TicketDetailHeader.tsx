@@ -69,7 +69,8 @@ export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, 
             data-numeric
             className="font-mono text-xs text-content-muted"
           >
-            <span className="sr-only">Mã phiếu {ticket.id}</span>
+            {/* Trình đọc màn hình đọc cùng mã ngắn như người nhìn thấy, không đọc 36 ký tự UUID. */}
+            <span className="sr-only">Mã phiếu {ticket.id.slice(0, 8)}</span>
             <span aria-hidden="true">#{ticket.id.slice(0, 8)}</span>
           </span>
         </div>

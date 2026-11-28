@@ -4,8 +4,9 @@
  */
 
 @import "tailwindcss";
-@config "../tailwind.config.js";
+/* Mọi @import phải đứng trước @config: @import nằm sau một quy tắc khác bị bỏ qua lặng lẽ khi build. */
 @import "./styles/tokens.css";
+@config "../tailwind.config.js";
 
 /* Khung ứng dụng: header nền đặc + viền 1px (không blur, không xuyên màu khi cuộn bảng).
    Phân tầng bằng nền + viền mảnh; bóng đổ chỉ dành cho lớp nổi (Modal, Toast, drawer, dropdown). */

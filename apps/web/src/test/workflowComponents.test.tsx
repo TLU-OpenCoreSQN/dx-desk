@@ -123,9 +123,10 @@ describe('DeviceWorkflowStepper (Model 2)', () => {
     reason: 'Phục vụ dự án chuyển đổi số tại Chi nhánh Đà Nẵng',
     quantity: 1,
     status: 'preparing',
-    department: 'Phòng Kế hoạch',
+    // Giống dữ liệu thật của API: department là mã đơn vị, decided_by là UUID (chưa có tên hiển thị).
+    department: 'phong-ke-hoach',
     created_at: new Date(Date.now() - 86400000).toISOString(),
-    decided_by: 'Trần Văn C (Trưởng phòng)',
+    decided_by: 'e5f41bd7-fa66-4a6d-af6d-3070ac357f3b',
     decided_at: new Date(Date.now() - 43200000).toISOString(),
     prepared_at: new Date(Date.now() - 3600000).toISOString(),
   };
@@ -140,14 +141,16 @@ describe('DeviceWorkflowStepper (Model 2)', () => {
 
     const currentStep = screen.getByRole('listitem', { current: 'step' });
     expect(currentStep).toHaveTextContent('IT Chuẩn bị');
+    // Không lộ UUID người duyệt ở bước "Quản lý duyệt"; mã yêu cầu giữ nguyên chữ thường như mã phiếu.
+    expect(document.body).not.toHaveTextContent('e5f41bd7');
+    expect(screen.getByText('Tiến trình cấp phát')).toBeInTheDocument();
   });
 
-  it('renders rejection off-ramp callout with decision note and decider', () => {
+  it('renders rejection off-ramp callout with decision note and no decider id', () => {
     const rejectedRequest: DeviceRequest = {
       ...mockDeviceRequest,
       status: 'rejected',
       decision_note: 'Phòng ban đã vượt định mức thiết bị quý 4.',
-      decided_by: 'Trần Văn C',
       decided_at: new Date().toISOString(),
     };
 
@@ -156,7 +159,7 @@ describe('DeviceWorkflowStepper (Model 2)', () => {
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('Quản lý đã từ chối yêu cầu');
     expect(alert).toHaveTextContent('Phòng ban đã vượt định mức thiết bị quý 4.');
-    expect(alert).toHaveTextContent('Trần Văn C');
+    expect(alert).not.toHaveTextContent('e5f41bd7');
   });
 
   it('renders SeaweedFS PDF handover chip when handed over', () => {
@@ -317,7 +320,7 @@ describe('SlaPauseBanner (Model 4)', () => {
 
     const alertBanner = screen.getByRole('status');
     expect(alertBanner).toHaveTextContent(/Quá hạn SLA/i);
-    expect(alertBanner).toHaveTextContent(/Trễ hạn:/i);
+    expect(alertBanner).toHaveTextContent(/Quá hạn (\d+ (ngày|giờ|phút)|dưới 1 phút)/);
     expect(alertBanner).not.toHaveTextContent(/leo thang/i);
     // Quá hạn là trạng thái kéo dài, không phải sự kiện mới: không nhấp nháy,
     // và tiêu đề là h2 ngay dưới h1 của trang.
@@ -338,7 +341,7 @@ describe('SlaPauseBanner (Model 4)', () => {
     const banner = screen.getByRole('status');
     expect(banner).toHaveTextContent('Phiếu đang chậm hơn dự kiến');
     expect(banner).toHaveTextContent('bạn không cần gửi lại yêu cầu');
-    expect(banner).not.toHaveTextContent(/SLA|leo thang|Trễ hạn/);
+    expect(banner).not.toHaveTextContent(/SLA|leo thang|Quá hạn/);
   });
 
   it('tells the requester the clock is paused while waiting for them', () => {

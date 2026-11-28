@@ -398,7 +398,7 @@ export const TicketListPage: React.FC = () => {
 
       <section aria-label="Tìm kiếm và lọc phiếu" className="flex flex-wrap items-end gap-3">
         <label htmlFor="ticket-search" className="min-w-0 flex-1 basis-64 text-[0.8125rem] font-medium text-content">
-          Tìm kiếm
+          Tìm phiếu
           <span className="relative mt-1 block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" aria-hidden="true" />
             <input
@@ -416,7 +416,7 @@ export const TicketListPage: React.FC = () => {
           </span>
         </label>
         <label htmlFor="ticket-filter-priority" className="w-[calc(50%-6px)] text-[0.8125rem] font-medium text-content sm:w-44">
-          Ưu tiên
+          Mức ưu tiên
           <select
             id="ticket-filter-priority"
             aria-label="Mức ưu tiên"

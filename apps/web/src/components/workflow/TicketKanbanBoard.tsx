@@ -215,7 +215,8 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                       key={ticket.id}
                       className="flex flex-col rounded-md border border-edge bg-surface p-3 transition-colors duration-150 hover:border-edge-strong motion-reduce:transition-none"
                     >
-                      <div className="flex items-center justify-between gap-2 text-xs">
+                      {/* Thẻ chỉ rộng ~185px khi 5 làn cùng hiện: cho xuống dòng thay vì tràn ra ngoài thẻ. */}
+                      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
                         <span data-numeric title={ticket.id} className="font-mono text-content-muted">
                           #{ticket.id.slice(0, 8)}
                         </span>
@@ -241,8 +242,8 @@ export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
                         </Link>
                       </CardHeading>
 
-                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-content-muted">
-                        <span className="min-w-0 truncate">
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs text-content-muted">
+                        <span className="min-w-0 break-words">
                           {ticket.assignee_name || ticket.team_name || 'Chưa phân công'}
                         </span>
                         <PriorityBadge priority={ticket.priority} />

@@ -68,11 +68,11 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge-subtle pb-3">
         <div className="flex items-center gap-2">
-          <span className="tabular-nums text-xs font-semibold text-[var(--color-primary-ink)]">
-            TIẾN TRÌNH CẤP PHÁT
+          <span className="text-xs font-semibold text-[var(--color-primary-ink)]">
+            Tiến trình cấp phát
           </span>
-          <span className="tabular-nums text-xs text-content-subtle">
-            #{request.id.slice(0, 8).toUpperCase()}
+          <span data-numeric title={request.id} className="font-mono text-xs text-content-muted">
+            #{request.id.slice(0, 8)}
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -96,9 +96,8 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
               stepDetail = formatTime(request.created_at);
             } else if (index === 1) {
               if (request.decided_at) {
-                stepDetail = `${formatTime(request.decided_at)}${
-                  request.decided_by ? ` · ${request.decided_by}` : ''
-                }`;
+                // decided_by là UUID: API chưa trả tên người duyệt nên chỉ hiện thời điểm.
+                stepDetail = formatTime(request.decided_at);
               }
             } else if (index === 2) {
               if (request.prepared_at) {
@@ -202,11 +201,6 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
               <strong className="text-status-danger">Lý do từ chối:</strong>{' '}
               {request.decision_note || 'Không có lý do cụ thể.'}
             </p>
-            {request.decided_by && (
-              <p className="text-content-muted">
-                Người quyết định: <span className="font-medium text-content">{request.decided_by}</span>
-              </p>
-            )}
           </div>
         </div>
       )}

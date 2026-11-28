@@ -662,7 +662,12 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 })}
               </div>
             </>
-          ) : destructiveTransitions.length > 0 ? null : (
+          ) : destructiveTransitions.length > 0 ? (
+            // Chỉ còn thao tác hủy (nằm riêng bên dưới): nói rõ không cần làm gì thay vì để khung trống.
+            <p className="text-[0.8125rem] leading-relaxed text-content-muted max-lg:hidden">
+              Phiếu đang ở trạng thái «{statusLabel(ticket.status)}». Hiện bạn không cần thao tác gì thêm.
+            </p>
+          ) : (
             <div className="flex items-start gap-2 rounded-md border border-edge bg-surface-muted/80 px-3 py-2.5">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-content-subtle" aria-hidden="true" />
               <p className="text-xs leading-relaxed text-content-muted">

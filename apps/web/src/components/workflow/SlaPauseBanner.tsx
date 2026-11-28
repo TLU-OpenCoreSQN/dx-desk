@@ -11,7 +11,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { Ticket } from '../../types/api';
-import { SLA_FINISHED_STATUSES, computeSlaSnapshot, slaGaugeColor } from '../../lib/sla';
+import { SLA_FINISHED_STATUSES, computeSlaSnapshot, formatSlaDuration, slaGaugeColor } from '../../lib/sla';
 
 export interface SlaPauseBannerProps {
   ticket: Ticket;
@@ -172,7 +172,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
             </h2>
           </div>
           <span className="tabular-nums text-xs font-semibold">
-            Thời gian đã dừng: {totalPausedMinutes} phút
+            Thời gian đã dừng: {formatSlaDuration(totalPausedMinutes * 60000)}
           </span>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-content">
@@ -187,13 +187,8 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
   // Case 3: Breached State (sla_breached or remainingMs < 0)
   if (isBreached) {
     // Cờ sla_breached của máy chủ có thể bật trước khi đồng hồ phía trình duyệt thấy quá hạn.
-    const overdueMinutes = Math.floor(Math.max(0, -remainingMs) / 60000);
-    const overdueHours = Math.floor(overdueMinutes / 60);
-    const overdueMinsRem = overdueMinutes % 60;
-    const overdueText =
-      overdueHours > 0
-        ? `${overdueHours} giờ ${overdueMinsRem} phút`
-        : `${overdueMinsRem} phút`;
+    // Cùng cách viết với danh sách, hàng đợi và Kanban ("Quá hạn 24 ngày 2 giờ"), không đổi sang "578 giờ".
+    const overdueText = formatSlaDuration(Math.max(0, -remainingMs));
 
     // Người tạo phiếu: báo chậm một cách bình tĩnh, không dùng ngôn ngữ vận hành
     // và không khẳng định việc leo thang mà giao diện không kiểm chứng được.
@@ -233,7 +228,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
             </h2>
           </div>
           <span className="tabular-nums text-xs font-semibold">
-            Trễ hạn: {overdueText}
+            Quá hạn {overdueText}
           </span>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-content">

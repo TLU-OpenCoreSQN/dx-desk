@@ -186,6 +186,15 @@ describe('server-side ticket queues', () => {
     await screen.findByText(/Đã từ chối yêu cầu/); expect(screen.queryByRole('form')).not.toBeInTheDocument();
   });
 
+  it('returns focus to the decision button after cancelling, not to the page body', async () => {
+    authorize(['Manager']); vi.mocked(api.getTickets).mockResolvedValue(response([{ ...ticket, status: 'pending_approval' }]));
+    mount(true); fireEvent.click(await screen.findByRole('button', { name: ticket.title }));
+    const panel = await screen.findByRole('complementary', { name: ticket.title });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Từ chối phiếu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy quyết định' }));
+    await waitFor(() => expect(within(panel).getByRole('button', { name: 'Từ chối phiếu' })).toHaveFocus());
+  });
+
   it('refreshes stale approval decisions without replaying the decision', async () => {
     authorize(['Manager']); vi.mocked(api.getTickets).mockResolvedValueOnce(response([{ ...ticket, status: 'pending_approval' }])).mockResolvedValue(response([]));
     const update = vi.spyOn(api, 'updateTicketStatus').mockRejectedValue(new api.ApiClientError(409, 'Version changed'));

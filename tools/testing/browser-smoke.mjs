@@ -41,9 +41,18 @@ try {
   await page.route('**/api/**', route => route.fulfill({ status: 503, json: { message: 'Offline fixture' } }));
   await check('Desktop offline: honest status, disabled login, no horizontal overflow', async () => {
     await page.goto(origin);
-    await page.getByText('Dịch vụ đăng nhập hiện không thể kết nối.').waitFor();
+    await page.getByText('Dịch vụ đăng nhập đang tạm thời gián đoạn.').waitFor();
+    // Token thiết kế phải thực sự nạp (một @import đặt sai chỗ bị bỏ qua lặng lẽ, jsdom không phát hiện được).
+    const theme = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      return { primary: root.getPropertyValue('--color-primary').trim(), font: root.fontFamily };
+    });
+    assert.equal(theme.primary, '#1d4ed8', 'thiếu token --color-primary: tokens.css chưa được nạp');
+    assert.match(theme.font, /Be Vietnam Pro/, 'phông chữ chính phải là Be Vietnam Pro');
     assert.equal(await page.getByRole('button', { name: 'Đăng nhập hệ thống (SSO)', exact: true }).isDisabled(), true);
-    await page.getByText('Dịch vụ hỗ trợ hiện chưa kết nối').waitFor();
+    // Trạng thái máy chủ chỉ còn ở thanh đầu trang (Trang chủ không lặp lại widget sức khỏe dịch vụ).
+    await page.getByRole('banner').getByText('Mất kết nối', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1, 'màn hình chưa đăng nhập có đúng một h1');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: resolve(reportDir, 'web-desktop-offline.png'), fullPage: true });
   });
@@ -166,7 +175,7 @@ try {
     await page.route('**/config/modules.json', route => route.fulfill({ json: { enabled: ['core', 'desk', 'data'] } }));
     try {
       await page.goto(origin + '/device-requests');
-      await page.getByRole('heading', { name: '404', exact: true }).waitFor();
+      await page.getByRole('heading', { level: 1, name: 'Không tìm thấy trang yêu cầu' }).waitFor();
       assert.equal(await page.getByRole('link', { name: 'Yêu cầu cấp thiết bị', exact: true }).count(), 0);
       assert.equal(await page.getByRole('link', { name: 'Xin cấp thiết bị (ứng dụng 2)', exact: true }).count(), 0);
       await page.screenshot({ path: resolve(reportDir, 'web-module-devices-disabled.png'), fullPage: true });
@@ -185,11 +194,14 @@ try {
       await page.getByRole('combobox', { name: 'Danh mục sự cố' }).selectOption(peripheral.id);
       await page.getByLabel(/Tiêu đề/).fill('Cấp bàn phím cho máy văn phòng');
       await page.getByLabel(/Mô tả/).fill('Bàn phím cần được thay thế cho máy thử nghiệm.');
-      const submit = page.getByRole('button', { name: /Gửi phiếu/ });
-      assert.equal(await submit.getAttribute('aria-disabled'), 'true');
+      // Nút Gửi luôn bấm được; bấm khi thiếu trường thì hiện tóm tắt lỗi thay vì gửi.
+      await page.getByRole('button', { name: /Gửi phiếu/ }).click();
+      const summary = page.locator('#missing-fields-summary');
+      await summary.getByRole('link', { name: 'Mã tài sản' }).waitFor();
+      assert.equal(writes.length, 0);
       const fields = page.getByRole('group', { name: 'Thông tin bổ sung theo danh mục' });
       await fields.getByLabel(/Mã tài sản/).fill('PC-TEST-01');
-      assert.equal(await submit.getAttribute('aria-disabled'), null);
+      await summary.waitFor({ state: 'detached' });
       assert.equal(writes.length, 0);
       await page.screenshot({ path: resolve(reportDir, 'web-enterprise-category.png'), fullPage: true });
     } finally {
@@ -205,20 +217,26 @@ try {
     const categoryFields = page.getByRole('group', { name: 'Thông tin bổ sung theo danh mục' });
     await categoryFields.waitFor();
     assert.equal(await page.getByRole('button', { name: /Khẩn cấp/ }).isDisabled(), true);
-    assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'nút Gửi phải khóa khi còn thiếu trường');
-    await page.getByText(/Chưa thể gửi phiếu/).waitFor();
+    // Không khóa nút Gửi (aria-disabled che lỗi với người dùng bàn phím); tóm tắt lỗi chỉ hiện sau lần bấm đầu.
+    assert.equal(await submit.isEnabled(), true);
+    assert.equal(await submit.getAttribute('aria-disabled'), null);
+    const summary = page.locator('#missing-fields-summary');
+    assert.equal(await summary.count(), 0, 'chưa bấm Gửi thì chưa hiện tóm tắt lỗi');
     await page.getByLabel(/Tiêu đề/).fill('VPN');
-    // aria-disabled vẫn cho click để lộ từng lỗi trường — Playwright phải bỏ qua bước kiểm tra enabled.
-    await submit.click({ force: true });
-    await page.getByText(/Tiêu đề.*quá ngắn/i).waitFor();
+    await submit.click();
+    await summary.waitFor();
+    assert.equal(await summary.getAttribute('role'), 'alert');
+    assert.equal(await summary.evaluate(el => el === document.activeElement), true, 'tóm tắt lỗi nhận tiêu điểm');
+    await page.getByText(/Tiêu đề.*quá ngắn/i).first().waitFor();
     assert.equal(writes.length, 0);
     await page.getByLabel(/Tiêu đề/).fill('Lỗi VPN tại phòng làm việc');
     await page.getByLabel(/Mô tả/).fill('VPN bị ngắt khi đăng nhập vào mạng nội bộ.');
-    assert.equal(await submit.getAttribute('aria-disabled'), 'true', 'thiếu trường bắt buộc của danh mục');
-    await categoryFields.getByLabel(/Phiên bản client VPN/).fill('OpenVPN 4.2');
+    // Liên kết trong tóm tắt đưa tiêu điểm tới đúng ô còn thiếu của danh mục.
+    await summary.getByRole('link', { name: /Phiên bản client VPN/ }).click();
+    assert.equal(await categoryFields.getByLabel(/Phiên bản client VPN/).evaluate(el => el === document.activeElement), true);
+    await page.keyboard.type('OpenVPN 4.2');
     await categoryFields.getByLabel(/Dòng lỗi hiển thị/).fill('Kết nối bị ngắt sau 30 giây');
-    assert.equal(await submit.getAttribute('aria-disabled'), null, 'biểu mẫu hợp lệ thì không còn aria-disabled');
-    assert.equal(await submit.isEnabled(), true);
+    await summary.waitFor({ state: 'detached' });
     await page.screenshot({ path: resolve(reportDir, 'web-mobile-ticket-form.png'), fullPage: true });
     await submit.click();
     await page.getByText(/Tạo phiếu.*thành công|gửi phiếu.*thành công/i).first().waitFor();
@@ -231,7 +249,7 @@ try {
     await page.screenshot({ path: resolve(reportDir, 'web-mobile-ticket-created.png'), fullPage: true });
   });
   await check('Ticket detail and event history render from HTTP response', async () => {
-    await page.getByRole('button', { name: /Xem chi tiết/ }).click();
+    await page.getByRole('link', { name: 'Xem chi tiết phiếu' }).click();
     await page.getByRole('heading', { name: tickets[0].title }).waitFor();
     // Trang chi tiết chủ đích lặp nhãn trạng thái: thẻ đầu phiếu và header của
     // panel "Thao tác" sticky, nên kiểm tra đúng một badge trong thẻ đầu phiếu.
@@ -261,7 +279,7 @@ try {
   await check('HTTP 401 clears visible protected data and identity', async () => {
     rejectSession = true;
     await page.getByRole('button', { name: 'Làm mới', exact: true }).click();
-    await page.getByText('Yêu cầu đăng nhập xác thực').waitFor();
+    await page.getByRole('heading', { level: 1, name: 'Yêu cầu đăng nhập' }).waitFor();
     assert.equal(await page.getByText('employee.fixture', { exact: true }).count(), 0);
     assert.equal(await page.getByText(devices[0].reason, { exact: true }).count(), 0);
   });

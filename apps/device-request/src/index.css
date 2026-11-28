@@ -4,9 +4,10 @@
  */
 
 @import "tailwindcss";
-@config "../tailwind.config.js";
-/* Cùng hợp đồng token với apps/web (bản sao giống hệt, xem chú thích đầu tệp). */
+/* Cùng hợp đồng token với apps/web (bản sao giống hệt, xem chú thích đầu tệp).
+   Mọi @import phải đứng trước @config: @import nằm sau một quy tắc khác bị bỏ qua lặng lẽ khi build. */
 @import "./styles/tokens.css";
+@config "../tailwind.config.js";
 
 table,
 [role='table'],

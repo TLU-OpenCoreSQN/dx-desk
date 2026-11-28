@@ -230,7 +230,15 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
     decisionTrigger.current = trigger;
     setDecision({ ticket, to }); setNote(''); setMutationError(null);
   };
-  const cancelDecision = () => { setDecision(null); setNote(''); decisionTrigger.current?.focus(); };
+  const cancelDecision = () => {
+    const to = decision?.to;
+    setDecision(null); setNote('');
+    // Nút Duyệt/Từ chối bị gỡ khỏi DOM khi biểu mẫu mở; sau khi vẽ lại mới có nút mới để trả tiêu điểm.
+    requestAnimationFrame(() => {
+      const trigger = document.querySelector<HTMLButtonElement>(`#queue-preview [data-decision-trigger="${to}"]`);
+      (trigger ?? decisionTrigger.current)?.focus();
+    });
+  };
   const confirmDecision = (event: FormEvent) => {
     event.preventDefault();
     if (!decision || (decision.to === 'new' && note.trim().length < 5) || note.trim().length > 2000) return;
@@ -503,8 +511,8 @@ interface DecisionProps {
 function DecisionPanel({ ticket, decision, note, busy, disabled, noteRef, onStart, onNote, onCancel, onSubmit }: DecisionProps) {
   if (!decision) return (
     <div className="flex flex-wrap gap-2">
-      <Button disabled={disabled} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={event => onStart(ticket, 'assigned', event.currentTarget)}>Duyệt phiếu</Button>
-      <Button variant="dangerOutline" disabled={disabled} leftIcon={<XCircle className="h-4 w-4" />} onClick={event => onStart(ticket, 'new', event.currentTarget)}>Từ chối phiếu</Button>
+      <Button data-decision-trigger="assigned" disabled={disabled} leftIcon={<CheckCircle2 className="h-4 w-4" />} onClick={event => onStart(ticket, 'assigned', event.currentTarget)}>Duyệt phiếu</Button>
+      <Button data-decision-trigger="new" variant="dangerOutline" disabled={disabled} leftIcon={<XCircle className="h-4 w-4" />} onClick={event => onStart(ticket, 'new', event.currentTarget)}>Từ chối phiếu</Button>
     </div>
   );
   const rejecting = decision === 'new';

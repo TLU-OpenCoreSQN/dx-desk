@@ -31,9 +31,6 @@ export function DeviceWorkflowStepper({
           {request.decision_note && (
             <p className="mt-1.5 font-medium">Lý do từ chối: {request.decision_note}</p>
           )}
-          {request.decided_by && (
-            <p className="mt-1 text-xs">Người quyết định: {request.decided_by}</p>
-          )}
         </div>
       ) : (
         <ol className="grid grid-cols-4 gap-1.5 text-xs" aria-label="Tiến trình">
