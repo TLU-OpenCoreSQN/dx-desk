@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, FileText, Info } from 'lucide-react';
 import { getTicketById, getTicketEvents, getCategories } from '../../../services/api';
@@ -33,9 +33,11 @@ export const TicketDetailPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<unknown>(null);
   const [hasActiveEdge, setHasActiveEdge] = useState<boolean>(false);
+  const requestRevision = useRef(0);
 
   const loadTicketData = useCallback(async (silent = false) => {
     if (!id) return;
+    const revision = ++requestRevision.current;
     if (silent) setIsRefreshing(true);
     else setIsLoading(true);
     setError(null);
@@ -46,6 +48,8 @@ export const TicketDetailPage: React.FC = () => {
         getCategories().catch(() => ({ data: [] })),
       ]);
 
+      if (revision !== requestRevision.current) return;
+
       setTicket(ticketData);
       setEvents(eventsData.data || []);
       setCategories(categoriesData.data);
@@ -55,15 +59,21 @@ export const TicketDetailPage: React.FC = () => {
         setCategory(foundCategory || null);
       }
     } catch (err) {
+      if (revision !== requestRevision.current) return;
       setError(err);
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (revision === requestRevision.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, [id]);
 
   useEffect(() => {
     void loadTicketData();
+    return () => {
+      requestRevision.current += 1;
+    };
   }, [loadTicketData]);
 
   if (isLoading) {
@@ -153,7 +163,15 @@ export const TicketDetailPage: React.FC = () => {
       <TicketStageTracker ticket={ticket} events={events} />
 
       {profile?.assistant_enabled && roles.some(role => role === 'Agent' || role === 'Manager') && (
-        <TicketAiSuggestion key={ticket.id} ticketId={ticket.id} ticket={ticket} categories={categories} refresh={() => loadTicketData(true)} />
+        <TicketAiSuggestion
+          key={ticket.id}
+          ticketId={ticket.id}
+          ticket={ticket}
+          ticketStatus={ticket.status}
+          assignedTo={ticket.assigned_to}
+          categories={categories}
+          refresh={() => loadTicketData(true)}
+        />
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">

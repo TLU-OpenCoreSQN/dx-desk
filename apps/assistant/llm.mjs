@@ -84,6 +84,9 @@ export async function* chatStream(config, messages, tools, signal) {
   }, AbortSignal.any([signal, AbortSignal.timeout(90000)]));
   const calls = [];
   for await (const event of sse(response.body)) {
+    // Lỗi giữa luồng (sau HTTP 200) phải dừng lượt trả lời, không được thành câu trả lời rỗng.
+    // Không đưa nội dung lỗi của nhà cung cấp ra ngoài, cùng lý do như ở `post`.
+    if (event?.error) throw new Error('AI provider stream error');
     const delta = event.choices?.[0]?.delta;
     if (!delta) continue;
     if (typeof delta.content === 'string' && delta.content) yield { content: delta.content };

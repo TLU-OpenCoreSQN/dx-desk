@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import Markdown from 'react-markdown';
 import { memo } from 'react';
+import { Link } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import { Check, ExternalLink, Sparkles } from 'lucide-react';
 import type { AssistantTurn as Turn, WikiSource } from './assistantApi';
@@ -171,12 +172,12 @@ export const AssistantTurn = memo(function AssistantTurn({
             </p>
           )}
           {result?.ticket_id && (
-            <a
+            <Link
               className="inline-block text-primary underline"
-              href={'/tickets/' + encodeURIComponent(result.ticket_id)}
+              to={'/tickets/' + encodeURIComponent(result.ticket_id)}
             >
               Xem phiếu vừa tạo
-            </a>
+            </Link>
           )}
           {turn.metadata.error && (
             <p role="alert" className="rounded-lg border border-edge p-3 text-danger">

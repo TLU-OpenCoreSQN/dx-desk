@@ -338,7 +338,7 @@ describe('TicketDetailPage Component', () => {
     vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'waiting_user' }));
     vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
     vi.spyOn(apiService, 'updateTicketStatus').mockRejectedValue(
-      new apiService.ApiClientError(409, 'Phiếu vừa được người khác cập nhật, vui lòng làm mới trang.')
+      new apiService.ApiClientError(422, 'Phiếu không hợp lệ để chuyển trạng thái.')
     );
 
     renderWithRoute();
@@ -351,9 +351,37 @@ describe('TicketDetailPage Component', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Phiếu vừa được người khác cập nhật, vui lòng làm mới trang.')
+        screen.getByText('Phiếu không hợp lệ để chuyển trạng thái.')
       ).toBeInTheDocument();
       expect(screen.getByText(/Không thể chuyển trạng thái/)).toBeInTheDocument();
     });
+  });
+
+  it('handles 409 conflict by reloading without showing duplicate error alert', async () => {
+    withAuth(['Employee'], 'emp-user-1');
+    const getSpy = vi
+      .spyOn(apiService, 'getTicketById')
+      .mockResolvedValue(ticketWith({ status: 'waiting_user' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+    vi.spyOn(apiService, 'updateTicketStatus').mockRejectedValue(
+      new apiService.ApiClientError(409, 'Phiếu vừa được người khác cập nhật, vui lòng làm mới trang.')
+    );
+
+    renderWithRoute();
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' })).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận chuyển trạng thái' }));
+
+    await waitFor(() => {
+      expect(getSpy).toHaveBeenCalledTimes(2);
+      expect(
+        screen.getAllByText(/Phiếu đã được cập nhật bởi người khác\. Dữ liệu mới đã được tải lại/)
+          .length
+      ).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText('Không thể chuyển trạng thái')).not.toBeInTheDocument();
   });
 });

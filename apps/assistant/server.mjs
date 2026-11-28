@@ -190,24 +190,25 @@ export function assistantDependencies(env = process.env) {
     cancelProposal: (id, token) => sessions('proposals/' + id + '/cancel', token, {}),
     async identity(token) {
       const result = await call('/api/me', token);
-      if (result.status === 401) throw errorWith(401, 'Phiên đăng nhập đã hết hạn.');
-      if (!result.ok) throw errorWith(result.status === 403 ? 403 : 503, 'Không xác minh được quyền của tài khoản.');
+      if (result.status === 401) { await result.body?.cancel(); throw errorWith(401, 'Phiên đăng nhập đã hết hạn.'); }
+      if (!result.ok) { await result.body?.cancel(); throw errorWith(result.status === 403 ? 403 : 503, 'Không xác minh được quyền của tài khoản.'); }
       return result.json();
     },
     knowledge: (question, signal) => searchKnowledge(config, question, signal),
     async available(token) {
       const result = await call('/api/assistant-tools', token);
       if (result.status === 404) { await result.body?.cancel(); return []; }
-      if (!result.ok) throw new Error('Assistant tool catalogue unavailable');
+      if (!result.ok) { await result.body?.cancel(); throw new Error('Assistant tool catalogue unavailable'); }
       const catalog = await result.json();
       if (!Array.isArray(catalog.tools)) throw new Error('Invalid assistant tool catalogue');
       return [...new Set(catalog.tools)].filter(name => typeof name === 'string' && Object.hasOwn(tools, name));
     },
     async invoke(name, args, token, id, signal, owner, sessionId) {
       if (!Object.hasOwn(endpoints, name)) throw new Error('Unexpected assistant tool');
+      if (id && !env.ASSISTANT_ACTION_KEY) throw new Error('Missing ASSISTANT_ACTION_KEY');
       const canonical = Object.fromEntries(Object.entries(args).sort(([a], [b]) => a.localeCompare(b)));
       const payload = sessionId ? [owner, name, id, canonical, sessionId] : [owner, name, id, canonical];
-      const proof = id && createHmac('sha256', env.ASSISTANT_ACTION_KEY || '')
+      const proof = id && createHmac('sha256', env.ASSISTANT_ACTION_KEY)
         .update(JSON.stringify(payload)).digest('hex');
       const result = await call('/api/assistant-tools/' + endpoints[name], token, {
         method: 'POST', signal, body: JSON.stringify(args),

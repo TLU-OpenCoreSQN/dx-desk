@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DeviceRequestPage } from '../modules/devices/pages/DeviceRequestPage';
 import * as apiService from '../services/api';
@@ -191,5 +191,38 @@ describe('DeviceRequestPage Component', () => {
       ).toBeInTheDocument();
     });
     expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores stale responses when reloading device requests', async () => {
+    let resolveSlow!: (value: { data: DeviceRequest[]; limit: number; offset: number }) => void;
+    vi.spyOn(apiService, 'getDeviceRequests')
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSlow = resolve; }))
+      .mockResolvedValueOnce({
+        data: [{ ...mockDeviceRequests[0], id: 'dreq-fresh', reason: 'Yêu cầu mới nhất từ máy chủ.' }],
+        limit: 25,
+        offset: 0,
+      });
+    vi.spyOn(apiService, 'createDeviceRequest').mockResolvedValue({
+      ...mockDeviceRequests[0],
+      id: 'dreq-fresh',
+      reason: 'Yêu cầu mới nhất từ máy chủ.',
+    });
+
+    renderComponent();
+
+    fireEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu mới/i }));
+    fireEvent.change(screen.getByLabelText(/Lý do đề xuất/i), {
+      target: { value: 'Yêu cầu mới nhất từ máy chủ.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu thiết bị/i }));
+
+    await screen.findByText('Yêu cầu mới nhất từ máy chủ.');
+
+    await act(async () => {
+      resolveSlow({ data: [{ ...mockDeviceRequests[0], id: 'dreq-stale', reason: 'Dữ liệu cũ bị trễ.' }], limit: 25, offset: 0 });
+    });
+
+    expect(screen.getByText('Yêu cầu mới nhất từ máy chủ.')).toBeInTheDocument();
+    expect(screen.queryByText('Dữ liệu cũ bị trễ.')).not.toBeInTheDocument();
   });
 });

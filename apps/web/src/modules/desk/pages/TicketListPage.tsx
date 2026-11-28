@@ -144,8 +144,10 @@ export const TicketListPage: React.FC = () => {
   );
 
   const isStaff = roles.includes('Agent') || roles.includes('Manager');
+  const requestRevision = useRef(0);
 
   const loadData = useCallback(async (currentOffset: number) => {
+    const revision = ++requestRevision.current;
     setIsLoading(true);
     setError(null);
     try {
@@ -153,6 +155,8 @@ export const TicketListPage: React.FC = () => {
         getTickets(PAGE_SIZE, currentOffset),
         getCategories(),
       ]);
+
+      if (revision !== requestRevision.current) return;
 
       if (ticketRes.status === 'fulfilled') {
         setTickets(ticketRes.value.data || []);
@@ -168,15 +172,19 @@ export const TicketListPage: React.FC = () => {
         setCategories(catMap);
       }
     } catch (err) {
+      if (revision !== requestRevision.current) return;
       setTickets([]);
       setError(err);
     } finally {
-      setIsLoading(false);
+      if (revision === requestRevision.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void loadData(offset);
+    return () => {
+      requestRevision.current += 1;
+    };
   }, [loadData, offset]);
 
   const handleClaim = async (ticket: Ticket) => {
@@ -588,9 +596,9 @@ export const TicketListPage: React.FC = () => {
                           />
                           <span
                             className="truncate font-semibold text-[var(--color-content)]"
-                            title={ticket.assigned_to}
+                            title={ticket.assignee_name || ticket.assigned_to}
                           >
-                            {ticket.assigned_to}
+                            {ticket.assignee_name || ticket.assigned_to}
                           </span>
                         </span>
                       ) : (

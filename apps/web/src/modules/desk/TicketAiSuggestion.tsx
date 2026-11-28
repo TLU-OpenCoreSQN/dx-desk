@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '../../components/common/Button';
 import { AiTriageDiff } from '../../components/workflow';
 import { getTeams } from '../../services/api';
@@ -12,13 +12,15 @@ const input = 'block w-full rounded-md border border-edge bg-surface p-2 text-sm
 
 interface Props {
   ticketId: string;
+  ticketStatus?: string;
+  assignedTo?: string | null;
   categories: Category[];
   refresh: () => Promise<void>;
   /** Giá trị hiện tại của phiếu để so sánh với đề xuất. */
   ticket?: Pick<Ticket, 'category_id' | 'priority' | 'assigned_team_id' | 'team_name'>;
 }
 
-export function TicketAiSuggestion({ ticketId, categories, refresh, ticket }: Props) {
+export function TicketAiSuggestion({ ticketId, ticketStatus, assignedTo, categories, refresh, ticket }: Props) {
   const heading = useId();
   const [suggestion, setSuggestion] = useState<AiSuggestion | null>(null);
   const [draft, setDraft] = useState<SuggestionValues | null>(null);
@@ -26,17 +28,23 @@ export function TicketAiSuggestion({ ticketId, categories, refresh, ticket }: Pr
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const suggestionId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const request = new AbortController();
     void getAiSuggestion(ticketId, request.signal).then(async result => {
-      if (request.signal.aborted || !result) return;
+      if (request.signal.aborted) return;
+      setError('');
+      // Bản đang sửa chỉ hợp lệ cho đúng đề xuất đã tạo ra nó.
+      if (suggestionId.current !== result?.id) setDraft(null);
+      suggestionId.current = result?.id;
       setSuggestion(result);
+      if (!result) return;
       const { data } = await getTeams();
       if (!request.signal.aborted) setTeams(data.filter(team => team.active));
     }).catch(() => { if (!request.signal.aborted) setError('Không tải được thông tin đề xuất AI.'); });
     return () => request.abort();
-  }, [ticketId]);
+  }, [ticketId, ticketStatus, assignedTo]);
 
   function edit() {
     if (!suggestion) return;
@@ -58,6 +66,7 @@ export function TicketAiSuggestion({ ticketId, categories, refresh, ticket }: Pr
     try {
       await decideAiSuggestion(ticketId, id, approve ? { ...values, summary: values.summary.trim() } : null);
       setNotice(approve ? 'Đã xác nhận đề xuất AI.' : 'Đã bỏ qua đề xuất AI.');
+      suggestionId.current = undefined;
       setSuggestion(null);
       setDraft(null);
       await refresh();

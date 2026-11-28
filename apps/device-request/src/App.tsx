@@ -150,7 +150,11 @@ function RequestSection(props: { id: RequestQueue; title: string; empty: string;
       }
       setResult({ rows: rows.slice(0, REQUEST_PAGE_SIZE), more: rows.length > REQUEST_PAGE_SIZE });
       setError(null);
-    }).catch(reason => { if (current) setError((reason as Error).message); });
+    }).catch(reason => {
+      if (!current) return;
+      setResult(null);
+      setError((reason as Error).message);
+    });
     return () => { current = false; };
   }, [id, page, revision, user]);
 
