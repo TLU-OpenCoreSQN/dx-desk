@@ -11,7 +11,7 @@
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 
 ### Sửa
-- #100: nghiệm thu OTP làm mới token admin và ghi riêng trạng thái dọn tài khoản thử; nghiệm thu restart n8n không nạp lại các dependency import/publish, báo rõ đường dẫn/mã HTTP khi upstream không trả JSON.
+- #100: `up` dừng n8n trước import/publish để nạp lại workflow đã kích hoạt; `n8n-reload`/nghiệm thu restart không chạy lặp dependency. Nghiệm thu OTP làm mới token admin, ghi trạng thái dọn tài khoản thử và báo mã HTTP khi upstream không trả JSON.
 - #99: tab hàng đợi có số đếm không còn kéo rộng trang trên điện thoại; giữ vùng cuộn tab riêng và tên truy cập cho trình đọc màn hình, kiểm sau khi số đếm tải xong.
 - #98: migration 029 bổ sung hint/placeholder cho trường danh mục khi cài mới/nâng cấp, giữ giá trị doanh nghiệp đã tùy chỉnh; kiểm config apply lần đầu/lần hai không thay dữ liệu mẫu.
 - #78: lưu kết quả chat bằng chữ ký dịch vụ nội bộ gắn với chủ sở hữu/lượt chat, tiếp tục áp dụng RLS; access token hết hạn giữa câu trả lời không còn làm mất kết quả và khóa hội thoại.
