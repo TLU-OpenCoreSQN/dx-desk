@@ -112,6 +112,11 @@ for (const app of ['web', 'api']) {
   assert.deepEqual(pkg.dependencies, lock.packages[''].dependencies, `${app} dependency lock mismatch`);
   assert.deepEqual(pkg.devDependencies, lock.packages[''].devDependencies, `${app} dev dependency lock mismatch`);
 }
+// Hai ứng dụng giao diện dùng chung một hợp đồng token và một cấu hình Tailwind (bản sao giống hệt).
+assert.equal(await read('apps/device-request/src/styles/tokens.css'), await read('apps/web/src/styles/tokens.css'),
+  'apps/device-request/src/styles/tokens.css must match apps/web/src/styles/tokens.css');
+assert.equal(await read('apps/device-request/tailwind.config.js'), await read('apps/web/tailwind.config.js'),
+  'apps/device-request/tailwind.config.js must match apps/web/tailwind.config.js');
 const enterprise = await loadConfig();
 assert.deepEqual(JSON.parse(await read('config/doanh-nghiep/modules.json')), enterprise.modules,
   'modules.json must be the projection of cau-hinh.json');
@@ -121,4 +126,4 @@ assert.ok((await read('apps/web/nginx.conf')).includes('alias /etc/dxdesk/enterp
 for (const service of ['n8n-import', 'n8n-publish']) {
   assert.ok(compose.services[service].volumes.includes('../../config/doanh-nghiep/workflows:/import/workflows:ro'));
 }
-console.log('PASS config references, enterprise schema/projection/workflows, env completeness, Keycloak audiences, YAML and package locks');
+console.log('PASS config references, shared UI tokens, enterprise schema/projection/workflows, env completeness, Keycloak audiences, YAML and package locks');

@@ -1,0 +1,213 @@
+/*
+ * SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* ==========================================================================
+   DX-DESK ENTERPRISE DESIGN TOKENS (SWISS MINIMALIST CORPORATE)
+   Hợp đồng token dùng chung cho apps/web và apps/device-request. Hai tệp
+   src/styles/tokens.css phải giống hệt nhau (tools/testing/check-config.mjs kiểm tra):
+   sửa một bên thì chép nguyên tệp sang bên kia.
+   ========================================================================== */
+
+/* === LAYER 1: PRIMITIVE TOKENS === */
+:root {
+  /* Slate Scale */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --slate-950: #020617;
+
+  /* Enterprise Blue Scale */
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-800: #1e40af;
+  --blue-900: #1e3a8a;
+
+  /* Semantic Primitives */
+  --emerald-50: #ecfdf5;
+  --emerald-200: #a7f3d0;
+  --emerald-600: #059669;
+  --emerald-800: #065f46;
+
+  --amber-50: #fefce8;
+  --amber-200: #fef08a;
+  --amber-600: #d97706;
+  --amber-800: #854d0e;
+
+  --rose-50: #fef2f2;
+  --rose-200: #fecaca;
+  --rose-600: #dc2626;
+  --rose-800: #991b1b;
+
+  --violet-50: #f5f3ff;
+  --violet-200: #ddd6fe;
+  --violet-600: #7c3aed;
+  --violet-800: #5b21b6;
+
+  /* Spacing Scale (4px base) */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Bo góc 3 bậc: 4px nhãn/tag, 6px nút/ô nhập/mục menu, 8px card/bảng/panel/modal.
+     --radius-full chỉ cho chấm trạng thái, avatar và thanh tiến độ. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  /* Typography Fonts */
+  /* Be Vietnam Pro (OFL-1.1, tự host qua @fontsource, xem main.tsx): thiết kế cho dấu tiếng Việt.
+     Font hệ thống là fallback khi tệp font chưa tải xong hoặc bị chặn. */
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* === LAYER 2: SEMANTIC TOKENS (LIGHT THEME) === */
+/* Mỗi token đặt theo vai trò. Độ tương phản ghi kèm là so với nền --color-surface (#fff) trừ khi
+   ghi khác; ngưỡng WCAG AA: chữ 4,5:1, chữ lớn và đường viền điều khiển 3:1. */
+:root {
+  color-scheme: light;
+
+  /* Nền & bề mặt */
+  --color-background: #f8fafc;      /* nền ứng dụng */
+  --color-surface: #ffffff;         /* bảng, form, panel */
+  --color-surface-muted: #f1f5f9;   /* đầu bảng, vùng phụ */
+  --color-surface-hover: #e2e8f0;
+  --color-surface-card: #ffffff;
+  --color-surface-sidebar: #ffffff;
+
+  /* Chữ */
+  --color-content: #0f172a;         /* chữ chính, 17,9:1 */
+  --color-content-muted: #475569;   /* chữ phụ, 7,6:1 */
+  --color-content-subtle: #5e6e84;  /* metadata nhỏ, 5,2:1 (4,8:1 trên nền phụ #f1f5f9) */
+
+  /* Đường viền */
+  --color-edge: #e2e8f0;            /* viền panel, đường phân cách nhẹ */
+  --color-edge-subtle: #e2e8f0;     /* phân cách hàng trong bảng/danh sách */
+  --color-edge-strong: #cbd5e1;
+  --color-edge-control: #7f8ea3;    /* viền input/select/textarea: 3,3:1 (3,0:1 trên nền phụ) */
+
+  /* Màu chủ đạo: nút chính và liên kết */
+  --color-primary: #1d4ed8;         /* chữ trắng trên nền này 6,7:1; làm chữ trên nền trắng 6,7:1 */
+  --color-primary-hover: #1e40af;
+  --color-primary-active: #1e3a8a;
+  --color-primary-tint: #eff6ff;
+  --color-primary-border: #bfdbfe;
+  --color-primary-text: #1e40af;
+  /* Màu chủ đạo khi dùng làm CHỮ (liên kết, nhãn nhấn). */
+  --color-primary-ink: var(--color-primary);
+  --color-ring: #1d4ed8;            /* chỉ báo focus, 6,7:1 trên nền trắng và nền ứng dụng */
+
+  /* Trạng thái tương tác */
+  --color-state-hover: #f1f5f9;
+  --color-state-selected: #eff6ff;
+  --color-state-selected-edge: #93c5fd;
+  --color-state-disabled-bg: #f1f5f9;
+  --color-state-disabled-text: #94a3b8;
+
+  /* Trạng thái nghiệp vụ. "*" = chữ/nhãn (≥ 6:1 trên nền -bg), "-solid" = chấm/thanh (≥ 3:1). */
+  /* Tốt / hoàn tất */
+  --color-status-success: #065f46;
+  --color-status-success-bg: #ecfdf5;
+  --color-status-success-border: #a7f3d0;
+  --color-status-success-solid: #059669;
+
+  /* Cần chú ý (hổ phách): sắp quá SLA, chờ phản hồi */
+  --color-status-warning: #92400e;
+  --color-status-warning-bg: #fffbeb;
+  --color-status-warning-border: #fcd34d;
+  --color-status-warning-solid: #d97706;
+
+  /* Lỗi / sự cố nghiêm trọng / quá hạn */
+  --color-status-danger: #991b1b;
+  --color-status-danger-bg: #fef2f2;
+  --color-status-danger-border: #fca5a5;
+  --color-status-danger-solid: #dc2626;
+
+  /* Thông tin */
+  --color-status-info: #1e40af;
+  --color-status-info-bg: #eff6ff;
+  --color-status-info-border: #bfdbfe;
+  --color-status-info-solid: #2563eb;
+
+  /* Chờ phê duyệt */
+  --color-status-pending: #5b21b6;
+  --color-status-pending-bg: #f5f3ff;
+  --color-status-pending-border: #ddd6fe;
+  --color-status-pending-solid: #7c3aed;
+
+  /* Trung tính */
+  --color-status-neutral: #334155;
+  --color-status-neutral-bg: #f1f5f9;
+  --color-status-neutral-border: #cbd5e1;
+  --color-status-neutral-solid: #64748b;
+}
+
+/* === LAYER 3: COMPONENT TOKENS === */
+:root {
+  /* Badges */
+  --badge-radius: var(--radius-sm);
+  --badge-font-size: 0.75rem;
+  --badge-font-weight: 600;
+  --badge-py: 0.125rem;
+  --badge-px: 0.5rem;
+
+  /* Buttons */
+  --button-radius: var(--radius-md);
+  --button-font-size: 0.8125rem;
+  --button-font-weight: 600;
+  --button-h-sm: 32px;
+  --button-h-md: 40px;
+  --button-h-lg: 48px;
+
+  /* Inputs & Form Fields */
+  --input-radius: var(--radius-md);
+  --input-h-md: 40px;
+  --input-border: var(--color-edge-control);
+  --input-bg: var(--color-surface);
+  --input-focus-ring: var(--color-primary);
+
+  /* Cards & Modals */
+  --card-radius: var(--radius-lg);
+  --card-border: var(--color-edge);
+  --card-bg: var(--color-surface-card);
+  --card-padding: var(--space-4);
+
+  /* Data Table */
+  --table-row-h: 44px;
+  --table-header-bg: var(--color-surface-muted);
+  --table-header-text: var(--color-content-muted);
+  --table-row-border: var(--color-edge-subtle);
+  --table-row-hover: var(--color-state-hover);
+
+  /* Workflow Visual Steppers & Kanban */
+  --stepper-node-size: 28px;
+  --stepper-line-w: 2px;
+  --stepper-line-active: var(--color-primary);
+  --stepper-line-pending: var(--color-edge);
+  --kanban-column-w: 290px;
+  --kanban-column-bg: var(--color-surface-muted);
+}

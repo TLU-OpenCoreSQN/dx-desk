@@ -58,7 +58,11 @@ describe('fixed enterprise light corporate-blue baseline', () => {
   });
 
   it('locks index.css to light corporate-blue tokens and fixed corporate shell without switching selectors', () => {
-    const css = readFileSync(resolve(__dirname, '../index.css'), 'utf8');
+    const shell = readFileSync(resolve(__dirname, '../index.css'), 'utf8');
+    const tokens = readFileSync(resolve(__dirname, '../styles/tokens.css'), 'utf8');
+    const css = shell + tokens;
+
+    expect(shell).toContain('@import "./styles/tokens.css";');
 
     expect(css).toContain('color-scheme: light;');
     expect(css).toContain('--color-background: #f8fafc;');
@@ -69,6 +73,13 @@ describe('fixed enterprise light corporate-blue baseline', () => {
     expect(css).toContain('.dx-main {');
 
     expect(css).not.toContain('.dark');
+    // Bề mặt phẳng: header nền đặc, không blur, không đổ bóng đại trà lên section/form/article.
+    expect(css).not.toContain('backdrop-filter');
+    expect(css).not.toContain('.dx-main :is(');
+    expect(css).not.toContain('surface-warm');
+    expect(css).not.toContain('#e4e3e0');
+    expect(css).not.toMatch(/animation:[^;]*infinite/);
+    expect(shell).toContain('scroll-padding-top: 3.5rem;');
     expect(css).not.toMatch(/\[data-(?!numeric\b)/);
   });
 });

@@ -11,6 +11,9 @@ import '@fontsource/be-vietnam-pro/400.css';
 import '@fontsource/be-vietnam-pro/500.css';
 import '@fontsource/be-vietnam-pro/600.css';
 import '@fontsource/be-vietnam-pro/700.css';
+// JetBrains Mono (OFL-1.1) cho mã phiếu, thời gian SLA và JSON-LD (--font-mono).
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/500.css';
 import './index.css';
 
 // W6-11: đọc /config/modules.json ngay, song song với tải chunk và khởi tạo Keycloak.

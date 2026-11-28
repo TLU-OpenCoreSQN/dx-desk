@@ -5,257 +5,16 @@
 
 @import "tailwindcss";
 @config "../tailwind.config.js";
+@import "./styles/tokens.css";
 
-/* ==========================================================================
-   DX-DESK ENTERPRISE DESIGN TOKENS (SWISS MINIMALIST CORPORATE)
-   ========================================================================== */
-
-/* === LAYER 1: PRIMITIVE TOKENS === */
-:root {
-  /* Slate Scale */
-  --slate-50: #f8fafc;
-  --slate-100: #f1f5f9;
-  --slate-200: #e2e8f0;
-  --slate-300: #cbd5e1;
-  --slate-400: #94a3b8;
-  --slate-500: #64748b;
-  --slate-600: #475569;
-  --slate-700: #334155;
-  --slate-800: #1e293b;
-  --slate-900: #0f172a;
-  --slate-950: #020617;
-
-  /* Enterprise Blue Scale */
-  --blue-50: #eff6ff;
-  --blue-100: #dbeafe;
-  --blue-200: #bfdbfe;
-  --blue-300: #93c5fd;
-  --blue-400: #60a5fa;
-  --blue-500: #3b82f6;
-  --blue-600: #2563eb;
-  --blue-700: #1d4ed8;
-  --blue-800: #1e40af;
-  --blue-900: #1e3a8a;
-
-  /* Semantic Primitives */
-  --emerald-50: #ecfdf5;
-  --emerald-200: #a7f3d0;
-  --emerald-600: #059669;
-  --emerald-800: #065f46;
-
-  --amber-50: #fefce8;
-  --amber-200: #fef08a;
-  --amber-600: #d97706;
-  --amber-800: #854d0e;
-
-  --rose-50: #fef2f2;
-  --rose-200: #fecaca;
-  --rose-600: #dc2626;
-  --rose-800: #991b1b;
-
-  --violet-50: #f5f3ff;
-  --violet-200: #ddd6fe;
-  --violet-600: #7c3aed;
-  --violet-800: #5b21b6;
-
-  /* Spacing Scale (4px base) */
-  --space-0-5: 2px;
-  --space-1: 4px;
-  --space-1-5: 6px;
-  --space-2: 8px;
-  --space-2-5: 10px;
-  --space-3: 12px;
-  --space-3-5: 14px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-
-  /* Border Radius Hierarchy */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-full: 9999px;
-
-  /* Typography Fonts */
-  /* Be Vietnam Pro (OFL-1.1, tự host qua @fontsource, xem main.tsx): thiết kế cho dấu tiếng Việt.
-     Font hệ thống là fallback khi tệp font chưa tải xong hoặc bị chặn. */
-  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-/* === LAYER 2: SEMANTIC TOKENS (LIGHT THEME) === */
-/* Mỗi token đặt theo vai trò. Độ tương phản ghi kèm là so với nền --color-surface (#fff) trừ khi
-   ghi khác; ngưỡng WCAG AA: chữ 4,5:1, chữ lớn và đường viền điều khiển 3:1. */
-:root {
-  color-scheme: light;
-
-  /* Nền & bề mặt */
-  --color-background: #f8fafc;      /* nền ứng dụng */
-  --color-surface: #ffffff;         /* bảng, form, panel */
-  --color-surface-muted: #f1f5f9;   /* đầu bảng, vùng phụ */
-  --color-surface-hover: #e2e8f0;
-  --color-surface-card: #ffffff;
-  --color-surface-sidebar: #ffffff;
-
-  /* Chữ */
-  --color-content: #0f172a;         /* chữ chính, 17,9:1 */
-  --color-content-muted: #475569;   /* chữ phụ, 7,6:1 */
-  --color-content-subtle: #5e6e84;  /* metadata nhỏ, 5,2:1 (4,8:1 trên nền phụ #f1f5f9) */
-
-  /* Đường viền */
-  --color-edge: #e2e8f0;            /* viền panel, đường phân cách nhẹ */
-  --color-edge-subtle: #e2e8f0;     /* phân cách hàng trong bảng/danh sách */
-  --color-edge-strong: #cbd5e1;
-  --color-edge-control: #7f8ea3;    /* viền input/select/textarea: 3,3:1 (3,0:1 trên nền phụ) */
-
-  /* Màu chủ đạo: nút chính và liên kết */
-  --color-primary: #1d4ed8;         /* chữ trắng trên nền này 6,7:1; làm chữ trên nền trắng 6,7:1 */
-  --color-primary-hover: #1e40af;
-  --color-primary-active: #1e3a8a;
-  --color-primary-tint: #eff6ff;
-  --color-primary-border: #bfdbfe;
-  --color-primary-text: #1e40af;
-  /* Màu chủ đạo khi dùng làm CHỮ (liên kết, nhãn nhấn). Chế độ tối dùng primary-text sáng hơn. */
-  --color-primary-ink: var(--color-primary);
-  --color-ring: #1d4ed8;            /* chỉ báo focus, 6,7:1 trên nền trắng và nền ứng dụng */
-
-  /* Trạng thái tương tác */
-  --color-state-hover: #f1f5f9;
-  --color-state-selected: #eff6ff;
-  --color-state-selected-edge: #93c5fd;
-  --color-state-disabled-bg: #f1f5f9;
-  --color-state-disabled-text: #94a3b8;
-
-  /* Trạng thái nghiệp vụ. "*" = chữ/nhãn (≥ 6:1 trên nền -bg), "-solid" = chấm/thanh (≥ 3:1). */
-  /* Tốt / hoàn tất */
-  --color-status-success: #065f46;
-  --color-status-success-bg: #ecfdf5;
-  --color-status-success-border: #a7f3d0;
-  --color-status-success-solid: #059669;
-
-  /* Cần chú ý (hổ phách): sắp quá SLA, chờ phản hồi */
-  --color-status-warning: #92400e;
-  --color-status-warning-bg: #fffbeb;
-  --color-status-warning-border: #fcd34d;
-  --color-status-warning-solid: #d97706;
-
-  /* Lỗi / sự cố nghiêm trọng / quá hạn */
-  --color-status-danger: #991b1b;
-  --color-status-danger-bg: #fef2f2;
-  --color-status-danger-border: #fca5a5;
-  --color-status-danger-solid: #dc2626;
-
-  /* Thông tin */
-  --color-status-info: #1e40af;
-  --color-status-info-bg: #eff6ff;
-  --color-status-info-border: #bfdbfe;
-  --color-status-info-solid: #2563eb;
-
-  /* Chờ phê duyệt */
-  --color-status-pending: #5b21b6;
-  --color-status-pending-bg: #f5f3ff;
-  --color-status-pending-border: #ddd6fe;
-  --color-status-pending-solid: #7c3aed;
-
-  /* Trung tính */
-  --color-status-neutral: #334155;
-  --color-status-neutral-bg: #f1f5f9;
-  --color-status-neutral-border: #cbd5e1;
-  --color-status-neutral-solid: #64748b;
-}
-
-/* === LAYER 3: COMPONENT TOKENS === */
-:root {
-  /* Badges */
-  --badge-radius: var(--radius-sm);
-  --badge-font-size: 0.75rem;
-  --badge-font-weight: 600;
-  --badge-py: 0.125rem;
-  --badge-px: 0.5rem;
-
-  /* Buttons */
-  --button-radius: var(--radius-md);
-  --button-font-size: 0.8125rem;
-  --button-font-weight: 600;
-  --button-h-sm: 32px;
-  --button-h-md: 38px;
-  --button-h-lg: 44px;
-
-  /* Inputs & Form Fields */
-  --input-radius: var(--radius-md);
-  --input-h-md: 38px;
-  --input-border: var(--color-edge-control);
-  --input-bg: var(--color-surface);
-  --input-focus-ring: var(--color-primary);
-
-  /* Cards & Modals */
-  --card-radius: var(--radius-lg);
-  --card-border: var(--color-edge);
-  --card-bg: var(--color-surface-card);
-  --card-padding: var(--space-4);
-
-  /* Data Table */
-  --table-row-h: 44px;
-  --table-header-bg: var(--color-surface-muted);
-  --table-header-text: var(--color-content-muted);
-  --table-row-border: var(--color-edge-subtle);
-  --table-row-hover: var(--color-state-hover);
-
-  /* Workflow Visual Steppers & Kanban */
-  --stepper-node-size: 28px;
-  --stepper-line-w: 2px;
-  --stepper-line-active: var(--color-primary);
-  --stepper-line-pending: var(--color-edge);
-  --kanban-column-w: 290px;
-  --kanban-column-bg: var(--color-surface-muted);
-}
-
-/* Backward-compatibility aliases for existing components */
-:root {
-  --radius: var(--radius-md);
-  --color-surface-warm: var(--color-surface-muted);
-  --color-muted: var(--color-content-muted);
-  --color-success: var(--color-status-success);
-  --color-success-hover: var(--emerald-600);
-  --color-success-tint: var(--color-status-success-bg);
-  --color-success-border: var(--color-status-success-border);
-  --color-success-edge: var(--color-status-success-border);
-  --color-warning: var(--color-status-warning);
-  --color-warning-hover: var(--amber-600);
-  --color-warning-tint: var(--color-status-warning-bg);
-  --color-warning-border: var(--color-status-warning-border);
-  --color-warning-edge: var(--color-status-warning-border);
-  --color-danger: var(--color-status-danger);
-  --color-danger-hover: var(--rose-600);
-  --color-danger-tint: var(--color-status-danger-bg);
-  --color-danger-border: var(--color-status-danger-border);
-  --color-danger-edge: var(--color-status-danger-border);
-  --color-info: var(--color-status-info);
-  --color-info-hover: var(--blue-700);
-  --color-info-tint: var(--color-status-info-bg);
-  --color-info-border: var(--color-status-info-border);
-  --color-purple: var(--color-status-pending);
-  --color-purple-tint: var(--color-status-pending-bg);
-  --color-purple-border: var(--color-status-pending-border);
-  --color-primary-edge: var(--color-primary-border);
-  --color-primary-subtle: color-mix(in srgb, var(--color-primary-tint), white 50%);
-}
-
-/* Fixed Enterprise Shell Styling (Swiss Corporate Light) */
+/* Khung ứng dụng: header nền đặc + viền 1px (không blur, không xuyên màu khi cuộn bảng).
+   Phân tầng bằng nền + viền mảnh; bóng đổ chỉ dành cho lớp nổi (Modal, Toast, drawer, dropdown). */
 .dx-app-header {
-  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  background: var(--color-surface);
   box-shadow: 0 1px 0 var(--color-edge);
-  backdrop-filter: blur(12px);
 }
 .dx-main {
   background: var(--color-background);
-}
-.dx-main :is(section, form, article) {
-  box-shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 2px 8px rgb(15 23 42 / 4%);
 }
 
 /* Table border collapse */
@@ -272,6 +31,8 @@ table,
     background-color: var(--color-background);
     font-size: 100%;
     line-height: 1.6;
+    /* Focus bàn phím không bị header dính h-14 che (WCAG 2.2 — Focus Not Obscured). */
+    scroll-padding-top: 3.5rem;
     caret-color: var(--color-primary);
     accent-color: var(--color-primary);
     -webkit-font-smoothing: antialiased;
@@ -411,42 +172,12 @@ table,
     animation: dx-drawer-in 200ms cubic-bezier(0.2, 0, 0, 1) both;
   }
 
-  /* Micro-interactions & Modern SaaS Utilities */
+  /* Card phẳng: nền trắng + viền 1px, không bóng, không nâng khi hover. */
   .dx-card {
     background-color: var(--color-surface-card);
-    border: 1px solid var(--color-edge-subtle, #e4e3e0);
-    border-radius: var(--radius-md, 6px);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .dx-card-hover {
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .dx-card-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    border-color: var(--color-edge);
-  }
-
-  .dx-glass {
-    background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-
-  .dx-pulse-glow {
-    box-shadow: 0 0 0 0 rgba(68, 131, 97, 0.4);
-    animation: dx-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  @keyframes dx-pulse {
-    0%, 100% {
-      box-shadow: 0 0 0 0 rgba(68, 131, 97, 0.4);
-    }
-    50% {
-      box-shadow: 0 0 0 6px rgba(68, 131, 97, 0);
-    }
+    border: 1px solid var(--color-edge);
+    border-radius: var(--radius-lg);
+    transition: border-color 150ms ease-in-out, background-color 150ms ease-in-out;
   }
 
   @media (max-width: 767px) {
