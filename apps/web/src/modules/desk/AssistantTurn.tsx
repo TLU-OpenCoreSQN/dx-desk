@@ -4,8 +4,9 @@ import Markdown from 'react-markdown';
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
-import { Check, ExternalLink, Sparkles } from 'lucide-react';
+import { Check, ExternalLink, LoaderCircle, Pause, Play, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import type { AssistantTurn as Turn, WikiSource } from './assistantApi';
+import type { PlaybackPhase } from './useAssistantVoice';
 
 const fieldLabels: Record<string, string> = {
   category: 'Danh mục',
@@ -25,10 +26,20 @@ export const AssistantTurn = memo(function AssistantTurn({
   turn,
   busy,
   onDecide,
+  onRead,
+  speechSupported = false,
+  playbackPhase = 'idle',
+  onToggleRead,
+  onStopRead,
 }: {
   turn: Turn;
   busy: boolean;
   onDecide: (turn: Turn, approve: boolean) => void;
+  onRead?: (turn: Turn) => void;
+  speechSupported?: boolean;
+  playbackPhase?: PlaybackPhase;
+  onToggleRead?: () => void;
+  onStopRead?: () => void;
 }) {
   const proposal = turn.metadata.proposal;
   const expired = proposal?.expires_at && Date.parse(proposal.expires_at) <= Date.now();
@@ -50,8 +61,8 @@ export const AssistantTurn = memo(function AssistantTurn({
         </span>
         <div className="min-w-0 flex-1 space-y-3 text-sm">
           <p className="font-semibold">Trợ lý AI</p>
-          {turn.metadata.steps?.length > 0 && (
-            <details className="text-xs text-content-muted" open={turn.status === 'pending'}>
+          {turn.status !== 'pending' && turn.metadata.steps?.length > 0 && (
+            <details className="text-xs text-content-muted">
               <summary className="cursor-pointer">Các bước xử lý</summary>
               <ol aria-label="Các bước gọi công cụ" className="mt-2 list-decimal space-y-1 pl-5">
                 {turn.metadata.steps.map((step, index) => (
@@ -104,9 +115,11 @@ export const AssistantTurn = memo(function AssistantTurn({
             </div>
           )}
           {turn.status === 'pending' && !turn.answer && (
-            <p className="animate-pulse text-content-muted">Đang chuẩn bị câu trả lời…</p>
+            <p role="status" aria-label="Thinking" className="inline-flex items-center gap-2 text-content-muted">
+              <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />Thinking<span className="animate-pulse" aria-hidden="true">…</span>
+            </p>
           )}
-          {sources.length > 0 && (
+          {turn.status !== 'pending' && sources.length > 0 && (
             <ul aria-label="Bài Wiki tham chiếu" className="flex flex-wrap gap-2">
               {sources.map((source) => (
                 <li key={source.url}>
@@ -122,6 +135,24 @@ export const AssistantTurn = memo(function AssistantTurn({
                 </li>
               ))}
             </ul>
+          )}
+          {speechSupported && onRead && turn.answer && turn.status !== 'pending' && (
+            <div className="flex flex-wrap items-center gap-2">
+              {playbackPhase === 'idle' ? <button type="button" disabled={busy} aria-label="Đọc câu trả lời" onClick={() => onRead(turn)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-edge px-3 text-xs disabled:opacity-40">
+                <Volume2 size={15} aria-hidden="true" />Nghe câu trả lời
+              </button> : <>
+                <button type="button" aria-label={playbackPhase === 'paused' ? 'Tiếp tục đọc câu trả lời' : 'Tạm dừng đọc câu trả lời'} onClick={onToggleRead}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-edge px-3 text-xs">
+                  {playbackPhase === 'paused' ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}
+                  {playbackPhase === 'paused' ? 'Tiếp tục đọc' : 'Tạm dừng đọc'}
+                </button>
+                <button type="button" aria-label="Dừng đọc câu trả lời" onClick={onStopRead}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-edge px-3 text-xs">
+                  <VolumeX size={15} aria-hidden="true" />Dừng đọc
+                </button>
+              </>}
+            </div>
           )}
           {pending && (
             <section

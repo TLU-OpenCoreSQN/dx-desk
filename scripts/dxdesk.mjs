@@ -116,6 +116,10 @@ if (action === 'up') {
     compose('up', '-d', '--wait', 'wikijs');
     await setupWiki(root, env);
   }
+  // Importing unpublishes existing workflows. An already-running n8n process
+  // must not read that intermediate state or keep stale in-memory webhooks.
+  // Stop it before importer/publisher run, then let Compose start it afterwards.
+  compose('stop', 'n8n');
   compose('up', '-d', '--build', '--wait');
   if (wikiIndexEnabled(env)) {
     // These Node services mount source files, so an existing process must reload its modules after a pull.
@@ -162,7 +166,8 @@ if (action === 'up') {
   compose('stop', 'n8n');
   compose('run', '--rm', '--no-deps', 'n8n-import');
   compose('run', '--rm', '--no-deps', 'n8n-publish');
-  compose('up', '-d', '--wait', 'n8n');
+  // Import/publish just completed via `run`; do not execute them again via dependencies.
+  compose('up', '-d', '--no-deps', '--wait', 'n8n');
 } else if (action === 'credentials-import') {
   const source = resolve(root, 'infra/n8n/credentials/credentials.json');
   const credentials = JSON.parse(await readFile(source, 'utf8'));

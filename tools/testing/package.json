@@ -7,6 +7,7 @@
   "scripts": {
     "integration": "node run-integration.mjs",
     "check": "node check-config.mjs",
+    "assistant-topics": "node assistant-topics.mjs",
     "browser": "node browser-smoke.mjs",
     "native-sso": "node native-sso.mjs",
     "migrations": "node migration-test.mjs"

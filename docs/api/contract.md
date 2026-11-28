@@ -165,12 +165,25 @@ nhánh đặc biệt: `new|assigned|in_progress → pending_approval` (duyệt c
 | --- | --- |
 | new→triaged, triaged→assigned, assigned→in_progress | Agent, Manager |
 | assigned→pending_approval, in_progress→pending_approval, new→pending_approval | Agent, Manager |
-| in_progress→waiting_user, in_progress→resolved, resolved→in_progress | Agent, Manager |
+| in_progress→waiting_user, in_progress→resolved | Agent, Manager |
+| resolved→in_progress | Agent, Manager; requester trong 7 ngày, có lý do 5–2000 ký tự |
 | waiting_user→in_progress | Requester (Employee chủ ticket), Agent, Manager |
 | new/triaged/assigned/waiting_user→cancelled | Requester (Employee chủ ticket), Agent, Manager |
 | pending_approval→assigned (duyệt) | Agent, Manager |
 | pending_approval→new (từ chối) | Chỉ Manager |
 | resolved→closed (xác nhận đóng) | Chỉ requester chủ ticket |
+
+Người tạo chọn **Chưa khắc phục được** để `resolved → in_progress`, gửi `note` bắt buộc
+5–2000 ký tự. Thời hạn 7 ngày lấy từ sự kiện giải quyết gần nhất trong audit, bao gồm
+đúng mốc 7 ngày; sửa `updated_at` không làm mới thời hạn. Nếu không có sự kiện giải
+quyết thì không mở cửa requester. Giữ `assigned_to`, `assigned_team_id`, `sla_due_at`
+và `sla_paused_ms`; kết quả xử lý cũ vẫn có trong timeline, trường `resolution_note`
+được xóa để lần giải quyết mới phải có kết quả mới. Sự kiện/outbox dùng luồng hiện có.
+Quy tắc được kiểm ở trigger migration 028 cho cả API và PostgREST; REST trực tiếp
+phải gửi `X-Status-Note` (dùng ASCII để tương thích HTTP client; nội dung tiếng Việt gửi qua JSON `note` của API).
+API trả 422 khi lý do thiếu/quá hạn (DTO sai định dạng có
+thể trả 400), REST trả SQLSTATE `45006`/`45007`. Phiếu đã đóng không mở lại được.
+API đọc phiếu trả thêm `resolved_at` chỉ đọc, lấy từ audit khi trạng thái là `resolved`.
 
 Ticket mới tạo có `status:"new"`, NGOẠI TRỪ Employee (không phải Agent/Manager) tạo
 ticket danh mục `access` → khởi đầu `pending_approval` (RLS INSERT policy `tickets_create_v3`
@@ -345,6 +358,13 @@ có thể sai dấu ở một số trình đọc (bảng ToUnicode của phông 
 ## Trợ lý Desk (W6-03)
 
 ### Hội thoại có lịch sử
+
+Kết thúc lượt trả lời dùng `POST /internal/assistant-sessions/:id/turns/:turnId/finish`
+trong mạng Compose, nhận `{owner_id,result}` và HMAC `X-DXDesk-Assistant-Proof`
+trên `[owner_id,"finish:<session>:<turn>",result]`. Không phụ thuộc thời hạn JWT lúc
+bắt đầu stream. Chỉ cập nhật lượt đã tạo, vẫn dùng role `authenticated` và RLS của
+chủ sở hữu; không tạo lượt mới hoặc làm mới token người dùng. Route này không được
+công bố qua APISIX. Endpoint finish dưới `/api` được giữ cho tương thích và vẫn kiểm JWT.
 
 - `GET /api/assistant-sessions?offset=0` trả `{data,has_more}` theo hoạt động gần nhất, 50 hội thoại/trang.
 - `POST /api/assistant-sessions` nhận `{}` và tạo hội thoại riêng của tài khoản JWT.

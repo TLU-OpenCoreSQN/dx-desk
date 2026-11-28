@@ -341,7 +341,9 @@ services:
     working_dir: /app
     volumes:
       - ../../apps/assistant:/app:ro
+      - ../../config/doanh-nghiep/assistant.json:/config/doanh-nghiep/assistant.json:ro
     environment:
+      ASSISTANT_API_URL: http://api:3000
       WIKI_PUBLIC_URL: ${WIKI_PUBLIC_URL:-http://localhost:18030}
       WIKI_INDEX_TOKEN: ${WIKI_INDEX_TOKEN:-}
       AI_API_BASE_URL: ${AI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai/}

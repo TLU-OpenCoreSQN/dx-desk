@@ -603,6 +603,33 @@ Trên điện thoại, nút **Mở lịch sử hội thoại** mở danh sách n
 Mỗi lần gửi tiếp, server đọc lịch sử của chính cuộc trò chuyện đang chọn. Khi
 lịch sử vượt khoảng 48.000 ký tự, các lượt cũ được tóm tắt vào bộ nhớ của hội thoại,
 giữ các lượt gần nhất trong prompt. Lịch sử đầy đủ vẫn có thể tải qua **Tải tin nhắn cũ**.
+Nếu tóm tắt lỗi hoặc rỗng, trợ lý vẫn trả lời bằng các lượt gần nhất và bộ nhớ đã lưu;
+lượt sau thử tóm tắt lại lịch sử gốc. Bản tóm tắt dài quá được giới hạn 12.000 ký tự.
+Kết quả được lưu qua kênh dịch vụ nội bộ có chữ ký, vẫn theo quyền chủ sở hữu; token
+người dùng hết hạn giữa câu trả lời không làm mất phần trả lời hoặc khóa hội thoại.
+
+**Chủ đề hỗ trợ:** cấu hình tại `config/doanh-nghiep/assistant.json`: mạng/VPN, tài khoản/quyền,
+phần mềm, thiết bị, quy trình phiếu và báo cáo IT. Lớp phân loại dùng các ví dụ trong cấu hình,
+ngữ cảnh hội thoại hiện tại và mô hình Gemini; câu ngoài phạm vi được hướng về hỗ trợ IT.
+Đây là cấu hình suy luận/tri thức, không phải huấn luyện lại trọng số mô hình. Sau khi chỉnh,
+chạy `node --test apps/assistant/*.test.mjs` và `node tools/testing/assistant-topics.mjs`
+(cần khóa local; báo cáo `.local/reports/assistant-topic-evaluation.json`). Bộ đánh giá 24 câu
+nằm riêng ở `config/doanh-nghiep/assistant-evaluation.json`; runner giãn các lượt gọi để tránh
+gửi dồn nhiều yêu cầu. Chạy lại service assistant sau khi đổi cấu hình.
+
+**Giọng nói:** trong Trợ lý AI, bấm **Nhập giọng nói**, cho phép micro và nói tiếng Việt.
+Prompt được đưa vào ô nhập, chỉ gửi khi bạn bấm gửi. **Tạm dừng micro** giữ phần đã nhận để
+chỉnh sửa; **Tiếp tục nói** nối thêm vào nội dung hiện tại; **Kết thúc** đóng nhận giọng nói.
+Bấm **Nghe câu trả lời** dưới phản hồi để đọc, có nút tạm dừng/tiếp tục/dừng riêng. Micro
+được dừng khi đọc phản hồi hoặc gửi prompt để tránh thu tiếng đọc. Đổi hội thoại/rời trang
+cũng dừng giọng nói. Khi đang chờ, màn hình hiện **Thinking**; nút dừng hoạt động cả lúc
+chuẩn bị tạo hội thoại. Phản hồi đã nhận và lịch sử được giữ theo cơ chế hội thoại.
+
+Nhận giọng nói dùng [Web Speech API của trình duyệt](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API/Using_the_Web_Speech_API),
+có thể gửi âm thanh tới dịch vụ của trình duyệt. Chỉ bắt đầu sau thao tác bấm micro và cấp
+quyền; không lưu audio trong DX-Desk. Cần trình duyệt hỗ trợ và HTTPS/localhost. Nếu không
+hỗ trợ hoặc micro bị từ chối, nhập chữ vẫn hoạt động. Đọc phản hồi dùng giọng có trên thiết bị;
+nếu thiếu giọng tiếng Việt thì trình duyệt chọn giọng mặc định. Không cần thêm khóa dịch vụ giọng nói.
 Nút **Dừng trả lời** giữ phần đã nhận và cho phép gửi tiếp. Một hội thoại xử lý một
 lượt tại một thời điểm. Sau sự cố tiến trình, lượt đang dở được mở lại sau lease 5 phút.
 Một tin nhắn nhận tối đa 8.000 ký tự. Enter gửi tin và Shift+Enter xuống dòng.

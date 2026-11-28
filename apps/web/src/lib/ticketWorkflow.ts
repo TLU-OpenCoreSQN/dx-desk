@@ -125,6 +125,8 @@ export const TRANSITION_EDGES: TransitionEdge[] = [
   { from: 'waiting_user', to: 'cancelled', label: 'Hủy phiếu', roles: ['Employee', 'Agent', 'Manager'], requesterOnly: true },
   { from: 'waiting_user', to: 'cancelled', label: 'Hủy phiếu', roles: ['Agent', 'Manager'] },
   { from: 'resolved', to: 'in_progress', label: 'Mở lại để xử lý', roles: ['Agent', 'Manager'] },
+  { from: 'resolved', to: 'in_progress', label: 'Chưa khắc phục được', roles: ['Employee', 'Agent', 'Manager'], requesterOnly: true,
+    hint: 'Gửi lại trong 7 ngày kể từ khi giải quyết. Kỹ thuật viên và hạn SLA được giữ nguyên; cần lý do cụ thể.' },
   {
     from: 'in_progress',
     to: 'waiting_user',
@@ -187,7 +189,7 @@ export function isTransitionAllowed(from: string, to: string): boolean {
 export function getAllowedTransitions(
   status: string,
   roles: UserRole[],
-  context: { isRequester?: boolean } = {}
+  context: { isRequester?: boolean; canRequesterReopen?: boolean } = {}
 ): TransitionEdge[] {
   if (!isTicketStatus(status)) return [];
   const actions: TransitionEdge[] = [];
@@ -195,6 +197,7 @@ export function getAllowedTransitions(
     if (edge.from !== status) continue;
     if (!edge.roles.some((role) => roles.includes(role))) continue;
     if (edge.requesterOnly && context.isRequester !== true) continue;
+    if (edge.requesterOnly && edge.from === 'resolved' && edge.to === 'in_progress' && !context.canRequesterReopen) continue;
     if (actions.some((a) => a.to === edge.to)) continue;
     actions.push(edge);
   }
@@ -203,6 +206,13 @@ export function getAllowedTransitions(
 
 export function canChoosePriority(priority: TicketPriority, roles: UserRole[]): boolean {
   return priority !== 'critical' || roles.includes('Manager');
+}
+
+export const REQUESTER_REOPEN_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+export function withinRequesterReopenWindow(resolvedAt: string | null | undefined, now = Date.now()): boolean {
+  if (typeof resolvedAt !== 'string') return false;
+  const resolved = Date.parse(resolvedAt);
+  return Number.isFinite(resolved) && now >= resolved && now <= resolved + REQUESTER_REOPEN_WINDOW_MS;
 }
 
 export function validateResolutionNote(value: string): string | null {

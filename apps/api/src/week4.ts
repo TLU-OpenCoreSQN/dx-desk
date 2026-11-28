@@ -13,7 +13,10 @@ export const TICKET_SELECT = `t.id,t.requester_id,t.category_id,t.title,t.descri
  t.assigned_team_id,t.sla_breached,t.sla_breached_at,t.ticket_version::float8 AS ticket_version,
  private.team_name(t.assigned_team_id) AS team_name,private.assignee_name(t.assigned_to) AS assignee_name,
  (SELECT nullif(e.actor_name,'') FROM public.ticket_events e WHERE e.ticket_id=t.id AND e.event_type='created'
- ORDER BY e.created_at,e.id LIMIT 1) AS requester_name`;
+ ORDER BY e.created_at,e.id LIMIT 1) AS requester_name,
+ CASE WHEN t.status='resolved' THEN (SELECT max(e.created_at) FROM public.ticket_events e
+ WHERE e.ticket_id=t.id AND e.event_type='status_changed'
+ AND coalesce(e.payload->>'to',e.payload->>'to_status')='resolved') ELSE NULL END AS resolved_at`;
 
 @Controller('api')
 @UseGuards(JwtGuard)

@@ -487,6 +487,36 @@ describe('TicketDetailPage Component', () => {
     });
   });
 
+  it('lets the requester report an unresolved issue within seven days with a required reason', async () => {
+    const resolved = ticketWith({ status: 'resolved', resolved_at: new Date(Date.now() - 3600000).toISOString(),
+      assigned_to: 'agent-user-1', ticket_version: 3, sla_due_at: new Date(Date.now() + 3600000).toISOString() });
+    const reopened = { ...resolved, status: 'in_progress' };
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValueOnce(resolved).mockResolvedValue(reopened);
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+    const update = vi.spyOn(apiService, 'updateTicketStatus').mockResolvedValue(reopened);
+    renderWithRoute();
+    fireEvent.click(await screen.findByRole('button', { name: 'Chưa khắc phục được' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi lại để xử lý' }));
+    expect(update).not.toHaveBeenCalled();
+    expect(screen.getByText(/Lý do chưa khắc phục cần ít nhất 5 ký tự/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Lý do chưa khắc phục/), { target: { value: 'VPN vẫn bị ngắt sau vài phút.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi lại để xử lý' }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(mockTicket.id, {
+      to: 'in_progress', expected_version: 3, note: 'VPN vẫn bị ngắt sau vài phút.',
+    }));
+  });
+
+  it.each([
+    ['expired', new Date(Date.now() - 8 * 86400000).toISOString()],
+    ['unknown resolution time', null],
+  ])('does not offer requester reopen with %s', async (_label, resolved_at) => {
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'resolved', resolved_at }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+    renderWithRoute();
+    await screen.findByRole('button', { name: 'Xác nhận đã hài lòng, đóng phiếu' });
+    expect(screen.queryByRole('button', { name: 'Chưa khắc phục được' })).not.toBeInTheDocument();
+  });
+
   it('handles 409 conflict by reloading without showing duplicate error alert', async () => {
     withAuth(['Employee'], 'emp-user-1');
     const getSpy = vi

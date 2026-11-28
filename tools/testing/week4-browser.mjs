@@ -106,6 +106,14 @@ try{
    activePage=target;await target.setViewportSize(viewport);await target.goto(origin+path);
    await target.getByRole('heading',{name:heading,level:1,exact:true}).waitFor();
    await target.waitForFunction(()=>!Array.from(document.querySelectorAll('button')).find(button=>button.textContent==='Làm mới hàng đợi')?.disabled);
+   if(path==='/work-queue') {
+    // Counts add screen-reader-only text after the main data load. Wait for it:
+    // otherwise missing positioned containment only overflows after this check.
+    await target.getByRole('button',{name:/^Nhóm của tôi · Chưa nhận.*phiếu/}).waitFor();
+    await target.getByRole('button',{name:/^Nhóm của tôi · Đã nhận.*phiếu/}).waitFor();
+    const tabs=target.getByRole('group',{name:'Hàng đợi công việc',exact:true});
+    if(viewport.width===375) assert.ok(await tabs.evaluate(element=>element.parentElement.scrollWidth>element.parentElement.clientWidth),'queue tabs scroll inside their own container');
+   }
    assert.ok(await target.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),path+' horizontal overflow at '+viewport.width);
   }
  });

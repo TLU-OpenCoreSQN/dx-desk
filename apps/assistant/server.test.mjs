@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { createHmac } from 'node:crypto';
 import { assistantDependencies, assistantServer } from './server.mjs';
 import { answer, ndjson, proposalStore } from './chat.mjs';
 
@@ -211,4 +213,28 @@ test('assistantDependencies.invoke fails fast when ASSISTANT_ACTION_KEY is missi
     deps.invoke('create_ticket', { category: 'vpn', title: 'T', description: 'D' }, 'tok', 'action-1', undefined, 'owner'),
     /Missing ASSISTANT_ACTION_KEY/,
   );
+});
+
+test('finishTurn saves without a user JWT and retries a transient failure with identical proof', async t => {
+  const calls = [];
+  const server = createServer(async (request, response) => {
+    let text = '';
+    for await (const chunk of request) text += chunk;
+    calls.push({ path: request.url, headers: request.headers, body: JSON.parse(text) });
+    response.writeHead(calls.length === 1 ? 503 : 200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify(calls.length === 1 ? { message: 'Thử lại.' } : { status: 'complete' }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const secret = 'internal-finish-test-secret-at-least-32';
+  const deps = assistantDependencies({ ASSISTANT_ACTION_KEY: secret, ASSISTANT_API_URL: 'http://127.0.0.1:' + server.address().port });
+  const result = { answer: 'Đã trả lời.', status: 'complete', metadata: { steps: [], sources: [] } };
+  assert.deepEqual(await deps.finishTurn('session', 'turn', result, { id: 'owner' }, 'expired-user-token'), { status: 'complete' });
+  assert.equal(calls.length, 2);
+  for (const call of calls) {
+    assert.equal(call.path, '/internal/assistant-sessions/session/turns/turn/finish');
+    assert.equal(call.headers.authorization, undefined);
+    assert.deepEqual(call.body, { owner_id: 'owner', result });
+    assert.equal(call.headers['x-dxdesk-assistant-proof'], createHmac('sha256', secret).update(JSON.stringify(['owner', 'finish:session:turn', result])).digest('hex'));
+  }
 });

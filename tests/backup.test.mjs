@@ -78,11 +78,13 @@ const fullPlan = () => ({ ...manifest([
   { kind: 'seaweedfs', service: 'seaweedfs', name: 'data.tar.gz', sha256: sha('data.tar.gz') },
 ]), versions: { postgres: '17.11' }, profiles: '' });
 
-function fakeContext(events, { failArchive = false, hold } = {}) {
+function fakeContext(events, { failArchive = false, gateway = false, failGateway = false, hold } = {}) {
   return {
-    running: () => new Set(['postgres', 'seaweedfs', 'api', 'assistant', 'keycloak']),
+    running: () => new Set(['postgres', 'seaweedfs', 'api', 'assistant', 'keycloak', ...(gateway ? ['apisix'] : [])]),
     psql: (...args) => { events.push(['psql', ...args]); return '1024'; },
-    run: args => { events.push(['run', ...args]); return args.includes('du') ? '1 /data' : ''; },
+    run: args => { events.push(['run', ...args]);
+      if (failGateway && args[0] === 'restart' && args[1] === 'apisix') throw new Error('gateway recovery failed');
+      return args.includes('du') ? '1 /data' : ''; },
     stream: async (args, options) => {
       events.push(['stream', ...args]);
       if (hold) await hold;
@@ -148,6 +150,35 @@ test('khóa project chặn hai lượt backup đồng thời và được trả 
   unblock();
   await failed;
   await assert.rejects(backupMain(env, [], { context: fakeContext([], { failArchive: true }) }), /archive failed/);
+});
+
+test('backup làm mới gateway đã chạy sau khi writers phục hồi, cả khi dump lỗi', async t => {
+  for (const failArchive of [false, true]) {
+    const dir = await mkdtemp(join(tmpdir(), 'dxdesk-gateway-'));
+    t.after(() => rm(dir, { recursive: true, force: true }));
+    const events = [];
+    const backup = backupMain({ ...ENV, BACKUP_DIR: dir, COMPOSE_PROJECT_NAME: randomUUID() }, [],
+      { context: fakeContext(events, { gateway: true, failArchive }) });
+    if (failArchive) await assert.rejects(backup, /archive failed/); else await backup;
+    assert.deepEqual(events.slice(-3), [
+      ['run', 'up', '-d', '--no-deps', '--wait', 'api', 'keycloak', 'assistant'],
+      ['run', 'restart', 'apisix'],
+      ['run', 'up', '-d', '--no-deps', '--wait', 'apisix'],
+    ]);
+  }
+});
+
+test('gateway phục hồi lỗi không báo OK, giữ archive hợp lệ và trả khóa project', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dxdesk-gateway-fail-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const date = new Date('2026-11-28T03:00:00Z');
+  const env = { ...ENV, BACKUP_DIR: dir, COMPOSE_PROJECT_NAME: randomUUID() };
+  await assert.rejects(backupMain(env, [], { date, context: fakeContext([], { gateway: true, failGateway: true }) }), /gateway recovery failed/);
+  const entry = join(dir, backupName(date));
+  assert.ok(await verifyBackup(entry));
+  const log = await readFile(join(dir, 'backup.log'), 'utf8');
+  assert.match(log, /LỖI PHỤC HỒI DỊCH VỤ/); assert.doesNotMatch(log, /\sOK\s/);
+  await assert.rejects(backupMain(env, [], { date, context: fakeContext([]) }), /EEXIST/);
 });
 
 test('restore thiếu thành phần hoặc archive hỏng dừng trước mọi stop/DROP', async t => {

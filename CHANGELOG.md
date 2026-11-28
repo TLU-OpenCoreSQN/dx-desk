@@ -11,6 +11,13 @@
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 
 ### Sửa
+- #102: backup chỉ báo hoàn tất sau khi writer phục hồi và APISIX nạp lại upstream; tránh API trả 502 do gateway giữ IP cũ. Lỗi phục hồi được ghi riêng, giữ archive đã hoàn chỉnh và trả mã lỗi thay vì báo OK sớm.
+- #100: `up` dừng n8n trước import/publish để nạp lại workflow đã kích hoạt; `n8n-reload`/nghiệm thu restart không chạy lặp dependency. Nghiệm thu OTP làm mới token admin, ghi trạng thái dọn tài khoản thử và báo mã HTTP khi upstream không trả JSON.
+- #99: tab hàng đợi có số đếm không còn kéo rộng trang trên điện thoại; giữ vùng cuộn tab riêng và tên truy cập cho trình đọc màn hình, kiểm sau khi số đếm tải xong.
+- #98: migration 029 bổ sung hint/placeholder cho trường danh mục khi cài mới/nâng cấp, giữ giá trị doanh nghiệp đã tùy chỉnh; kiểm config apply lần đầu/lần hai không thay dữ liệu mẫu.
+- #78: lưu kết quả chat bằng chữ ký dịch vụ nội bộ gắn với chủ sở hữu/lượt chat, tiếp tục áp dụng RLS; access token hết hạn giữa câu trả lời không còn làm mất kết quả và khóa hội thoại.
+- #81: màn hình trợ lý tự thử lại việc tải lượt đang xử lý sau lỗi mạng với khoảng chờ tăng dần; mở lại ô gửi khi lượt hoàn tất và hủy request/timer khi rời trang.
+- #80: hội thoại dài tiếp tục trả lời khi tóm tắt lỗi/rỗng bằng cửa sổ ngữ cảnh gần nhất; giữ lịch sử và checkpoint cũ để thử phục hồi ở lượt sau, giới hạn bản tóm tắt quá dài thay vì khóa hội thoại.
 - W7-01 (#89): chặn backup/restore chạy đồng thời, không xóa bản sao trùng tên; tạm dừng writer để CSDL và tệp nhất quán; kiểm kế hoạch khôi phục và archive trước khi xóa dữ liệu, dừng khi SQL role lỗi.
 - #74: Trợ lý không nhầm câu hỏi hướng dẫn hoặc yêu cầu hoãn tạo phiếu/công việc thành đề xuất ghi dữ liệu.
 - Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
@@ -18,6 +25,10 @@
 - #87: preset màu nhấn đạt WCAG 2.1 AA ở cả chế độ sáng và tối: nút chính cam/vàng/xanh lá/nâu đậm hơn để chữ trắng ≥ 4,5:1, mỗi preset có màu chữ nhấn riêng (trước đây chữ trên nền tint vẫn dùng xanh dương mặc định), hover ở chế độ tối đậm hơn thay vì sáng hơn.
 
 ### Thêm
+- W7-03/04 (#91, #92): hướng dẫn theo vai trò với ảnh demo, vận hành và kiến trúc; runner hồi quy tuần tự ghi SHA/host/kết quả và lọc bí mật; CI cài mới `full`/`demo-light`, kiểm mở lại phiếu và Wiki; nghiệm thu nhập CSV trên Keycloak bằng người dùng dùng một lần. Chưa gắn thẻ v1.0.0.
+- #88: người tạo phiếu có thể báo “Chưa khắc phục được” trong 7 ngày kể từ lần giải quyết gần nhất, kèm lý do 5–2000 ký tự; giữ kỹ thuật viên và SLA, ghi timeline/outbox, kiểm quy tắc ở API lẫn PostgreSQL qua migration 028.
+- #97: lớp định hướng Trợ lý AI theo 6 chủ đề IT với cấu hình/ví dụ và bộ đánh giá độc lập; hỏi tiếp theo ngữ cảnh, phản hồi ngoài phạm vi có kiểm soát.
+- #97: nhập giọng nói tiếng Việt và đọc phản hồi có tạm dừng/tiếp tục, giữ prompt khi đổi chế độ; trạng thái chờ hiện Thinking và có thể dừng từ bước chuẩn bị gửi.
 - W7-01: `node scripts/dxdesk.mjs backup` / `restore <thư-mục> --xac-nhan` (`make backup`, `make restore`) sao lưu CSDL DX-Desk, Keycloak, n8n, Mattermost, Wiki.js, Metabase cùng vai trò PostgreSQL và volume SeaweedFS; manifest SHA-256, kiểm dung lượng trước khi ghi, giữ `BACKUP_KEEP` bản (mặc định 7) trong `BACKUP_DIR`, nhật ký `backup.log`. Runbook, lịch cron/Task Scheduler và giới hạn khôi phục trong `docs/cai-dat.md`; kiểm thử `tests/backup.test.mjs`.
 - #74: Trợ lý AI lưu hội thoại riêng theo người dùng trong PostgreSQL; tạo, đổi tên, xóa và tiếp tục trò chuyện sau khi tải lại trang. Duy trì ngữ cảnh qua nhiều lượt bằng bộ nhớ tóm tắt, phân trang lịch sử, dừng phản hồi đang sinh và hiển thị Markdown. Đề xuất tạo phiếu/công việc vẫn yêu cầu xác nhận và được lưu cùng hội thoại.
 - W6-15: `scripts/import-nhan-vien.mjs` (lệnh `node scripts/dxdesk.mjs import-nhan-vien`, `make import-nhan-vien`) nhập nhân viên từ CSV vào Keycloak — mặc định chạy thử, `--thuc-hien` tạo người dùng với mật khẩu tạm ngẫu nhiên bắt đổi lần đầu, gán realm role, đưa Agent/Manager vào nhóm qua `POST /api/system/roster`; chạy lại không tạo trùng, báo lỗi theo dòng. Tệp mẫu `config/doanh-nghiep/nhan-vien.mau.csv`, 50 nhân viên giả lập `nhan-vien.gia-lap-50.csv`, kiểm thử `tests/import-nhan-vien.test.mjs`.

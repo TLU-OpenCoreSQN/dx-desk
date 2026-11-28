@@ -349,7 +349,7 @@ export function TicketQueueView({ approvals = false }: { approvals?: boolean }) 
         </div>
       </header>
 
-      <div className="-mx-1 overflow-x-auto overflow-y-hidden border-b border-edge-subtle px-1">
+      <div className="relative -mx-1 overflow-x-auto overflow-y-hidden border-b border-edge-subtle px-1">
         <div role="group" aria-label="Hàng đợi công việc" className="flex min-w-max gap-1">
           {QUEUES.map(item => {
             const active = queue === item.key;

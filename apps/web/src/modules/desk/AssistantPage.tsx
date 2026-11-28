@@ -6,9 +6,12 @@ import {
   Check,
   LoaderCircle,
   MessageSquare,
+  Mic,
+  Pause,
   PanelLeft,
   Pencil,
   Plus,
+  Play,
   Send,
   Square,
   Trash2,
@@ -17,6 +20,7 @@ import {
 import { Modal } from '../../components/common/Modal';
 import { ApiClientError } from '../../services/api';
 import { AssistantTurn } from './AssistantTurn';
+import { useAssistantVoice } from './useAssistantVoice';
 import {
   createAssistantSession,
   decideAssistantProposal,
@@ -66,6 +70,7 @@ export function AssistantPage() {
   const [loading, setLoading] = useState(true);
   const [loadingTurns, setLoadingTurns] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [mutating, setMutating] = useState(false);
   const [error, setError] = useState('');
@@ -74,6 +79,7 @@ export function AssistantPage() {
   const [title, setTitle] = useState('');
   const [removing, setRemoving] = useState<AssistantSession | null>(null);
   const stream = useRef<AbortController | null>(null);
+  const creation = useRef<AbortController | null>(null);
   const listRevision = useRef(0);
   const turnRevision = useRef(0);
   const scroll = useRef<HTMLDivElement>(null);
@@ -81,6 +87,12 @@ export function AssistantPage() {
   const question = drafts[selected ?? 'new'] ?? '';
   const session = sessions.find((item) => item.id === selected);
   const remotePending = turns.some((turn) => turn.status === 'pending');
+  const updateDraft = useCallback((text: string) => {
+    setDrafts((items) => ({ ...items, [selection.current ?? 'new']: text }));
+  }, []);
+  const voice = useAssistantVoice({ conversationId: selected, draft: question, onDraft: updateDraft,
+    disabled: busy || mutating || remotePending || loadingTurns });
+  const listening = voice.inputPhase === 'connecting' || voice.inputPhase === 'listening';
 
   useEffect(() => setSelected(routeSession), [routeSession]);
 
@@ -112,6 +124,7 @@ export function AssistantPage() {
       listRevision.current++;
       stream.current?.abort();
       stream.current = null;
+      creation.current?.abort();
     };
   }, [refreshSessions]);
 
@@ -121,6 +134,7 @@ export function AssistantPage() {
       return;
     }
     turnRevision.current++;
+    creation.current?.abort();
     stream.current?.abort();
     stream.current = null;
     setBusy(false);
@@ -156,24 +170,40 @@ export function AssistantPage() {
 
   useEffect(() => {
     if (!selected || busy || !remotePending) return;
-    const request = new AbortController();
-    const timer = window.setTimeout(() => {
-      getAssistantSession(selected, request.signal)
-        .then((detail) => {
-          if (!request.signal.aborted) {
-            setTurns(detail.turns);
-            setMoreTurns(detail.has_more);
-          }
-        })
-        .catch((failure) => {
-          if (!request.signal.aborted) setError(failure.message);
-        });
-    }, 1500);
-    return () => {
-      clearTimeout(timer);
-      request.abort();
+    let stopped = false;
+    let request: AbortController | undefined;
+    let timer: number;
+    let failures = 0;
+    let pollingError = '';
+    const poll = async () => {
+      request = new AbortController();
+      let again = true;
+      try {
+        const detail = await getAssistantSession(selected, request.signal);
+        if (stopped) return;
+        setTurns(detail.turns);
+        setMoreTurns(detail.has_more);
+        const previousPollingError = pollingError;
+        if (previousPollingError) setError((current) => current === previousPollingError ? '' : current);
+        pollingError = '';
+        failures = 0;
+        again = detail.turns.some((turn) => turn.status === 'pending');
+      } catch (failure) {
+        if (stopped) return;
+        pollingError = (failure as Error).message;
+        setError(pollingError);
+        failures = Math.min(failures + 1, 3);
+      } finally {
+        if (!stopped && again) timer = window.setTimeout(poll, Math.min(12000, 1500 * 2 ** failures));
+      }
     };
-  }, [selected, busy, remotePending, turns]);
+    timer = window.setTimeout(poll, 1500);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      request?.abort();
+    };
+  }, [selected, busy, remotePending]);
 
   useEffect(() => {
     if (follow.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight;
@@ -203,11 +233,16 @@ export function AssistantPage() {
     event.preventDefault();
     const text = question.trim();
     if (!text || stream.current || remotePending || mutating || loadingTurns) return;
+    voice.stopAll();
     let id = selected;
     if (!id) {
+      const request = new AbortController();
+      creation.current = request;
+      setPreparing(true);
       setMutating(true);
       try {
-        const created = await createAssistantSession();
+        const created = await createAssistantSession(request.signal);
+        if (request.signal.aborted) return;
         setSessions((items) => [created, ...items]);
         if (selection.current !== null) {
           setDrafts((items) => ({ ...items, [created.id]: text }));
@@ -218,9 +253,11 @@ export function AssistantPage() {
         selection.current = id;
         selectConversation(id);
       } catch (failure) {
-        setError((failure as Error).message);
+        if (!request.signal.aborted) setError((failure as Error).message);
         return;
       } finally {
+        if (creation.current === request) creation.current = null;
+        setPreparing(false);
         setMutating(false);
       }
     }
@@ -598,6 +635,11 @@ export function AssistantPage() {
                       turn={turn}
                       busy={busy || mutating || remotePending}
                       onDecide={decide}
+                      onRead={voice.readTurn}
+                      speechSupported={voice.speechSupported}
+                      playbackPhase={voice.playback.id === turn.id ? voice.playback.phase : 'idle'}
+                      onToggleRead={voice.togglePlayback}
+                      onStopRead={voice.stopPlayback}
                     />
                   ))}
                 </ol>
@@ -619,9 +661,8 @@ export function AssistantPage() {
               rows={2}
               maxLength={8000}
               value={question}
-              onChange={(event) =>
-                setDrafts((items) => ({ ...items, [selected ?? 'new']: event.target.value }))
-              }
+              readOnly={listening}
+              onChange={(event) => updateDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
@@ -630,14 +671,32 @@ export function AssistantPage() {
               }}
               className="max-h-48 min-h-14 w-full resize-y bg-transparent text-sm leading-6 outline-none"
             />
+            <div className="mb-2 flex flex-wrap items-center gap-2 border-b border-edge/60 pb-2">
+              <button type="button"
+                aria-label={listening ? 'Tạm dừng micro' : voice.inputPhase === 'paused' ? 'Tiếp tục nhập giọng nói' : 'Nhập bằng giọng nói'}
+                aria-pressed={listening}
+                disabled={!voice.inputSupported || busy || mutating || remotePending || loadingTurns}
+                onClick={listening ? voice.pauseInput : voice.startInput}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-edge px-3 text-xs disabled:opacity-40">
+                {listening ? <Pause size={15} aria-hidden="true" /> : voice.inputPhase === 'paused' ? <Play size={15} aria-hidden="true" /> : <Mic size={15} aria-hidden="true" />}
+                {voice.inputPhase === 'connecting' ? 'Đang mở micro…' : listening ? 'Tạm dừng micro' : voice.inputPhase === 'paused' ? 'Tiếp tục nói' : 'Nhập giọng nói'}
+              </button>
+              {voice.inputPhase !== 'idle' && <button type="button" aria-label="Kết thúc nhập giọng nói" onClick={voice.stopInput}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-edge px-3 text-xs"><Square size={14} aria-hidden="true" />Kết thúc</button>}
+              <p className="flex-1 text-xs text-content-muted">
+                {!voice.inputSupported ? 'Trình duyệt chưa hỗ trợ nhập giọng nói.' : listening ? 'Đang nghe tiếng Việt. Tạm dừng để chỉnh sửa trước khi gửi.'
+                  : 'Nhận giọng nói do trình duyệt cung cấp, có thể dùng dịch vụ trực tuyến.'}
+              </p>
+            </div>
+            {voice.error && <p role="alert" className="mb-2 text-xs text-danger">{voice.error}</p>}
             <div className="flex items-center justify-between gap-3">
               <p role="status" className="text-xs text-content-muted">
                 {confirming
                   ? 'Đang xác nhận hành động…'
-                  : busy
-                    ? 'Trợ lý đang xử lý…'
+                  : busy || preparing
+                    ? turns.at(-1)?.answer ? 'Đang trả lời…' : 'Thinking…'
                     : remotePending
-                      ? 'Đang chờ phiên trả lời hiện tại kết thúc…'
+                      ? 'Thinking…'
                       : 'Enter để gửi · Shift + Enter để xuống dòng'}
               </p>
               {confirming ? (
@@ -648,11 +707,11 @@ export function AssistantPage() {
                 >
                   <LoaderCircle size={17} className="animate-spin" />
                 </button>
-              ) : busy ? (
+              ) : busy || preparing ? (
                 <button
                   type="button"
                   aria-label="Dừng trả lời"
-                  onClick={() => stream.current?.abort()}
+                  onClick={() => { stream.current?.abort(); creation.current?.abort(); }}
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-content text-surface"
                 >
                   <Square size={16} />

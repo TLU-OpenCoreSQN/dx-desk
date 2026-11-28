@@ -64,22 +64,36 @@ test('long conversations compact older turns while retaining the recent messages
   assert.equal(context.messages.at(-1).content, history.at(-1).answer);
 });
 
-test('a failed summary cannot silently drop the original conversation', async () => {
+test('a failed or empty summary uses recent history without advancing the saved checkpoint', async () => {
   const history = Array.from({ length: 8 }, (_, i) => ({
     ordinal: String(i + 1),
     question: 'q'.repeat(4000),
     answer: 'a'.repeat(4000),
     status: 'complete',
   }));
-  await assert.rejects(
-    conversationContext(
-      { history },
-      async function* () {},
-      new AbortController().signal,
-      () => {},
-    ),
-    /memory is empty/,
-  );
+  for (const complete of [async function* () {}, async function* () { throw new Error('provider temporarily unavailable'); }]) {
+    const context = await conversationContext({ history, summary: 'Máy dùng Windows 11.', summarized_through: '0' }, complete,
+      new AbortController().signal, () => {});
+    assert.equal(context.summary, 'Máy dùng Windows 11.');
+    assert.equal(context.summarized_through, '0');
+    assert.equal(context.messages.at(-2).content, history.at(-1).question);
+    assert.ok(context.messages.length < history.length * 2);
+  }
+  assert.equal(history.length, 8);
+  const recovered = await conversationContext({ history, summary: 'Máy dùng Windows 11.', summarized_through: '0' },
+    async function* () { yield { content: 'Đã ghi nhớ lỗi VPN trên Windows 11.' }; }, new AbortController().signal, () => {});
+  assert.ok(Number(recovered.summarized_through) > 0);
+  assert.match(recovered.summary, /VPN/);
+});
+
+test('oversized summary is capped and an aborted summary still stops the turn', async () => {
+  const history = Array.from({ length: 8 }, (_, i) => ({ ordinal: String(i + 1), question: 'q'.repeat(4000), answer: 'a'.repeat(4000), status: 'complete' }));
+  const context = await conversationContext({ history }, async function* () { yield { content: 'x'.repeat(13000) }; }, new AbortController().signal, () => {});
+  assert.equal(context.summary.length, 12000);
+  assert.ok(Number(context.summarized_through) > 0);
+  const request = new AbortController();
+  await assert.rejects(conversationContext({ history }, async function* () { request.abort(new Error('stopped')); throw request.signal.reason; },
+    request.signal, () => {}), /stopped/);
   assert.equal(history.length, 8);
 });
 

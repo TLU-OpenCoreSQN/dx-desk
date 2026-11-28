@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
 import {
   canChoosePriority,
   getAllowedTransitions,
@@ -196,14 +196,15 @@ function migration003(): string {
   let dir = process.cwd();
   for (let step = 0; step < 5; step++) {
     const candidate = resolve(dir, 'db/migrations/003_ticket_workflow.sql');
-    if (existsSync(candidate)) return readFileSync(candidate, 'utf8');
+    if (existsSync(candidate)) return candidate;
     dir = resolve(dir, '..');
   }
   throw new Error('Không tìm thấy db/migrations/003_ticket_workflow.sql');
 }
 
 function dbEdges(): Map<string, DbEdge> {
-  const sql = migration003();
+  const migration = migration003();
+  const sql = readFileSync(migration, 'utf8');
   const start = sql.indexOf('INSERT INTO private.ticket_transitions');
   if (start === -1) throw new Error('Không thấy INSERT INTO private.ticket_transitions trong migration 003');
   const block = sql.slice(start).split(/;\s*$/m)[0];
@@ -217,6 +218,17 @@ function dbEdges(): Map<string, DbEdge> {
       requesterAllowed: requester === 'true',
     });
   }
+  // Permission changes belong to later immutable migrations, not rewritten seeds.
+  const folder = dirname(migration);
+  for (const file of readdirSync(folder).filter(name => name.endsWith('.sql')).sort()) {
+    for (const [, allowed, from, to] of readFileSync(resolve(folder, file), 'utf8').matchAll(
+      /UPDATE private\.ticket_transitions SET requester_allowed=(true|false)\s+WHERE from_status='([a-z_]+)' AND to_status='([a-z_]+)'/g
+    )) {
+      const edge = edges.get(`${from}->${to}`);
+      if (!edge) throw new Error('Unknown DB edge in permission update');
+      edge.requesterAllowed = allowed === 'true';
+    }
+  }
   return edges;
 }
 
@@ -227,7 +239,8 @@ describe('ticketWorkflow — nút UI không được vượt quá máy trạng t
       for (const owned of [true,false]) {
         const expected = [...edges.entries()].filter(([key, rule]) => key.startsWith(status+'->')
           && (rule.roles.includes(role) || owned && rule.requesterAllowed)).map(([key]) => key.split('->')[1]).sort();
-        expect(sortedTos(status,[role],owned), `${status}/${role}/owner=${owned}`).toEqual(expected);
+        const actual = getAllowedTransitions(status, [role], { isRequester: owned, canRequesterReopen: true }).map(edge => edge.to).sort();
+        expect(actual, `${status}/${role}/owner=${owned}`).toEqual(expected);
       }
     }
   });
