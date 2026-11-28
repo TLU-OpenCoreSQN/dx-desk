@@ -27,7 +27,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     <div
       role="status"
       aria-label="Đang tải dữ liệu..."
-      className={`animate-pulse motion-reduce:animate-none bg-[var(--color-surface-muted,#f1f1ef)] ${
+      className={`animate-pulse motion-reduce:animate-none bg-[var(--color-surface-muted)] ${
         circle ? 'rounded-full' : 'rounded-[4px]'
       } ${className}`}
       style={dynamicStyles}
@@ -82,10 +82,10 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
     <div
       role="status"
       aria-label="Đang tải thẻ nội dung..."
-      className={`dx-card rounded-[6px] border border-[var(--color-edge-subtle,#e4e3e0)] bg-[var(--color-surface-card,#ffffff)] p-5 space-y-4 ${className}`}
+      className={`dx-card rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-card)] p-5 space-y-4 ${className}`}
     >
       {hasHeader && (
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--color-edge-subtle,#e4e3e0)]">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--color-edge-subtle)]">
           <Skeleton className="h-5 w-1/3" />
           <Skeleton className="h-4 w-16 rounded-full" />
         </div>
@@ -94,7 +94,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
       <SkeletonText lines={bodyLines} />
 
       {hasFooter && (
-        <div className="pt-3 border-t border-[var(--color-edge-subtle,#e4e3e0)] flex items-center justify-between">
+        <div className="pt-3 border-t border-[var(--color-edge-subtle)] flex items-center justify-between">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-8 w-20 rounded-[4px]" />
         </div>
@@ -121,10 +121,10 @@ export const SkeletonTable: React.FC<SkeletonTableProps> = ({
     <div
       role="status"
       aria-label="Đang tải bảng dữ liệu..."
-      className={`w-full overflow-hidden rounded-[6px] border border-[var(--color-edge,#d6d5d2)] bg-[var(--color-surface,#ffffff)] ${className}`}
+      className={`w-full overflow-hidden rounded-[6px] border border-[var(--color-edge)] bg-[var(--color-surface)] ${className}`}
     >
       {showHeader && (
-        <div className="flex items-center gap-4 bg-[var(--color-surface-warm,#f7f6f3)] border-b border-[var(--color-edge,#d6d5d2)] px-4 py-3">
+        <div className="flex items-center gap-4 bg-[var(--color-surface-warm)] border-b border-[var(--color-edge)] px-4 py-3">
           {Array.from({ length: columns }).map((_, idx) => (
             <Skeleton
               key={`th-${idx}`}
@@ -134,7 +134,7 @@ export const SkeletonTable: React.FC<SkeletonTableProps> = ({
         </div>
       )}
 
-      <div className="divide-y divide-[var(--color-edge-subtle,#e4e3e0)]">
+      <div className="divide-y divide-[var(--color-edge-subtle)]">
         {Array.from({ length: rows }).map((_, rIdx) => (
           <div key={`tr-${rIdx}`} className="flex items-center gap-4 px-4 py-3.5">
             {Array.from({ length: columns }).map((_, cIdx) => (
@@ -163,7 +163,7 @@ export const SkeletonPage: React.FC<SkeletonPageProps> = ({ className = '' }) =>
       className={`space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto ${className}`}
     >
       {/* Top Header & Action Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--color-edge-subtle,#e4e3e0)]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--color-edge-subtle)]">
         <div className="space-y-2">
           <Skeleton className="h-7 w-48" />
           <Skeleton className="h-4 w-72" />

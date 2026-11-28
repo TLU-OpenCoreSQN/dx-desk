@@ -65,8 +65,32 @@ export function computeSlaSnapshot(ticket: Ticket, now: number = Date.now()): Sl
 
 /** Lớp màu thanh tiến độ SLA cho phiếu đang chạy. */
 export function slaGaugeColor(elapsedPercent: number, isBreached: boolean): string {
-  if (isBreached) return 'bg-status-danger';
-  if (elapsedPercent >= 80) return 'bg-orange-500 animate-pulse';
-  if (elapsedPercent >= 60) return 'bg-amber-500';
-  return 'bg-emerald-500';
+  if (isBreached) return 'bg-status-danger-solid';
+  if (elapsedPercent >= SLA_AT_RISK_PERCENT) return 'bg-status-warning-solid';
+  return 'bg-status-success-solid';
+}
+
+/** Ngưỡng "sắp quá SLA": cùng ngưỡng 80% mà thanh SLA đã dùng để chuyển màu cảnh báo. */
+export const SLA_AT_RISK_PERCENT = 80;
+
+export type SlaRisk = 'breached' | 'at_risk' | 'running' | 'paused' | 'finished' | 'none';
+
+export function slaRisk(snapshot: SlaSnapshot): SlaRisk {
+  if (!snapshot.hasSla) return 'none';
+  if (snapshot.isBreached) return 'breached';
+  if (snapshot.isFinished) return 'finished';
+  if (snapshot.isPaused) return 'paused';
+  return snapshot.elapsedPercent >= SLA_AT_RISK_PERCENT ? 'at_risk' : 'running';
+}
+
+/** Khoảng thời gian ngắn gọn tiếng Việt, ví dụ "2 ngày 4 giờ", "3 giờ 20 phút", "dưới 1 phút". */
+export function formatSlaDuration(ms: number): string {
+  const minutes = Math.floor(Math.abs(ms) / 60000);
+  if (minutes < 1) return 'dưới 1 phút';
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  if (days > 0) return hours > 0 ? `${days} ngày ${hours} giờ` : `${days} ngày`;
+  if (hours > 0) return mins > 0 ? `${hours} giờ ${mins} phút` : `${hours} giờ`;
+  return `${mins} phút`;
 }

@@ -51,9 +51,9 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
         <AlertCircle className="w-5 h-5 text-status-danger shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <h3 className="font-bold text-sm sm:text-base text-status-danger tracking-tight">{title}</h3>
+            <h3 className="text-base font-semibold text-status-danger">{title}</h3>
             {statusCode !== undefined && statusCode > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-sm font-mono font-bold bg-status-danger-bg text-status-danger border border-status-danger-border">
+              <span className="text-xs px-2 py-0.5 rounded-sm tabular-nums font-bold bg-status-danger-bg text-status-danger border border-status-danger-border">
                 HTTP {statusCode}
               </span>
             )}

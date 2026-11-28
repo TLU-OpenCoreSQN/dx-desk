@@ -104,7 +104,7 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
   return (
     <fieldset className="min-w-0 rounded-[4px] border border-edge bg-surface-muted/60 p-4">
       <legend className="flex items-center gap-1.5 rounded-[4px] bg-surface px-1.5 py-0.5">
-        <ClipboardList className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+        <ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
         <span className="text-[11px] font-bold uppercase tracking-wider text-content">
           Thông tin bổ sung theo danh mục
         </span>

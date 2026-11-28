@@ -96,11 +96,12 @@ describe('TicketDetailPage Component', () => {
       ).toBeInTheDocument();
       expect(screen.getByText('Đã tiếp nhận phiếu')).toBeInTheDocument();
       expect(screen.getAllByText('emp-user-1')).toHaveLength(2);
-      expect(screen.getByText('Thiết bị phần cứng (HW)')).toBeInTheDocument();
+      expect(screen.getByText('Thiết bị phần cứng')).toBeInTheDocument();
     });
   });
 
   it('shows server-provided team, assignee, paused SLA and system audit identity', async () => {
+    withAuth(['Agent'], 'agent-user-1');
     vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({
       status: 'waiting_user', assigned_to: 'agent-1', assignee_name: 'Kỹ thuật viên Một',
       assigned_team_id: 'team-1', team_name: 'Hạ tầng mạng', requester_name: 'Người yêu cầu Một',
@@ -112,9 +113,12 @@ describe('TicketDetailPage Component', () => {
     await screen.findByText('Kỹ thuật viên Một');
     expect(screen.getByText('Hạ tầng mạng')).toBeInTheDocument();
     expect(screen.getByText('Người yêu cầu Một')).toBeInTheDocument();
-    expect(screen.getByText(/SLA đang tạm dừng từ/)).toBeInTheDocument();
-    expect(screen.getByText('Thời gian đã tạm dừng: 3 phút.')).toBeInTheDocument();
-    expect(screen.getByText(/Đã vi phạm SLA/)).toBeInTheDocument();
+    // SLA chỉ được nói một lần, ở banner; header không lặp lại hạn gốc hay thời gian tạm dừng.
+    expect(screen.getByText('SLA tạm dừng · chờ người tạo phiếu phản hồi')).toBeInTheDocument();
+    expect(screen.getByText(/Thời gian đã dừng: [\d.]+ phút/)).toBeInTheDocument();
+    expect(screen.queryByText(/Hạn gốc SLA/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SLA đang tạm dừng từ/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ĐANG CHỜ NGƯỜI TẠO PHIẾU PHẢN HỒI/)).not.toBeInTheDocument();
     expect(screen.getByText('Hệ thống (Tự động phân tuyến)')).toBeInTheDocument();
   });
 
@@ -124,11 +128,53 @@ describe('TicketDetailPage Component', () => {
     vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: mockEvents });
     const update = vi.spyOn(apiService, 'updateTicketStatus').mockResolvedValue(ticketWith({ status: 'new', ticket_version: 13 }));
     renderWithRoute(); fireEvent.click(await screen.findByRole('button', { name: 'Từ chối yêu cầu' }));
-    const confirm = screen.getByRole('button', { name: 'Xác nhận chuyển trạng thái' });
-    expect(confirm).toBeDisabled();
-    fireEvent.change(screen.getByLabelText(/Ghi chú chuyển trạng thái/), { target: { value: 'Thiếu thông tin quyền cần cấp' } });
+    const confirm = screen.getByRole('button', { name: 'Từ chối yêu cầu' });
+    const reason = screen.getByLabelText(/Lý do từ chối/);
+    // Lý do là bắt buộc nên con trỏ vào thẳng ô lý do; lỗi chưa hiện khi chưa thao tác.
+    expect(reason).toHaveFocus();
+    expect(screen.queryByText('Lý do từ chối cần ít nhất 5 ký tự.')).not.toBeInTheDocument();
+    fireEvent.click(confirm);
+    expect(await screen.findByText('Lý do từ chối cần ít nhất 5 ký tự.')).toBeInTheDocument();
+    expect(reason).toHaveAttribute('aria-invalid', 'true');
+    expect(update).not.toHaveBeenCalled();
+    fireEvent.change(reason, { target: { value: 'Thiếu thông tin quyền cần cấp' } });
     fireEvent.click(confirm);
     await waitFor(() => expect(update).toHaveBeenCalledWith(mockTicket.id, { to: 'new', note: 'Thiếu thông tin quyền cần cấp', expected_version: 12 }));
+  });
+
+  it('requires a cancel reason and never sends a whitespace-only note', async () => {
+    withAuth(['Employee'], mockTicket.requester_id);
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'new' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+    const update = vi.spyOn(apiService, 'updateTicketStatus').mockResolvedValue(ticketWith({ status: 'cancelled' }));
+    renderWithRoute();
+    fireEvent.click(await screen.findByRole('button', { name: /Hủy phiếu/ }));
+    const reason = screen.getByLabelText(/Lý do hủy/);
+    expect(reason).toHaveFocus();
+    fireEvent.change(reason, { target: { value: '      ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy phiếu này' }));
+    expect(await screen.findByText('Lý do hủy cần ít nhất 5 ký tự.')).toBeInTheDocument();
+    expect(update).not.toHaveBeenCalled();
+    fireEvent.change(reason, { target: { value: '  Sự cố đã tự hết  ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hủy phiếu này' }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(mockTicket.id, expect.objectContaining({ to: 'cancelled', note: 'Sự cố đã tự hết' })));
+  });
+
+  it('closes the transition form on Escape and returns focus to the button that opened it', async () => {
+    withAuth(['Agent'], 'agent-user-1');
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'in_progress' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+    renderWithRoute();
+    const opener = await screen.findByRole('button', { name: 'Chờ người dùng phản hồi' });
+    opener.focus();
+    fireEvent.click(opener);
+    const field = screen.getByLabelText(/Thông tin cần người tạo phiếu bổ sung/);
+    expect(field).toHaveFocus();
+    fireEvent.keyDown(field, { key: 'Escape' });
+    expect(screen.queryByText(/Chuyển phiếu sang/, { selector: 'h3' })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Chờ người dùng phản hồi' })).toHaveFocus()
+    );
   });
 
   it('shows category fields and current result, retaining historical field names safely', async () => {
@@ -274,19 +320,24 @@ describe('TicketDetailPage Component', () => {
     expect(
       screen.getByText(/Chuyển phiếu sang/, { selector: 'h3' })
     ).toBeInTheDocument();
-    const confirmBtn = screen.getByRole('button', { name: 'Xác nhận chuyển trạng thái' });
-    expect(confirmBtn).toBeDisabled();
-    expect(screen.getByText(/Mô tả cách giải quyết quá ngắn \(tối thiểu 5 ký tự/i)).toBeInTheDocument();
+    const confirmBtn = screen.getByRole('button', { name: 'Đánh dấu đã giải quyết' });
+    const resolutionField = screen.getByLabelText(/Mô tả cách giải quyết/);
+    expect(resolutionField).toHaveFocus();
+    // Không mắng người dùng ngay khi vừa mở form.
+    expect(screen.queryByText(/Mô tả cách giải quyết quá ngắn/i)).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/Mô tả cách giải quyết/), {
-      target: { value: 'abc' },
-    });
-    expect(confirmBtn).toBeDisabled();
+    fireEvent.change(resolutionField, { target: { value: 'abc' } });
+    fireEvent.click(confirmBtn);
+    expect(
+      await screen.findByText(/Mô tả cách giải quyết quá ngắn \(tối thiểu 5 ký tự/i)
+    ).toBeInTheDocument();
+    expect(resolutionField).toHaveFocus();
+    expect(patchSpy).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText(/Mô tả cách giải quyết/), {
       target: { value: 'Đã thay adapter màn hình, kiểm tra 10 phút không còn chớp.' },
     });
-    fireEvent.change(screen.getByLabelText(/Ghi chú chuyển trạng thái/), {
+    fireEvent.change(screen.getByLabelText(/^Ghi chú/), {
       target: { value: 'Đã hẹn kiểm tra lại sáng mai.' },
     });
     expect(confirmBtn).toBeEnabled();
@@ -313,17 +364,14 @@ describe('TicketDetailPage Component', () => {
     renderWithRoute();
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' })
-      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Gửi phản hồi' })).toBeInTheDocument()
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' }));
 
     expect(screen.queryByLabelText(/Mô tả cách giải quyết/)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(/Ghi chú chuyển trạng thái/), {
+    fireEvent.change(screen.getByLabelText('Nội dung phản hồi'), {
       target: { value: 'Đã gửi lại hướng dẫn kết nối.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận chuyển trạng thái' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi phản hồi' }));
 
     await waitFor(() => {
       expect(patchSpy).toHaveBeenCalledWith('ticket-abc-123', {
@@ -331,6 +379,86 @@ describe('TicketDetailPage Component', () => {
         note: 'Đã gửi lại hướng dẫn kết nối.',
       });
     });
+  });
+
+  it('Employee on waiting_user sees the technician request above the reply box', async () => {
+    withAuth(['Employee'], 'emp-user-1');
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'waiting_user' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({
+      data: [
+        statusEvent('evt-a', 'assigned', 'in_progress'),
+        {
+          ...statusEvent('evt-b', 'in_progress', 'waiting_user', {
+            note: 'Gửi giúp ảnh chụp thông báo lỗi khi kết nối VPN.',
+          }),
+          actor_name: 'agent.1',
+        },
+      ],
+    });
+
+    renderWithRoute();
+
+    const request = await screen.findByText('agent.1 cần bạn bổ sung', { exact: false });
+    expect(request.closest('figure')).toHaveTextContent(
+      'Gửi giúp ảnh chụp thông báo lỗi khi kết nối VPN.'
+    );
+    expect(screen.queryByRole('button', { name: 'Phản hồi, tiếp tục xử lý' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Ghi chú/)).not.toBeInTheDocument();
+  });
+
+  it('Employee reply requires a note before PATCH', async () => {
+    withAuth(['Employee'], 'emp-user-1');
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'waiting_user' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+    const patchSpy = vi.spyOn(apiService, 'updateTicketStatus');
+
+    renderWithRoute();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Gửi phản hồi' }));
+
+    expect(await screen.findByText('Nội dung phản hồi cần ít nhất 5 ký tự.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nội dung phản hồi')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Nội dung phản hồi')).toHaveFocus();
+    expect(patchSpy).not.toHaveBeenCalled();
+  });
+
+  it('cancel form names the action and the way back', async () => {
+    withAuth(['Employee'], 'emp-user-1');
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'assigned' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+
+    renderWithRoute();
+    fireEvent.click(await screen.findByRole('button', { name: 'Hủy phiếu' }));
+
+    expect(screen.getByRole('button', { name: 'Hủy phiếu này' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Quay lại' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Lý do hủy/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hủy bỏ' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/máy trạng thái/)).not.toBeInTheDocument();
+  });
+
+  it('keeps cancel out of the fixed mobile bar', async () => {
+    withAuth(['Employee'], 'emp-user-1');
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'assigned' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+
+    const { container } = renderWithRoute();
+
+    const cancel = await screen.findByRole('button', { name: 'Hủy phiếu' });
+    expect(cancel.closest('[class*="max-lg:fixed"]')).toBeNull();
+    expect(container.querySelector('[class*="max-lg:fixed"]')).toBeNull();
+  });
+
+  it('Agent keeps forward actions in the mobile bar and cancel outside it', async () => {
+    withAuth(['Agent'], 'agent-user-1');
+    vi.spyOn(apiService, 'getTicketById').mockResolvedValue(ticketWith({ status: 'assigned' }));
+    vi.spyOn(apiService, 'getTicketEvents').mockResolvedValue({ data: [] });
+
+    renderWithRoute();
+
+    const start = await screen.findByRole('button', { name: 'Bắt đầu xử lý' });
+    expect(start.closest('[class*="max-lg:fixed"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Hủy phiếu' }).closest('[class*="max-lg:fixed"]')).toBeNull();
   });
 
   it('shows the server Vietnamese message when PATCH returns 4xx', async () => {
@@ -344,10 +472,12 @@ describe('TicketDetailPage Component', () => {
     renderWithRoute();
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Gửi phản hồi' })).toBeInTheDocument()
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận chuyển trạng thái' }));
+    fireEvent.change(screen.getByLabelText('Nội dung phản hồi'), {
+      target: { value: 'Máy vẫn báo lỗi như cũ.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi phản hồi' }));
 
     await waitFor(() => {
       expect(
@@ -370,10 +500,12 @@ describe('TicketDetailPage Component', () => {
     renderWithRoute();
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Gửi phản hồi' })).toBeInTheDocument()
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Phản hồi, tiếp tục xử lý' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận chuyển trạng thái' }));
+    fireEvent.change(screen.getByLabelText('Nội dung phản hồi'), {
+      target: { value: 'Máy vẫn báo lỗi như cũ.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi phản hồi' }));
 
     await waitFor(() => {
       expect(getSpy).toHaveBeenCalledTimes(2);

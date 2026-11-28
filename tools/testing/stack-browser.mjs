@@ -9,6 +9,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import assert from 'node:assert/strict';
+// Nút xác nhận trong form chuyển trạng thái mang tên của chính thao tác, nên tìm theo vị trí trong form.
+const TRANSITION_SUBMIT='form[aria-labelledby="transition-dialog-title"] button[type="submit"]';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const env = {...parseEnv(await readFile(resolve(root,'.env'),'utf8')), ...process.env};
@@ -94,9 +96,12 @@ try {
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/); ticketId=page.url().split('/').pop(); report.ticket_id=ticketId;
     await page.getByText('Đã tiếp nhận phiếu',{exact:true}).waitFor();
     await page.getByText('OpenVPN Connect 4.2',{exact:true}).waitFor();
-    await page.getByRole('button',{name:'Lấy liên kết tải vpn.png'}).click();
-    const link=page.getByRole('link',{name:'Tải vpn.png'}); await link.waitFor();
-    const href=await link.getAttribute('href');
+    // Tải một bước: bấm nút là trình duyệt tải ngay bằng liên kết đã ký vừa cấp.
+    const downloadEvent=page.waitForEvent('download');
+    await page.getByRole('button',{name:'Tải xuống vpn.png'}).click();
+    const download=await downloadEvent;
+    assert.equal(download.suggestedFilename(),'vpn.png');
+    const href=new URL(download.url()).pathname+new URL(download.url()).search;
     const downloaded=await context.request.get(origin+href);
     assert.equal(downloaded.status(),200); assert.deepEqual(await downloaded.body(),png);
     const tampered=href.replace(/signature=[a-f0-9]+/,'signature='+'0'.repeat(64));
@@ -112,26 +117,49 @@ try {
     assert.equal(page.url(),origin+'/tickets/'+ticketId);
     await page.getByRole('button',{name:'Làm mới danh sách tệp'}).click();
     await page.getByText('Bị chặn: mã độc',{exact:true}).waitFor();
-    assert.equal(await page.getByRole('button',{name:/Lấy liên kết tải eicar/}).count(),0);
+    assert.equal(await page.getByRole('button',{name:/Tải xuống eicar/}).count(),0);
   });
   await check('Agent and requester complete workflow in the real browser with a resolution timeline',async()=>{
     const staffContext=await browser.newContext(); const staff=await staffContext.newPage(); staff.setDefaultTimeout(30000);
     try {
       await beginLogin(staff,'agent.1',env.DEMO_USER_PASSWORD??'DxDesk@2026');
       await staff.waitForURL(origin+'/**'); await staff.goto(origin+'/tickets/'+ticketId);
-      async function transition(target,label,result) {
+      async function transition(target,label,result,note) {
         await target.getByRole('button',{name:label,exact:true}).click();
         if(result) await target.locator('#transition-resolution-note').fill(result);
+        if(note) await target.locator('#transition-note').fill(note);
         const complete=target.waitForResponse(response=>response.url().endsWith('/status') && response.request().method()==='PATCH');
-        await target.getByRole('button',{name:'Xác nhận chuyển trạng thái',exact:true}).click();
+        await target.locator(TRANSITION_SUBMIT).click();
         assert.equal((await complete).status(),200);
-        await target.getByRole('button',{name:'Xác nhận chuyển trạng thái',exact:true}).waitFor({state:'detached'});
+        await target.locator(TRANSITION_SUBMIT).waitFor({state:'detached'});
       }
-      for(const label of ['Phân loại phiếu','Phân công xử lý','Bắt đầu xử lý','Chờ người dùng phản hồi']) await transition(staff,label);
-      await page.reload(); await transition(page,'Phản hồi, tiếp tục xử lý');
+      async function reply(target,text) {
+        await target.locator('#reply-note').fill(text);
+        const complete=target.waitForResponse(response=>response.url().endsWith('/status') && response.request().method()==='PATCH');
+        await target.getByRole('button',{name:'Gửi phản hồi',exact:true}).click();
+        assert.equal((await complete).status(),200);
+        await target.locator('#reply-note').waitFor({state:'detached'});
+      }
+      if(env.AUTOMATION_ENABLED==='true') {
+        // Khi bật tự động hóa, n8n tự phân loại và phân công phiếu mới. Chờ nó xong rồi mới thao tác
+        // tay, nếu không bước tay sẽ va chạm phiên bản phiếu (409) hoặc không còn nút để bấm.
+        const deadline=Date.now()+60000;
+        for(;;) {
+          await staff.getByRole('heading',{name:'Thao tác',exact:true}).waitFor();
+          if(await staff.getByRole('button',{name:'Bắt đầu xử lý',exact:true}).count()) break;
+          assert.ok(Date.now()<deadline,'automation did not triage and assign the ticket within 60s');
+          await staff.waitForTimeout(2000); await staff.reload();
+        }
+      }
+      // Tắt tự động hóa: tự đi đủ ba bước; mỗi lần bấm đều chờ nút xuất hiện sau khi trang tải lại.
+      const manualSteps=env.AUTOMATION_ENABLED==='true' ? ['Bắt đầu xử lý'] : ['Phân loại phiếu','Phân công xử lý','Bắt đầu xử lý'];
+      for(const label of manualSteps) await transition(staff,label);
+      await transition(staff,'Chờ người dùng phản hồi',undefined,'Gửi giúp ảnh chụp thông báo lỗi VPN đang gặp.');
+      await page.reload(); await reply(page,'Đã cài lại chứng chỉ VPN theo hướng dẫn.');
       await staff.reload(); await staff.getByRole('button',{name:'Đánh dấu đã giải quyết',exact:true}).click();
-      assert.equal(await staff.getByRole('button',{name:'Xác nhận chuyển trạng thái',exact:true}).isDisabled(),true);
-      await staff.getByRole('button',{name:'Hủy bỏ',exact:true}).click();
+      await staff.locator(TRANSITION_SUBMIT).click();
+      await staff.locator('#transition-resolution-note[aria-invalid="true"]').waitFor();
+      await staff.getByRole('button',{name:'Quay lại',exact:true}).click();
       await transition(staff,'Đánh dấu đã giải quyết','Đã cấu hình lại VPN và kiểm tra kết nối thành công.');
       await page.reload(); await transition(page,'Xác nhận đã hài lòng, đóng phiếu');
       await page.getByText('Chuyển từ Đã giải quyết sang Đã đóng',{exact:true}).waitFor();

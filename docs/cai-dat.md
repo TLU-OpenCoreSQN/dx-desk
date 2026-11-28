@@ -544,7 +544,9 @@ Kết quả diễn tập ngày 28/11/2026 (commit `a96cc05` cộng thay đổi W
   "required audience claim not present"). Tương tự, volume Mattermost giữ mật khẩu admin/token bot
   cũ nếu `.env` đã sinh lại. Cách sạch nhất trên máy dev: `make reset` (xóa dữ liệu); hoặc sửa tay
   mapper trong Keycloak và đặt lại mật khẩu bằng `mmctl --local user change-password`, rồi xóa
-  `MATTERMOST_BOT_TOKEN` trong `.env` để `up` cấp token mới.
+  `MATTERMOST_BOT_TOKEN` trong `.env` để `up` cấp token mới. Riêng mật khẩu của các user demo
+  (`agent.1`, `manager.1`…) không cần sửa tay: mỗi lần `up` thử đăng nhập bằng
+  `MATTERMOST_DEMO_PASSWORD` và chỉ đặt lại khi bị từ chối.
 
 - `401` sau login: kiểm tra issuer trong token khớp `KEYCLOAK_PUBLIC_URL/realms/dxdesk`,
   audience có `dxdesk-api`, JWKS đã đồng bộ; không in token vào báo cáo.
