@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { parse } from 'yaml';
 import { loadConfig } from '../../scripts/enterprise-config.mjs';
 import { validateWorkflowDirectory } from '../../infra/n8n/validate-workflows.mjs';
+import { supportPolicy } from '../../apps/assistant/policy.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const read = path => readFile(resolve(root, path), 'utf8');
 const compose = parse(await read('infra/compose/docker-compose.yml'));
@@ -121,4 +122,12 @@ assert.ok((await read('apps/web/nginx.conf')).includes('alias /etc/dxdesk/enterp
 for (const service of ['n8n-import', 'n8n-publish']) {
   assert.ok(compose.services[service].volumes.includes('../../config/doanh-nghiep/workflows:/import/workflows:ro'));
 }
-console.log('PASS config references, enterprise schema/projection/workflows, env completeness, Keycloak audiences, YAML and package locks');
+const topicIds = new Set([...supportPolicy.topics.map(topic => topic.id), 'greeting', 'clarify', 'out_of_scope']);
+const evaluation = JSON.parse(await read('config/doanh-nghiep/assistant-evaluation.json'));
+assert.ok(Array.isArray(evaluation) && evaluation.length >= 20, 'Assistant topic evaluation needs at least 20 cases');
+assert.equal(new Set(evaluation.map(item => item.id)).size, evaluation.length, 'Duplicate assistant evaluation ID');
+for (const item of evaluation) {
+  assert.ok(typeof item.id === 'string' && item.id && typeof item.question === 'string' && item.question.trim() && topicIds.has(item.topic), 'Invalid assistant evaluation case');
+}
+assert.ok(compose.services.assistant.volumes.includes('../../config/doanh-nghiep/assistant.json:/config/doanh-nghiep/assistant.json:ro'));
+console.log('PASS config references, enterprise schema/projection/workflows, assistant topics, env completeness, Keycloak audiences, YAML and package locks');

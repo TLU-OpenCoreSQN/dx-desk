@@ -607,6 +607,16 @@ Nếu tóm tắt lỗi hoặc rỗng, trợ lý vẫn trả lời bằng các l�
 lượt sau thử tóm tắt lại lịch sử gốc. Bản tóm tắt dài quá được giới hạn 12.000 ký tự.
 Kết quả được lưu qua kênh dịch vụ nội bộ có chữ ký, vẫn theo quyền chủ sở hữu; token
 người dùng hết hạn giữa câu trả lời không làm mất phần trả lời hoặc khóa hội thoại.
+
+**Chủ đề hỗ trợ:** cấu hình tại `config/doanh-nghiep/assistant.json`: mạng/VPN, tài khoản/quyền,
+phần mềm, thiết bị, quy trình phiếu và báo cáo IT. Lớp phân loại dùng các ví dụ trong cấu hình,
+ngữ cảnh hội thoại hiện tại và mô hình Gemini; câu ngoài phạm vi được hướng về hỗ trợ IT.
+Đây là cấu hình suy luận/tri thức, không phải huấn luyện lại trọng số mô hình. Sau khi chỉnh,
+chạy `node --test apps/assistant/*.test.mjs` và `node tools/testing/assistant-topics.mjs`
+(cần khóa local; báo cáo `.local/reports/assistant-topic-evaluation.json`). Bộ đánh giá 24 câu
+nằm riêng ở `config/doanh-nghiep/assistant-evaluation.json`; runner giãn các lượt gọi để tránh
+gửi dồn nhiều yêu cầu. Chạy lại service assistant sau khi đổi cấu hình.
+
 Nút **Dừng trả lời** giữ phần đã nhận và cho phép gửi tiếp. Một hội thoại xử lý một
 lượt tại một thời điểm. Sau sự cố tiến trình, lượt đang dở được mở lại sau lease 5 phút.
 Một tin nhắn nhận tối đa 8.000 ký tự. Enter gửi tin và Shift+Enter xuống dòng.
