@@ -139,6 +139,39 @@ describe('IT', () => {
     expect(history).toHaveTextContent('Gửi đề nghị - employee.a');
     expect(history).toHaveTextContent('Đã duyệt, chờ IT - manager.1');
   });
+
+  it('does not misreport transition failure if history refresh fails afterwards', async () => {
+    let current = row({ status: 'approved' });
+    rest.listRequests.mockImplementation(async (_user, queue) => queue === 'waiting' ? [current] : []);
+    rest.listEvents.mockResolvedValueOnce([
+      { id: 'e1', request_id: 'r', actor_id: 'employee-a', actor_type: 'user', actor_name: 'employee.a', from_status: null, to_status: 'pending', note: null, created_at: '2026-11-12T02:00:00Z' },
+    ]).mockRejectedValueOnce(new Error('Không thể xử lý yêu cầu. Vui lòng thử lại.'));
+    rest.transition.mockImplementationOnce(async () => current = row({ status: 'preparing' }));
+
+    render(<Workspace user={agent} />);
+    const card = await screen.findByRole('article', { name: 'Đề nghị 11111111' });
+    await userEvent.click(within(card).getByRole('button', { name: 'Lịch sử' }));
+    await within(card).findByRole('list', { name: 'Lịch sử xử lý' });
+
+    await userEvent.click(within(card).getByRole('button', { name: 'Bắt đầu chuẩn bị' }));
+    await within(card).findByRole('button', { name: 'Xác nhận đã bàn giao' });
+    expect(within(card).queryByRole('alert')).toBeNull();
+  });
+
+  it('clears stale rows when reloading fails', async () => {
+    rest.listRequests.mockResolvedValueOnce([row({ status: 'approved' })])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error('Không thể xử lý yêu cầu. Vui lòng thử lại.'));
+
+    render(<Workspace user={agent} />);
+    const waiting = await screen.findByRole('region', { name: /Chờ bạn xử lý/ });
+    expect(await within(waiting).findByText('Màn hình × 1')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tải lại danh sách' }));
+    expect(await within(waiting).findByRole('alert')).toHaveTextContent(/Không thể xử lý yêu cầu/);
+    expect(within(waiting).queryByText('Màn hình × 1')).toBeNull();
+  });
 });
 
 describe('handover document (W5-03)', () => {

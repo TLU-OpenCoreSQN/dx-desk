@@ -60,6 +60,14 @@ try{
    return Object.values(posts).some(post=>post.message.includes(routed.id)&&!post.message.includes(payload.description));
   },'Mattermost private notification');
  });
+ await check('Mattermost demo staff signs in with the password from .env',async()=>{
+  const response=await fetch('http://localhost:'+env.MATTERMOST_PORT+'/api/v4/users/login',{method:'POST',
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({login_id:'agent.1',password:env.MATTERMOST_DEMO_PASSWORD}),
+   signal:AbortSignal.timeout(10000)});
+  assert.equal(response.status,200);
+  await fetch('http://localhost:'+env.MATTERMOST_PORT+'/api/v4/users/logout',{method:'POST',
+   headers:{Authorization:'Bearer '+response.headers.get('token')},signal:AbortSignal.timeout(10000)});
+ });
  await check('concurrent Agent claims have one winner and idempotent same-Agent retry',async()=>{
   assert.equal((await api('/tickets/'+routed.id+'/claim',manager,{})).status,403,'Manager-only membership does not confer Agent claim');
   const results=await Promise.all([agent,agent2].map(identity=>api('/tickets/'+routed.id+'/claim',identity,{})));

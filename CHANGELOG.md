@@ -13,6 +13,7 @@
 ### Sửa
 - #74: Trợ lý không nhầm câu hỏi hướng dẫn hoặc yêu cầu hoãn tạo phiếu/công việc thành đề xuất ghi dữ liệu.
 - Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
+- #86: `up` đặt lại mật khẩu Mattermost của user demo đã tồn tại khi không khớp `MATTERMOST_DEMO_PASSWORD` (trước đây chỉ user tạo mới nhận mật khẩu của `.env`); `week4-stack` kiểm đăng nhập `agent.1`.
 
 ### Thêm
 - #74: Trợ lý AI lưu hội thoại riêng theo người dùng trong PostgreSQL; tạo, đổi tên, xóa và tiếp tục trò chuyện sau khi tải lại trang. Duy trì ngữ cảnh qua nhiều lượt bằng bộ nhớ tóm tắt, phân trang lịch sử, dừng phản hồi đang sinh và hiển thị Markdown. Đề xuất tạo phiếu/công việc vẫn yêu cầu xác nhận và được lưu cùng hội thoại.

@@ -106,3 +106,16 @@ test('lỗi HTTP của nhà cung cấp không lộ nội dung phản hồi; thi�
   await assert.rejects(embed(config, ['a']), error => error.message === 'AI provider returned HTTP 429');
   await assert.rejects(embed({ ...config, apiKey: '' }, ['a']), /Missing AI_API_KEY/);
 });
+
+test('chatStream dừng khi nhà cung cấp gửi lỗi giữa luồng, không lộ nội dung lỗi', async t => {
+  const { config } = await provider(t, (_request, response) => {
+    response.setHeader('Content-Type', 'text/event-stream');
+    response.end(`data: ${JSON.stringify({ choices: [{ delta: { content: 'Một phần' } }] })}\n\n` +
+      `data: ${JSON.stringify({ error: { message: 'quota-secret-detail' } })}\n\n`);
+  });
+  const parts = [];
+  await assert.rejects(async () => {
+    for await (const part of chatStream(config, [{ role: 'user', content: 'Hỏi' }], [], new AbortController().signal)) parts.push(part);
+  }, error => error.message === 'AI provider stream error' && !error.message.includes('quota-secret-detail'));
+  assert.deepEqual(parts, [{ content: 'Một phần' }]);
+});

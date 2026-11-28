@@ -162,8 +162,8 @@ export async function searchKnowledge(config, question, signal) {
     } } });
   const results = [];
   const seen = new Set();
-  for (const { payload } of response?.result.points ?? []) {
-    if (!knowledgePaths.includes(payload.path) || seen.has(payload.path)) continue;
+  for (const { payload } of response?.result?.points ?? []) {
+    if (!payload || !knowledgePaths.includes(payload.path) || seen.has(payload.path)) continue;
     seen.add(payload.path);
     results.push({ title: payload.title, text: payload.text,
       url: new URL(`/${locale}/${payload.path}`, config.wikiPublicUrl).href });

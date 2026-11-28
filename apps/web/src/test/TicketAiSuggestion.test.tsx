@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { TicketAiSuggestion } from '../modules/desk/TicketAiSuggestion';
 import { decideAiSuggestion, getAiSuggestion } from '../modules/desk/aiSuggestionApi';
@@ -49,4 +49,52 @@ it('labels the persisted suggestion event and AI actor in ticket history', () =>
     actor_type: 'ai', event_type: 'ai_suggestion_applied', created_at: '2026-11-17T00:00:00Z', payload: {} }]} />);
   expect(screen.getByText('Đã xác nhận đề xuất AI')).toBeInTheDocument();
   expect(screen.getByText('AI (manager.1)')).toBeInTheDocument();
+});
+
+it('re-fetches and clears suggestion when ticketStatus or assignedTo changes', async () => {
+  const { rerender } = render(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="assigned" assignedTo={null} categories={categories} refresh={refresh} />
+  );
+  await screen.findByText('IT Support');
+
+  vi.mocked(getAiSuggestion).mockResolvedValueOnce(null);
+  rerender(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="in_progress" assignedTo="agent-1" categories={categories} refresh={refresh} />
+  );
+  await waitForElementToBeRemoved(() => screen.queryByRole('button', { name: 'Xác nhận đề xuất' }));
+  expect(getAiSuggestion).toHaveBeenCalledTimes(2);
+});
+
+it('drops an open draft when the reloaded suggestion is a different revision', async () => {
+  const { rerender } = render(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="new" assignedTo={null} categories={categories} refresh={refresh} />
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'Sửa đề xuất' }));
+  fireEvent.change(screen.getByLabelText('Tóm tắt'), { target: { value: 'Bản sửa cho revision-1' } });
+
+  vi.mocked(getAiSuggestion).mockResolvedValueOnce({ ...suggestion, id: 'revision-2', summary: 'Đề xuất mới' });
+  rerender(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="assigned" assignedTo={null} categories={categories} refresh={refresh} />
+  );
+  expect(await screen.findByText('Đề xuất mới')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Tóm tắt')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đề xuất' }));
+  const { id: _id, ...values } = suggestion;
+  await waitFor(() => expect(decideAiSuggestion).toHaveBeenCalledWith('ticket-1', 'revision-2', { ...values, summary: 'Đề xuất mới' }));
+});
+
+it('keeps the open draft when the reload returns the same revision', async () => {
+  const { rerender } = render(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="new" assignedTo={null} categories={categories} refresh={refresh} />
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'Sửa đề xuất' }));
+  fireEvent.change(screen.getByLabelText('Tóm tắt'), { target: { value: 'Đang sửa dở' } });
+
+  rerender(
+    <TicketAiSuggestion ticketId="ticket-1" ticketStatus="assigned" assignedTo={null} categories={categories} refresh={refresh} />
+  );
+  await waitFor(() => expect(getAiSuggestion).toHaveBeenCalledTimes(2));
+  await act(async () => {});
+  expect(screen.getByLabelText('Tóm tắt')).toHaveValue('Đang sửa dở');
 });

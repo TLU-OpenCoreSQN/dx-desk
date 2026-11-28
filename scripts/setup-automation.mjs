@@ -166,11 +166,30 @@ export async function setupChannelsAndRoster(root,env) {
     const channel=await ensureChannel('ticket-'+team.id.replaceAll('-',''),team.name);
     channels[team.id]=channel.id;
   }
+  // User demo đã có từ lần chạy trước vẫn giữ mật khẩu cũ khi MATTERMOST_DEMO_PASSWORD đổi trong .env.
+  // Thử đăng nhập bằng mật khẩu hiện tại của .env; chỉ đặt lại khi bị từ chối, để lần chạy lặp
+  // không thu hồi phiên đang mở của người dùng. Không ghi mật khẩu ra log.
+  async function demoPasswordMatches(username) {
+    const response = await fetch(mm + '/api/v4/users/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login_id: username, password: env.MATTERMOST_DEMO_PASSWORD }), signal: AbortSignal.timeout(20000) });
+    if (response.ok) {
+      await fetch(mm + '/api/v4/users/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + response.headers.get('token') },
+        signal: AbortSignal.timeout(20000) }).catch(() => {});
+      return true;
+    }
+    if (response.status === 401) return false;
+    throw new Error(`Mattermost login check for ${username} failed with HTTP ${response.status}`);
+  }
   const mmIdentities = await Promise.all(identities.map(async identity => {
     let user;
     try{user=await call('/users/username/'+encodeURIComponent(identity.display_name));}
     catch(error){if(error.status!==404)throw error;user=await call('/users','POST',{
       username:identity.display_name,email:identity.display_name+'@dxdesk.local',password:env.MATTERMOST_DEMO_PASSWORD});}
+    if (!(await demoPasswordMatches(identity.display_name))) {
+      await call('/users/' + user.id + '/password', 'PUT', { new_password: env.MATTERMOST_DEMO_PASSWORD });
+      if (!(await demoPasswordMatches(identity.display_name))) throw new Error(`Mattermost demo password reset failed for ${identity.display_name}`);
+      console.log(`Đã đặt lại mật khẩu Mattermost của ${identity.display_name} theo MATTERMOST_DEMO_PASSWORD.`);
+    }
     try{await call('/teams/'+mmTeam.id+'/members','POST',{team_id:mmTeam.id,user_id:user.id});}catch(error){if(error.status!==400)throw error;}
     return { ...identity, mmId: user.id };
   }));

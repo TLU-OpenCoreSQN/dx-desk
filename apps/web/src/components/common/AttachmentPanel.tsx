@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Attachment } from '../../types/api';
 import { getAttachments, getAttachmentDownload, uploadAttachment } from '../../services/api';
 import { ATTACHMENT_TYPES, fileError } from '../../lib/attachments';
@@ -13,11 +13,24 @@ export const AttachmentPanel: React.FC<{ ticketId: string }> = ({ ticketId }) =>
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [readyLink, setReadyLink] = useState<{ url: string; name: string } | null>(null);
+  const requestRevision = useRef(0);
   const reload = useCallback(async () => {
+    const revision = ++requestRevision.current;
     setError(null);
-    try { setItems((await getAttachments(ticketId)).data ?? []); } catch (err) { setError(err); }
+    try {
+      const res = await getAttachments(ticketId);
+      if (revision !== requestRevision.current) return;
+      setItems(res.data ?? []);
+    } catch (err) {
+      if (revision !== requestRevision.current) return;
+      setError(err);
+    }
   }, [ticketId]);
-  useEffect(() => { void reload(); setReadyLink(null); }, [reload]);
+  useEffect(() => {
+    void reload();
+    setReadyLink(null);
+    return () => { requestRevision.current += 1; };
+  }, [reload]);
   const upload = async () => {
     if (!file || busy) return;
     setBusy(true); setError(null);

@@ -41,7 +41,9 @@ export function proposalStore(clock = Date.now) {
     },
     take(id, owner) {
       const offer = pending.get(id);
-      if (!offer || offer.owner !== owner || offer.expires <= clock()) return null;
+      if (!offer) return null;
+      if (offer.expires <= clock()) { pending.delete(id); return null; }
+      if (offer.owner !== owner) return null;
       pending.delete(id);
       return offer;
     },
@@ -60,9 +62,13 @@ export async function* ndjson(body) {
     const lines = pending.split('\n');
     pending = lines.pop() ?? '';
     if (pending.length > 100000) throw new Error('Assistant stream message too large');
-    for (const line of lines) if (line.trim()) yield JSON.parse(line);
+    for (const line of lines) {
+      if (line.length > 100000) throw new Error('Assistant stream message too large');
+      if (line.trim()) yield JSON.parse(line);
+    }
   }
   pending += decoder.decode();
+  if (pending.length > 100000) throw new Error('Assistant stream message too large');
   if (pending.trim()) yield JSON.parse(pending);
 }
 

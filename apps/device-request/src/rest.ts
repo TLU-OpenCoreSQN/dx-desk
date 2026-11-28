@@ -15,12 +15,18 @@ export class RestError extends Error {
 }
 
 async function request<T>(path: string, body?: unknown, root = base): Promise<T> {
+  let token: string;
+  try {
+    token = await accessToken();
+  } catch {
+    throw new RestError(401);
+  }
   let response: Response;
   try {
     response = await fetch(root + path, {
       method: body === undefined ? 'GET' : 'POST',
       headers: {
-        Authorization: `Bearer ${await accessToken()}`,
+        Authorization: `Bearer ${token}`,
         Accept: 'application/json',
         ...(body === undefined ? {} : { 'Content-Type': 'application/json', Prefer: 'return=representation' }),
       },
@@ -53,8 +59,9 @@ export function listRequests(user: CurrentUser, queue: RequestQueue, page: numbe
 }
 export async function createRequest(input: NewRequest): Promise<DeviceRequest> {
   // Chỉ ba trường này: người đề nghị, đơn vị và trạng thái do PostgreSQL đặt từ JWT.
-  const rows = await request<DeviceRequest[]>('/device_requests',
+  const rows = await request<DeviceRequest[] | null>('/device_requests',
     { device_type: input.device_type, reason: input.reason.trim(), quantity: input.quantity });
+  if (!Array.isArray(rows) || !rows[0]) throw new RestError(500);
   return rows[0];
 }
 export function transition(id: string, to: DeviceStatus, note?: string): Promise<DeviceRequest> {
