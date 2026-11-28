@@ -346,6 +346,13 @@ có thể sai dấu ở một số trình đọc (bảng ToUnicode của phông 
 
 ### Hội thoại có lịch sử
 
+Kết thúc lượt trả lời dùng `POST /internal/assistant-sessions/:id/turns/:turnId/finish`
+trong mạng Compose, nhận `{owner_id,result}` và HMAC `X-DXDesk-Assistant-Proof`
+trên `[owner_id,"finish:<session>:<turn>",result]`. Không phụ thuộc thời hạn JWT lúc
+bắt đầu stream. Chỉ cập nhật lượt đã tạo, vẫn dùng role `authenticated` và RLS của
+chủ sở hữu; không tạo lượt mới hoặc làm mới token người dùng. Route này không được
+công bố qua APISIX. Endpoint finish dưới `/api` được giữ cho tương thích và vẫn kiểm JWT.
+
 - `GET /api/assistant-sessions?offset=0` trả `{data,has_more}` theo hoạt động gần nhất, 50 hội thoại/trang.
 - `POST /api/assistant-sessions` nhận `{}` và tạo hội thoại riêng của tài khoản JWT.
 - `GET /api/assistant-sessions/:id?before=<ordinal>` trả `{session,turns,has_more}`, 40 lượt gần nhất theo thứ tự cũ đến mới.
