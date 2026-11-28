@@ -193,6 +193,8 @@ async function backupUnlocked(env, args, options) {
   const target = childBackupPath(root, name);
   let created = false;
   let paused = [];
+  let refreshGateway = false;
+  let completed;
   try {
     const running = ctx.running();
     const databases = databasePlan(env, running);
@@ -214,6 +216,7 @@ async function backupUnlocked(env, args, options) {
     // Chặn mọi writer trong cùng cửa sổ: không để DB tham chiếu tệp vừa bị xóa khỏi SeaweedFS.
     paused = ['api', 'postgrest', 'keycloak', 'n8n', 'assistant', 'wiki-index', 'wikijs', 'mattermost', 'metabase']
       .filter(service => running.has(service));
+    refreshGateway = running.has('apisix') && paused.length > 0;
     if (paused.length) ctx.run(['stop', ...paused]);
     const files = [];
     const add = async (entry, path) => {
@@ -261,18 +264,30 @@ async function backupUnlocked(env, args, options) {
     for (const old of removed) await rm(childBackupPath(root, old), { recursive: true, force: true });
 
     const total = files.reduce((sum, file) => sum + file.bytes, 0);
-    const seconds = Math.round((Date.now() - started) / 1000);
-    await log(root, `OK ${name} ${formatBytes(total)} ${seconds}s, xóa ${removed.length} bản cũ, trống ${formatBytes(free)}`);
-    console.log(`Đã sao lưu ${name} (${formatBytes(total)}, ${seconds}s) vào ${target}.`);
-    if (removed.length) console.log(`Đã xóa ${removed.length} bản cũ, giữ ${keep} bản mới nhất.`);
-    return { name, target, manifest, removed };
+    completed = { name, target, manifest, removed, total, free };
   } catch (error) {
     if (created) await rm(target, { recursive: true, force: true });
     await log(root, `LỖI ${name} ${error.message.replace(/\s+/g, ' ')}`).catch(() => {});
     throw error;
   } finally {
-    if (paused.length) ctx.run(['up', '-d', '--no-deps', '--wait', ...paused]);
+    try {
+      if (paused.length) ctx.run(['up', '-d', '--no-deps', '--wait', ...paused]);
+      // Docker may assign new IPs even when starting existing stopped containers.
+      // APISIX caches upstream addresses: health alone does not refresh its routing.
+      if (refreshGateway) {
+        ctx.run(['restart', 'apisix']);
+        ctx.run(['up', '-d', '--no-deps', '--wait', 'apisix']);
+      }
+    } catch (error) {
+      await log(root, `LỖI PHỤC HỒI DỊCH VỤ ${name} ${error.message.replace(/\s+/g, ' ')}`).catch(() => {});
+      throw error;
+    }
   }
+  const seconds = Math.round((Date.now() - started) / 1000);
+  await log(root, `OK ${name} ${formatBytes(completed.total)} ${seconds}s, xóa ${completed.removed.length} bản cũ, trống ${formatBytes(completed.free)}`);
+  console.log(`Đã sao lưu ${name} (${formatBytes(completed.total)}, ${seconds}s) vào ${target}; dịch vụ đã phục hồi.`);
+  if (completed.removed.length) console.log(`Đã xóa ${completed.removed.length} bản cũ, giữ ${keep} bản mới nhất.`);
+  return { name, target, manifest: completed.manifest, removed: completed.removed };
 }
 
 export async function verifyBackup(dir) {

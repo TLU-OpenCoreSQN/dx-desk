@@ -11,6 +11,7 @@
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 
 ### Sửa
+- #102: backup chỉ báo hoàn tất sau khi writer phục hồi và APISIX nạp lại upstream; tránh API trả 502 do gateway giữ IP cũ. Lỗi phục hồi được ghi riêng, giữ archive đã hoàn chỉnh và trả mã lỗi thay vì báo OK sớm.
 - #100: `up` dừng n8n trước import/publish để nạp lại workflow đã kích hoạt; `n8n-reload`/nghiệm thu restart không chạy lặp dependency. Nghiệm thu OTP làm mới token admin, ghi trạng thái dọn tài khoản thử và báo mã HTTP khi upstream không trả JSON.
 - #99: tab hàng đợi có số đếm không còn kéo rộng trang trên điện thoại; giữ vùng cuộn tab riêng và tên truy cập cho trình đọc màn hình, kiểm sau khi số đếm tải xong.
 - #98: migration 029 bổ sung hint/placeholder cho trường danh mục khi cài mới/nâng cấp, giữ giá trị doanh nghiệp đã tùy chỉnh; kiểm config apply lần đầu/lần hai không thay dữ liệu mẫu.
