@@ -28,20 +28,20 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   return (
     <fieldset className="min-w-0">
       <legend className="mb-3 flex w-full items-center gap-2 border-b border-edge-subtle pb-2">
-        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-primary-tint text-[10px] font-bold text-[var(--color-primary-text)]">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-primary-tint text-xs font-semibold text-[var(--color-primary-text)]">
           1
         </span>
         <Tag className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-content">
+        <span className="text-[0.8125rem] font-semibold text-content">
           Phân loại sự cố
         </span>
       </legend>
 
       <label
         htmlFor="ticket-category"
-        className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-content"
+        className="mb-1.5 flex items-center gap-1 text-[0.8125rem] font-medium text-content"
       >
-        Danh mục sự cố <span className="text-danger" aria-hidden="true">*</span>
+        Danh mục sự cố <span className="text-status-danger" aria-hidden="true">*</span>
       </label>
       <select
         id="ticket-category"

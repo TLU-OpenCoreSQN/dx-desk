@@ -5,6 +5,8 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import remarkGfm from 'remark-gfm';
 import { Check, ExternalLink, Sparkles } from 'lucide-react';
+import { Alert } from '../../components/common/Alert';
+import { Button } from '../../components/common/Button';
 import type { AssistantTurn as Turn, WikiSource } from './assistantApi';
 
 const fieldLabels: Record<string, string> = {
@@ -37,7 +39,7 @@ export const AssistantTurn = memo(function AssistantTurn({
   const sources = (turn.metadata.sources ?? []).filter(safeSource);
   return (
     <li className="space-y-6 py-6">
-      <div className="ml-auto max-w-[90%] rounded-2xl rounded-tr-md bg-primary-tint px-4 py-3 sm:max-w-[80%]">
+      <div className="ml-auto max-w-[90%] rounded-lg rounded-tr-md bg-primary-tint px-4 py-3 sm:max-w-[80%]">
         <h2 className="sr-only">{turn.question}</h2>
         <p className="whitespace-pre-wrap break-words text-sm leading-7">{turn.question}</p>
       </div>
@@ -88,7 +90,7 @@ export const AssistantTurn = memo(function AssistantTurn({
                     </pre>
                   ),
                   code: ({ children }) => (
-                    <code className="rounded bg-surface-muted px-1 font-mono text-[0.9em]">{children}</code>
+                    <code className="rounded-sm bg-surface-muted px-1 font-mono text-[0.9em]">{children}</code>
                   ),
                   table: ({ children }) => (
                     <table className="my-3 w-full border-collapse text-left text-xs">{children}</table>
@@ -104,7 +106,7 @@ export const AssistantTurn = memo(function AssistantTurn({
             </div>
           )}
           {turn.status === 'pending' && !turn.answer && (
-            <p className="animate-pulse text-content-muted">Đang chuẩn bị câu trả lời…</p>
+            <p role="status" className="text-content-muted">Đang chuẩn bị câu trả lời…</p>
           )}
           {sources.length > 0 && (
             <ul aria-label="Bài Wiki tham chiếu" className="flex flex-wrap gap-2">
@@ -114,7 +116,7 @@ export const AssistantTurn = memo(function AssistantTurn({
                     href={source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-edge px-2.5 py-1.5 text-xs text-[var(--color-primary-ink)]"
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-edge px-2.5 text-xs text-[var(--color-primary-ink)] hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-8"
                   >
                     {source.title}
                     <ExternalLink size={12} aria-hidden="true" />
@@ -126,40 +128,30 @@ export const AssistantTurn = memo(function AssistantTurn({
           {pending && (
             <section
               aria-label="Hành động cần xác nhận"
-              className="space-y-3 rounded-xl border border-edge p-4"
+              className="space-y-3 rounded-lg border border-edge p-4"
             >
               <h3 className="font-semibold">{proposal.label}</h3>
               <dl className="space-y-2">
                 {Object.entries(proposal.fields).map(([key, value]) => (
                   <div key={key}>
-                    <dt className="font-medium">{fieldLabels[key] ?? key}</dt>
+                    <dt className="font-medium">{fieldLabels[key] ?? 'Thông tin bổ sung'}</dt>
                     <dd className="whitespace-pre-wrap break-words text-content-muted">{value}</dd>
                   </div>
                 ))}
               </dl>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onDecide(turn, true)}
-                  className="min-h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-white disabled:opacity-50"
-                >
+                <Button disabled={busy} onClick={() => onDecide(turn, true)}>
                   Xác nhận
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onDecide(turn, false)}
-                  className="min-h-10 rounded-lg border border-edge px-4 text-sm disabled:opacity-50"
-                >
+                </Button>
+                <Button variant="secondary" disabled={busy} onClick={() => onDecide(turn, false)}>
                   Hủy đề xuất
-                </button>
+                </Button>
               </div>
             </section>
           )}
           {proposal && !pending && (
             <p role="status" className="flex items-center gap-2 text-xs text-content-muted">
-              <Check size={14} />
+              <Check size={14} aria-hidden="true" />
               {expired && proposal.status === 'pending'
                 ? 'Đề xuất đã hết hạn.'
                 : proposal.status === 'cancelled'
@@ -167,7 +159,7 @@ export const AssistantTurn = memo(function AssistantTurn({
                   : result?.ticket_id
                     ? 'Đã tạo phiếu.'
                     : result
-                      ? `Đã tạo công việc ${result.id}.`
+                      ? 'Đã tạo công việc.'
                       : 'Đã thực hiện.'}
             </p>
           )}
@@ -180,9 +172,7 @@ export const AssistantTurn = memo(function AssistantTurn({
             </Link>
           )}
           {turn.metadata.error && (
-            <p role="alert" className="rounded-lg border border-edge p-3 text-danger">
-              {turn.metadata.error}
-            </p>
+            <Alert type="error">{turn.metadata.error}</Alert>
           )}
           {turn.status === 'interrupted' && !turn.metadata.error && (
             <p className="text-xs text-content-muted">Đã dừng trả lời. Bạn có thể gửi tiếp tin nhắn.</p>

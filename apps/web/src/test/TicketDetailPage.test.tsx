@@ -95,7 +95,8 @@ describe('TicketDetailPage Component', () => {
         screen.getByText(/Màn hình tại bàn làm việc bị chớp đen mỗi 30 giây/i)
       ).toBeInTheDocument();
       expect(screen.getByText('Đã tiếp nhận phiếu')).toBeInTheDocument();
-      expect(screen.getAllByText('emp-user-1')).toHaveLength(2);
+      // Không hiện mã người dùng (UUID) ở tiêu đề hay dòng thời gian.
+      expect(screen.queryByText('emp-user-1')).not.toBeInTheDocument();
       expect(screen.getByText('Thiết bị phần cứng')).toBeInTheDocument();
     });
   });
@@ -116,9 +117,9 @@ describe('TicketDetailPage Component', () => {
     // SLA chỉ được nói một lần, ở banner; header không lặp lại hạn gốc hay thời gian tạm dừng.
     expect(screen.getByText('SLA tạm dừng · chờ người tạo phiếu phản hồi')).toBeInTheDocument();
     expect(screen.getByText(/Thời gian đã dừng: [\d.]+ phút/)).toBeInTheDocument();
-    expect(screen.queryByText(/Hạn gốc SLA/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Hạn SLA ban đầu/)).not.toBeInTheDocument();
     expect(screen.queryByText(/SLA đang tạm dừng từ/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/ĐANG CHỜ NGƯỜI TẠO PHIẾU PHẢN HỒI/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Đang chờ người tạo phiếu phản hồi/)).not.toBeInTheDocument();
     expect(screen.getByText('Hệ thống (Tự động phân tuyến)')).toBeInTheDocument();
   });
 
@@ -190,7 +191,9 @@ describe('TicketDetailPage Component', () => {
     renderWithRoute();
     expect(await screen.findByText('DELL-123')).toBeInTheDocument();
     expect(screen.getByText('Mã tài sản')).toBeInTheDocument();
-    expect(screen.getByText('retired_field')).toBeInTheDocument();
+    // Khóa đã bỏ khỏi danh mục: nhãn chung, không lộ khóa kỹ thuật.
+    expect(screen.getByText('Thông tin bổ sung')).toBeInTheDocument();
+    expect(screen.queryByText('retired_field')).not.toBeInTheDocument();
     expect(screen.getByText('<script>alert(1)</script>')).toBeInTheDocument();
     expect(document.querySelector('script')).toBeNull();
     expect(screen.getByText('Đã thay cáp DisplayPort và kiểm tra ổn định.')).toBeInTheDocument();

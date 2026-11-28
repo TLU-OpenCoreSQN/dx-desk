@@ -102,14 +102,14 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
   if (fields.length === 0) return null;
 
   return (
-    <fieldset className="min-w-0 rounded-[4px] border border-edge bg-surface-muted/60 p-4">
-      <legend className="flex items-center gap-1.5 rounded-[4px] bg-surface px-1.5 py-0.5">
+    <fieldset className="min-w-0 rounded-sm border border-edge bg-surface-muted/60 p-4">
+      <legend className="flex items-center gap-1.5 rounded-sm bg-surface px-1.5 py-0.5">
         <ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
-        <span className="text-[11px] font-bold uppercase tracking-wider text-content">
+        <span className="text-[0.8125rem] font-semibold text-content">
           Thông tin bổ sung theo danh mục
         </span>
       </legend>
-      <p className="mb-3 text-[11px] text-content-muted">
+      <p className="mb-3 text-xs text-content-muted">
         Các trường có dấu <span className="font-semibold text-status-danger">*</span> là bắt
         buộc theo danh mục đã chọn.
       </p>
@@ -126,13 +126,13 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
             <div key={field.key} className="min-w-0">
               <label
                 htmlFor={`requirement-${field.key}`}
-                className="mb-1.5 flex flex-wrap items-center gap-1 text-xs font-semibold text-content"
+                className="mb-1.5 flex flex-wrap items-center gap-1 text-[0.8125rem] font-medium text-content"
               >
                 <span className="break-words">{field.label}</span>
                 {field.required ? (
                   <span className="text-status-danger" aria-hidden="true">*</span>
                 ) : (
-                  <span className="text-[10px] font-normal text-content-subtle">
+                  <span className="text-xs font-normal text-content-subtle">
                     (không bắt buộc)
                   </span>
                 )}
@@ -152,7 +152,7 @@ export const DynamicRequirementFields: React.FC<DynamicRequirementFieldsProps> =
                 className={fieldClass(invalid)}
               />
               {guide.hint && (
-                <p id={hintId} className="mt-1 text-[11px] leading-snug text-content-muted">
+                <p id={hintId} className="mt-1 text-xs leading-snug text-content-muted">
                   {guide.hint}
                 </p>
               )}

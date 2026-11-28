@@ -14,6 +14,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { Alert } from '../../components/common/Alert';
+import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ApiClientError } from '../../services/api';
 import { AssistantTurn } from './AssistantTurn';
@@ -340,6 +342,12 @@ export function AssistantPage() {
     [busy, mutating],
   );
 
+  // Kết thúc đổi tên (lưu hoặc hủy): trả tiêu điểm về nút bút chì đã mở ô nhập, không để rơi về <body>.
+  function stopEditing(id: string) {
+    setEditing(null);
+    requestAnimationFrame(() => document.getElementById(`assistant-rename-${id}`)?.focus());
+  }
+
   async function rename(event: FormEvent) {
     event.preventDefault();
     if (!editing || !title.trim() || mutating) return;
@@ -347,7 +355,7 @@ export function AssistantPage() {
     try {
       const renamed = await renameAssistantSession(editing, title.trim());
       setSessions((items) => items.map((item) => (item.id === renamed.id ? renamed : item)));
-      setEditing(null);
+      stopEditing(editing);
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
@@ -419,13 +427,13 @@ export function AssistantPage() {
   return (
     <section
       aria-label="Trợ lý AI"
-      className="relative flex h-[calc(100dvh-9rem)] min-h-[32rem] overflow-hidden rounded-2xl border border-edge bg-surface text-content shadow-sm"
+      className="relative flex h-[calc(100dvh-9rem)] min-h-[32rem] overflow-hidden rounded-lg border border-edge bg-surface text-content"
     >
       {sidebarOpen && (
         <button
           aria-label="Đóng lịch sử hội thoại"
           onClick={() => setSidebarOpen(false)}
-          className="absolute inset-0 z-10 bg-black/20 lg:hidden"
+          className="absolute inset-0 z-10 bg-slate-950/60 lg:hidden"
         />
       )}
       <aside
@@ -433,14 +441,15 @@ export function AssistantPage() {
         className={`${sidebarOpen ? 'absolute inset-y-0 left-0 z-20 flex' : 'hidden'} w-64 shrink-0 flex-col border-r border-edge bg-surface lg:static lg:flex`}
       >
         <div className="flex items-center justify-between gap-2 p-3">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => void newConversation()}
             disabled={mutating}
-            className="flex min-h-11 flex-1 items-center gap-2 rounded-xl border border-edge px-3 text-sm font-semibold hover:bg-surface-muted disabled:opacity-50"
+            className="flex-1 justify-start"
+            leftIcon={<Plus size={18} />}
           >
-            <Plus size={18} />
             Cuộc trò chuyện mới
-          </button>
+          </Button>
           <button
             className={iconButton + ' lg:hidden'}
             aria-label="Đóng lịch sử hội thoại"
@@ -461,7 +470,7 @@ export function AssistantPage() {
           {sessions.map((item) => (
             <div
               key={item.id}
-              className={`group flex items-center gap-1 rounded-xl p-1 ${selected === item.id ? 'bg-primary-tint' : 'hover:bg-surface-muted'}`}
+              className={`group flex items-center gap-1 rounded-lg p-1 ${selected === item.id ? 'bg-primary-tint' : 'hover:bg-surface-muted'}`}
             >
               {editing === item.id ? (
                 <form onSubmit={(event) => void rename(event)} className="flex min-w-0 flex-1 gap-1">
@@ -472,9 +481,9 @@ export function AssistantPage() {
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === 'Escape') setEditing(null);
+                      if (event.key === 'Escape') stopEditing(item.id);
                     }}
-                    className="min-w-0 flex-1 rounded-lg border border-edge bg-surface px-2 text-sm"
+                    className="min-h-10 min-w-0 flex-1 rounded-md border border-edge bg-surface px-2 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   />
                   <button
                     className={iconButton}
@@ -487,7 +496,7 @@ export function AssistantPage() {
                     type="button"
                     className={iconButton}
                     aria-label="Hủy đổi tên"
-                    onClick={() => setEditing(null)}
+                    onClick={() => stopEditing(item.id)}
                   >
                     <X size={16} />
                   </button>
@@ -504,6 +513,7 @@ export function AssistantPage() {
                     <span className="truncate">{item.title}</span>
                   </button>
                   <button
+                    id={`assistant-rename-${item.id}`}
                     className={iconButton}
                     aria-label={'Đổi tên ' + item.title}
                     onClick={() => {
@@ -525,13 +535,9 @@ export function AssistantPage() {
             </div>
           ))}
           {moreSessions && (
-            <button
-              onClick={() => void olderSessions()}
-              disabled={mutating}
-              className="w-full rounded-lg p-3 text-xs text-[var(--color-primary-ink)]"
-            >
+            <Button variant="ghost" size="sm" className="w-full" onClick={() => void olderSessions()} disabled={mutating}>
               Tải thêm hội thoại
-            </button>
+            </Button>
           )}
         </nav>
       </aside>
@@ -550,9 +556,9 @@ export function AssistantPage() {
           </div>
         </header>
         {error && (
-          <p role="alert" className="mx-4 mt-3 rounded-lg border border-edge px-3 py-2 text-sm text-danger">
+          <Alert type="error" className="mx-4 mt-3">
             {error}
-          </p>
+          </Alert>
         )}
         <div
           ref={scroll}
@@ -574,18 +580,16 @@ export function AssistantPage() {
             ) : (
               <>
                 {moreTurns && (
-                  <button
-                    onClick={() => void olderTurns()}
-                    disabled={mutating}
-                    className="mx-auto mt-4 block rounded-lg border border-edge px-4 py-2 text-xs text-[var(--color-primary-ink)]"
-                  >
-                    Tải tin nhắn cũ
-                  </button>
+                  <div className="mt-4 flex justify-center">
+                    <Button variant="secondary" size="sm" onClick={() => void olderTurns()} disabled={mutating}>
+                      Tải tin nhắn cũ
+                    </Button>
+                  </div>
                 )}
                 {!turns.length && (
                   <div className="flex min-h-64 flex-col items-center justify-center gap-3 py-12 text-center">
                     <MessageSquare size={28} className="text-[var(--color-primary-ink)]" />
-                    <h2 className="text-xl font-semibold">Bạn cần hỗ trợ việc gì?</h2>
+                    <h2 className="text-lg font-semibold">Bạn cần hỗ trợ việc gì?</h2>
                     <p className="max-w-sm text-sm leading-6 text-content-muted">
                       Hỏi về sự cố IT hoặc tiếp tục trao đổi trong cuộc trò chuyện của bạn.
                     </p>
@@ -608,7 +612,7 @@ export function AssistantPage() {
         <div className="border-t border-edge bg-surface px-4 py-3 sm:px-6">
           <form
             onSubmit={(event) => void submit(event)}
-            className="mx-auto max-w-3xl rounded-2xl border border-edge bg-background p-3 focus-within:border-primary"
+            className="mx-auto max-w-3xl rounded-lg border border-edge bg-background p-3 focus-within:border-primary"
           >
             <label htmlFor={inputId} className="sr-only">
               Câu hỏi hỗ trợ IT
@@ -644,7 +648,7 @@ export function AssistantPage() {
                 <button
                   disabled
                   aria-label="Đang xác nhận hành động"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white"
                 >
                   <LoaderCircle size={17} className="animate-spin" />
                 </button>
@@ -653,7 +657,7 @@ export function AssistantPage() {
                   type="button"
                   aria-label="Dừng trả lời"
                   onClick={() => stream.current?.abort()}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-content text-surface"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-content text-surface"
                 >
                   <Square size={16} />
                 </button>
@@ -661,7 +665,7 @@ export function AssistantPage() {
                 <button
                   aria-label="Gửi câu hỏi"
                   disabled={!question.trim() || mutating || remotePending || loadingTurns}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white disabled:opacity-40"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white disabled:opacity-40"
                 >
                   <Send size={17} />
                 </button>
@@ -680,20 +684,12 @@ export function AssistantPage() {
       >
         <p className="text-sm leading-6">Xóa “{removing?.title}” cùng toàn bộ tin nhắn và ngữ cảnh đã lưu?</p>
         <div className="mt-6 flex justify-end gap-2">
-          <button
-            disabled={mutating}
-            onClick={() => setRemoving(null)}
-            className="min-h-10 rounded-lg border border-edge px-4 text-sm"
-          >
+          <Button variant="secondary" disabled={mutating} onClick={() => setRemoving(null)}>
             Hủy
-          </button>
-          <button
-            disabled={mutating}
-            onClick={() => void remove()}
-            className="min-h-10 rounded-lg bg-danger px-4 text-sm font-semibold text-white"
-          >
+          </Button>
+          <Button variant="danger" disabled={mutating} onClick={() => void remove()}>
             Xóa cuộc trò chuyện
-          </button>
+          </Button>
         </div>
       </Modal>
     </section>

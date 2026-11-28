@@ -185,7 +185,7 @@ describe('CreateTicketPage Component', () => {
         priority: 'normal',
       });
       expect(screen.getByText(/Tạo phiếu yêu cầu thành công!/i)).toBeInTheDocument();
-      expect(screen.getByText('ticket-created-789')).toBeInTheDocument();
+      expect(screen.getByText('#ticket-c')).toHaveAttribute('title', 'ticket-created-789');
     });
   });
 });
@@ -258,7 +258,8 @@ describe('CreateTicketPage — trường động theo requirement_fields (W3-04)
     expect(note).not.toHaveAttribute('aria-describedby');
   });
 
-  it('khóa nút Gửi và liệt kê trường động bắt buộc còn thiếu bằng tiếng Việt', async () => {
+  it('chỉ hiện tóm tắt lỗi sau khi bấm Gửi, đưa tiêu điểm tới đó và liên kết tới ô cần sửa', async () => {
+    const createTicketSpy = vi.spyOn(apiService, 'createTicket');
     mockRenderWithAuth(['Employee']);
 
     await waitFor(() => {
@@ -266,11 +267,10 @@ describe('CreateTicketPage — trường động theo requirement_fields (W3-04)
     });
 
     const submitBtn = screen.getByRole('button', { name: /Gửi phiếu hỗ trợ/i });
-    expect(submitBtn).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getByText(/Chưa thể gửi phiếu/i)).toBeInTheDocument();
-    expect(screen.getByText('Lý do cần VPN (bắt buộc theo danh mục)')).toBeInTheDocument();
-    expect(screen.getByText('Ngày hết hạn mong muốn (bắt buộc theo danh mục)')).toBeInTheDocument();
-    expect(screen.queryByText(/Ghi chú thiết bị \(bắt buộc/)).not.toBeInTheDocument();
+    // Không có nút "giả vô hiệu": bấm được, và chưa la lỗi khi người dùng chưa làm gì.
+    expect(submitBtn).toBeEnabled();
+    expect(submitBtn).not.toHaveAttribute('aria-disabled');
+    expect(screen.queryByText(/Chưa thể gửi phiếu/i)).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/Tiêu đề phiếu/i), {
       target: { value: 'Cần VPN để làm việc từ xa' },
@@ -278,10 +278,18 @@ describe('CreateTicketPage — trường động theo requirement_fields (W3-04)
     fireEvent.change(screen.getByLabelText(/Mô tả chi tiết sự cố/i), {
       target: { value: 'Tôi cần truy cập hệ thống nội bộ từ nhà trong tháng 11.' },
     });
+    fireEvent.click(submitBtn);
 
-    expect(submitBtn).toHaveAttribute('aria-disabled', 'true');
+    const summary = await screen.findByRole('alert', { name: /Chưa thể gửi phiếu/i });
+    await waitFor(() => expect(summary).toHaveFocus());
+    expect(createTicketSpy).not.toHaveBeenCalled();
     expect(screen.queryByText('Tiêu đề phiếu (từ 5 đến 200 ký tự)')).not.toBeInTheDocument();
-    expect(screen.getByText('Lý do cần VPN (bắt buộc theo danh mục)')).toBeInTheDocument();
+    expect(screen.queryByText(/Ghi chú thiết bị \(bắt buộc/)).not.toBeInTheDocument();
+
+    const reasonLink = screen.getByRole('link', { name: 'Lý do cần VPN (bắt buộc theo danh mục)' });
+    expect(screen.getByRole('link', { name: 'Ngày hết hạn mong muốn (bắt buộc theo danh mục)' })).toBeInTheDocument();
+    fireEvent.click(reasonLink);
+    expect(screen.getByLabelText(/Lý do cần VPN/)).toHaveFocus();
   });
 
   it('mở khóa nút Gửi và gửi kèm object fields khi điền đủ trường bắt buộc', async () => {

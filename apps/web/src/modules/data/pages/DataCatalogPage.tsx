@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState } from 'react';
+import { Copy } from 'lucide-react';
+import { Alert } from '../../../components/common/Alert';
+import { Button } from '../../../components/common/Button';
 import { catalogDatasets, playgroundUrl, resourceGroups, sampleCatalog, sampleCollections, sampleResources } from '../../../../catalog-fixtures';
 
 type Document = Record<string, unknown>;
@@ -37,6 +40,17 @@ function resourceItems(group: string, document: Document) {
     return typeof path === 'string' && path.startsWith(prefix) && /^[a-z][a-z0-9_-]{1,39}$/.test(path.slice(prefix.length))
       && typeof name === 'string' ? [{ path, name }] : [];
   });
+}
+
+/** Tên giấy phép dễ đọc thay cho URL đầy đủ; URL thật vẫn là đích của liên kết. */
+function licenseLabel(url: string): string {
+  if (url.includes('/zero/1.0')) return 'CC0 1.0';
+  if (url.includes('/by/4.0')) return 'CC BY 4.0';
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return 'Xem giấy phép';
+  }
 }
 
 function Playground({ document, origin }: { document: Document; origin: string }) {
@@ -79,19 +93,19 @@ export function DataCatalogPage() {
 
   const datasets = catalog ? catalogDatasets(catalog.document, origin) : [];
   const uri = selection ? new URL(selection.path, origin).href : null;
-  async function copyUri() {
-    if (!uri) return;
+  async function copyText(text: string | null, done: string, fallback: string) {
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(uri);
-      setCopyStatus('Đã sao chép URI.');
+      await navigator.clipboard.writeText(text);
+      setCopyStatus(done);
     } catch {
-      setCopyStatus('Hãy chọn và sao chép URI trong ô bên cạnh.');
+      setCopyStatus(fallback);
     }
   }
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <header className="rounded-xl border border-edge bg-surface p-5 sm:p-7">
-        <p className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary-ink)]">Dữ liệu mở · DCAT / JSON-LD</p>
+      <header className="rounded-lg border border-edge bg-surface p-5 sm:p-7">
+        <p className="text-xs font-semibold text-[var(--color-primary-ink)]">Dữ liệu mở · DCAT / JSON-LD</p>
         <h1 className="dx-page-title mt-2">Danh mục dữ liệu DX-Desk</h1>
         <p className="mt-2 max-w-3xl text-sm text-content-muted">Khám phá các bộ dữ liệu giả lập và tài nguyên tham chiếu dùng trong bản demo.</p>
         {(catalog?.sample || Object.values(collections).some(group => group?.sample)) && <p className="mt-2 text-xs text-content-muted">Đang hiển thị danh mục mẫu đi kèm bản demo.</p>}
@@ -100,15 +114,15 @@ export function DataCatalogPage() {
 
       <section aria-labelledby="datasets-title" className="space-y-3">
         <h2 id="datasets-title" className="dx-section-title">Ba bộ dữ liệu DCAT</h2>
-        {catalogError ? <p role="alert">{catalogError}</p> : !catalog && <p role="status">Đang tải danh mục…</p>}
+        {catalogError ? <Alert type="error">{catalogError}</Alert> : !catalog && <p role="status" className="text-sm text-content-muted">Đang tải danh mục…</p>}
         <ul className="grid gap-3 lg:grid-cols-3">
           {datasets.map(dataset => (
-            <li key={dataset.download} className="flex min-w-0 flex-col gap-3 rounded-xl border border-edge bg-surface p-4 text-sm">
-              <span className="self-start rounded-full bg-surface-muted px-2 py-1 text-xs font-semibold">Dữ liệu giả lập</span>
-              <h3 className="font-bold text-content">{dataset.title}</h3>
+            <li key={dataset.download} className="flex min-w-0 flex-col gap-3 rounded-lg border border-edge bg-surface p-4 text-sm">
+              <span className="self-start rounded-sm border border-edge bg-surface-muted px-1.5 py-0.5 text-xs font-medium text-content-muted">Dữ liệu giả lập</span>
+              <h3 className="font-semibold text-content">{dataset.title}</h3>
               <p className="flex-1 text-content-muted">{dataset.description}</p>
               <p>Giấy phép <a className="text-[var(--color-primary-ink)] underline" href={dataset.license}
-                target="_blank" rel="noopener noreferrer">{dataset.license.includes('/zero/1.0') ? 'CC0 1.0' : dataset.license}</a></p>
+                target="_blank" rel="noopener noreferrer">{licenseLabel(dataset.license)}</a></p>
               <p>Cập nhật <time dateTime={dataset.updated}>{dataset.updated}</time></p>
               <a className="font-semibold text-[var(--color-primary-ink)] underline" href={dataset.download} download>Tải {dataset.title.toLowerCase()}</a>
               <Playground document={dataset.document} origin={origin} />
@@ -117,7 +131,7 @@ export function DataCatalogPage() {
         </ul>
       </section>
 
-      <section aria-labelledby="resources-title" className="rounded-xl border border-edge bg-surface p-4 sm:p-6">
+      <section aria-labelledby="resources-title" className="rounded-lg border border-edge bg-surface p-4 sm:p-6">
         <h2 id="resources-title" className="dx-section-title">Tài nguyên tham chiếu</h2>
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {resourceGroups.map(group => {
@@ -125,14 +139,14 @@ export function DataCatalogPage() {
             const items = collection ? resourceItems(group.path, collection.document) : [];
             return (
             <section key={group.path} aria-label={group.label}>
-              <h3 className="text-sm font-bold text-content">{group.label}</h3>
-              {collection === undefined && <p role="status">Đang tải danh sách…</p>}
-              {collection === null && <p role="alert">Không tải được danh sách.</p>}
-              {collection && items.length === 0 && <p>Không có tài nguyên đang hoạt động.</p>}
+              <h3 className="text-sm font-semibold text-content">{group.label}</h3>
+              {collection === undefined && <p role="status" className="mt-2 text-sm text-content-muted">Đang tải danh sách…</p>}
+              {collection === null && <Alert type="error" className="mt-2">Không tải được danh sách.</Alert>}
+              {collection && items.length === 0 && <p className="mt-2 text-sm text-content-muted">Không có tài nguyên đang hoạt động.</p>}
               <ul className="mt-2 space-y-1.5">
                 {items.map(({ path, name }) => {
                   return <li key={path}><button type="button" aria-pressed={selection?.path === path}
-                    className="min-h-10 w-full rounded-md border border-edge px-2 py-1 text-left text-sm text-[var(--color-primary-ink)] hover:bg-surface-muted aria-pressed:bg-surface-muted"
+                    className="min-h-[44px] w-full rounded-md border border-edge px-2 py-1 text-left text-sm text-[var(--color-primary-ink)] transition-colors duration-150 hover:bg-state-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:bg-state-selected lg:min-h-10"
                     onClick={() => { setResource(null); setResourceError(''); setCopyStatus(''); setSelection({ path, name, sample: !!collection?.sample }); }}>{name}</button></li>;
                 })}
               </ul>
@@ -140,13 +154,14 @@ export function DataCatalogPage() {
           ); })}
         </div>
         {selection && <section aria-label={`JSON-LD ${selection.name}`} className="mt-5 min-w-0 space-y-3 border-t border-edge pt-4">
-          <h3 className="font-bold text-content">{selection.name}</h3>
+          <h3 className="font-semibold text-content">{selection.name}</h3>
           <div className="flex flex-wrap gap-2">
             <input readOnly aria-label="URI tài nguyên" value={uri ?? ''} onFocus={event => event.currentTarget.select()}
-              className="min-w-0 flex-1 rounded-md border border-edge bg-surface p-2 font-mono text-xs" />
-            <button type="button" className="rounded-md border border-edge px-3 text-sm font-semibold" onClick={() => void copyUri()}>
+              className="min-h-10 min-w-0 flex-1 rounded-md border border-edge bg-surface p-2 font-mono text-xs" />
+            <Button variant="secondary" leftIcon={<Copy className="h-4 w-4" />}
+              onClick={() => void copyText(uri, 'Đã sao chép URI.', 'Hãy chọn và sao chép URI trong ô bên cạnh.')}>
               Sao chép URI
-            </button>
+            </Button>
           </div>
           <p role="status" className="text-sm text-content-muted">{copyStatus}</p>
           {resource ? <>
@@ -154,9 +169,13 @@ export function DataCatalogPage() {
               <a className="text-[var(--color-primary-ink)] underline" href={selection.path}>Mở tài nguyên JSON-LD</a>
               <Playground document={resource.document} origin={origin} />
               {resource.sample && <span className="text-content-muted">Tài nguyên mẫu</span>}
+              <Button variant="ghost" size="sm" leftIcon={<Copy className="h-3.5 w-3.5" />}
+                onClick={() => void copyText(JSON.stringify(resource.document, null, 2), 'Đã sao chép JSON-LD.', 'Không sao chép được; hãy chọn nội dung trong khung bên dưới.')}>
+                Sao chép JSON-LD
+              </Button>
             </div>
             <pre tabIndex={0} className="max-w-full overflow-x-auto rounded-md bg-surface-muted p-3 text-xs"><code>{JSON.stringify(resource.document, null, 2)}</code></pre>
-          </> : resourceError ? <p role="alert">{resourceError}</p> : <p role="status" className="text-sm">Đang tải JSON-LD…</p>}
+          </> : resourceError ? <Alert type="error">{resourceError}</Alert> : <p role="status" className="text-sm text-content-muted">Đang tải JSON-LD…</p>}
         </section>}
       </section>
     </div>

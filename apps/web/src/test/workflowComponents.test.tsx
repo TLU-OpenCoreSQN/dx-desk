@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -68,7 +70,7 @@ describe('TicketStageTracker (Model 1)', () => {
     render(<TicketStageTracker ticket={pausedTicket} onActionClick={handleAction} />);
 
     expect(
-      screen.getByText(/ĐANG CHỜ NGƯỜI TẠO PHIẾU PHẢN HỒI · SLA TẠM DỪNG/i)
+      screen.getByRole('heading', { name: 'Đang chờ người tạo phiếu phản hồi · SLA tạm dừng' })
     ).toBeInTheDocument();
     expect(screen.getByText(/Thời gian đã dừng: 30 phút/i)).toBeInTheDocument();
 
@@ -77,26 +79,29 @@ describe('TicketStageTracker (Model 1)', () => {
     expect(handleAction).toHaveBeenCalledWith('reply');
   });
 
-  it('renders pending_approval branch callout', () => {
+  it('shows the pending_approval callout only when it carries an action', () => {
     const approvalTicket: Ticket = {
       ...mockBaseTicket,
       status: 'pending_approval',
     };
 
-    render(<TicketStageTracker ticket={approvalTicket} />);
-    expect(
-      screen.getByText(/CHỜ PHÊ DUYỆT TỪ QUẢN LÝ DỊCH VỤ/i)
-    ).toBeInTheDocument();
+    const { rerender } = render(<TicketStageTracker ticket={approvalTicket} />);
+    // Không có thao tác: trạng thái đã có ở tiêu đề phiếu, không lặp thêm khối cảnh báo.
+    expect(screen.queryByRole('heading', { name: 'Chờ Quản lý phê duyệt' })).not.toBeInTheDocument();
+
+    rerender(<TicketStageTracker ticket={approvalTicket} actionsSlot={<button type="button">Duyệt</button>} />);
+    expect(screen.getByRole('heading', { name: 'Chờ Quản lý phê duyệt' })).toBeInTheDocument();
   });
 
-  it('renders cancelled branch alert callout', () => {
+  it('explains a cancelled ticket in one sentence-case line', () => {
     const cancelledTicket: Ticket = {
       ...mockBaseTicket,
       status: 'cancelled',
     };
 
     render(<TicketStageTracker ticket={cancelledTicket} />);
-    expect(screen.getByRole('status')).toHaveTextContent(/PHIẾU ĐÃ HỦY/i);
+    expect(screen.getByText(/Phiếu đã hủy nên không xử lý tiếp/)).toBeInTheDocument();
+    expect(screen.queryByText(/PHIẾU ĐÃ HỦY/)).not.toBeInTheDocument();
   });
 
   it('toggles mobile expansion view', async () => {
@@ -149,7 +154,7 @@ describe('DeviceWorkflowStepper (Model 2)', () => {
     render(<DeviceWorkflowStepper request={rejectedRequest} />);
 
     const alert = screen.getByRole('alert');
-    expect(alert).toHaveTextContent(/YÊU CẦU ĐÃ BỊ TỪ CHỐI BỞI QUẢN LÝ/i);
+    expect(alert).toHaveTextContent('Quản lý đã từ chối yêu cầu');
     expect(alert).toHaveTextContent('Phòng ban đã vượt định mức thiết bị quý 4.');
     expect(alert).toHaveTextContent('Trần Văn C');
   });
@@ -169,7 +174,7 @@ describe('DeviceWorkflowStepper (Model 2)', () => {
       />
     );
 
-    expect(screen.getByText(/ĐÃ BÀN GIAO THÀNH CÔNG/i)).toBeInTheDocument();
+    expect(screen.getByText(/Đã bàn giao lúc/)).toBeInTheDocument();
     const downloadBtn = screen.getByRole('button', {
       name: /Tải biên bản bàn giao \(\.PDF\)/i,
     });
@@ -223,8 +228,15 @@ describe('TicketKanbanBoard (Model 3)', () => {
     },
   ];
 
+  const renderBoard = (props: Partial<React.ComponentProps<typeof TicketKanbanBoard>> = {}) =>
+    render(
+      <MemoryRouter>
+        <TicketKanbanBoard tickets={tickets} {...props} />
+      </MemoryRouter>
+    );
+
   it('renders 5 operational columns and classifies tickets into them', () => {
-    render(<TicketKanbanBoard tickets={tickets} />);
+    renderBoard();
 
     expect(screen.getAllByText('Mới tiếp nhận').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Hàng đợi nhóm').length).toBeGreaterThan(0);
@@ -237,38 +249,37 @@ describe('TicketKanbanBoard (Model 3)', () => {
     expect(screen.getByText('Cài đặt máy in tầng 2')).toBeInTheDocument();
   });
 
-  it('renders Critical and Standard swimlanes when enabled', () => {
-    render(<TicketKanbanBoard tickets={tickets} groupBySwimlanes={true} />);
+  it('renders Vietnamese-only urgent and standard lanes with ordered headings', () => {
+    renderBoard({ groupBySwimlanes: true });
 
-    expect(screen.getByText(/HÀNG ĐỢI KHẨN CẤP \/ CRITICAL SWIMLANE/i)).toBeInTheDocument();
-    expect(screen.getByText(/HÀNG ĐỢI TIÊU CHUẨN \/ STANDARD SWIMLANE/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Kanban luồng việc' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Khẩn cấp hoặc đã quá hạn SLA' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Các phiếu còn lại' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: 'Sập mạng toàn chi nhánh' })).toBeInTheDocument();
+    expect(screen.queryByText(/SWIMLANE|KANBAN VẬN HÀNH|CRITICAL|LOW/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tách làn khẩn cấp' }));
+    expect(screen.queryByRole('heading', { level: 3, name: 'Các phiếu còn lại' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Sập mạng toàn chi nhánh' })).toBeInTheDocument();
+  });
+
+  it('card titles are real links and the board has no duplicate filter bar', () => {
+    renderBoard({ ticketHref: (t) => `/tickets/${t.id}` });
+
+    expect(screen.getByRole('link', { name: 'Cài đặt máy in tầng 2' })).toHaveAttribute('href', '/tickets/tk-03');
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
   it('supports 1-click claim button affordance', () => {
     const handleClaim = vi.fn();
-    render(
-      <TicketKanbanBoard
-        tickets={tickets}
-        canClaim={(t) => t.id === 'tk-01'}
-        onClaimTicket={handleClaim}
-      />
-    );
+    renderBoard({ canClaim: (t) => t.id === 'tk-01', onClaimTicket: handleClaim });
 
     const claimButton = screen.getByRole('button', { name: /Nhận xử lý ngay/i });
     expect(claimButton).toBeInTheDocument();
     fireEvent.click(claimButton);
     expect(handleClaim).toHaveBeenCalledWith(expect.objectContaining({ id: 'tk-01' }));
-  });
-
-  it('filters cards by search query', async () => {
-    const user = userEvent.setup();
-    render(<TicketKanbanBoard tickets={tickets} />);
-
-    const searchInput = screen.getByPlaceholderText(/Tìm theo tiêu đề, mã.../i);
-    await user.type(searchInput, 'máy in');
-
-    expect(screen.getByText('Cài đặt máy in tầng 2')).toBeInTheDocument();
-    expect(screen.queryByText('Sập mạng toàn chi nhánh')).not.toBeInTheDocument();
   });
 });
 
@@ -378,8 +389,11 @@ describe('AiTriageDiff (Model 5)', () => {
     );
 
     expect(
-      screen.getByText(/ĐỀ XUẤT PHÂN LOẠI & GÁN NHÓM TỰ ĐỘNG TỪ AI TRỢ LÝ/i)
+      screen.getByRole('heading', { level: 2, name: 'Đề xuất phân loại từ trợ lý AI' })
     ).toBeInTheDocument();
+    // Nhãn chỉ tiếng Việt, không có lý do tự bịa khi mô hình không trả về.
+    expect(screen.getByRole('row', { name: /Mức ưu tiên Bình thường Cao Thay đổi/ })).toBeInTheDocument();
+    expect(screen.queryByText(/\(High\)|\(Normal\)|Khớp nội dung|Định tuyến tự động/)).not.toBeInTheDocument();
     expect(screen.getByText('Độ tin cậy: 94%')).toBeInTheDocument();
     expect(screen.getByText('Danh mục sự cố')).toBeInTheDocument();
     expect(screen.getByText('Danh mục chung')).toBeInTheDocument();
@@ -402,11 +416,11 @@ describe('AiTriageDiff (Model 5)', () => {
     );
 
     fireEvent.click(
-      screen.getByRole('button', { name: /Chấp nhận toàn bộ & Chuyển giao/i })
+      screen.getByRole('button', { name: 'Xác nhận đề xuất' })
     );
     expect(handleAccept).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /Tùy chỉnh chi tiết/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sửa đề xuất' }));
     expect(handleCustomize).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: /Bỏ qua đề xuất/i }));

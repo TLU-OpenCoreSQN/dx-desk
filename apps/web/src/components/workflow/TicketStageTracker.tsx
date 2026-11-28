@@ -13,6 +13,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Ticket, TicketEvent } from '../../types/api';
+import { Button } from '../common/Button';
 import { TicketStatus, STATUS_LABELS } from '../../lib/ticketWorkflow';
 
 export interface TicketStageTrackerProps {
@@ -106,7 +107,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
   return (
     <section
       aria-label="Tiến trình xử lý phiếu"
-      className={`@container rounded-lg border border-edge bg-surface p-4 shadow-2xs ${className}`}
+      className={`@container rounded-lg border border-edge bg-surface p-4 ${className}`}
     >
       {/* Header section with ticket title and current status */}
       {/* Trạng thái và mã phiếu đã có ở header; ở đây chỉ còn tên khối. */}
@@ -120,7 +121,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
       <div className="mt-3 block @2xl:hidden">
         <div className="flex items-center justify-between rounded-md border border-edge bg-surface-muted px-3 py-2 text-xs">
           <div className="flex items-center gap-2 font-medium text-content">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
               {effectiveLinearIndex >= 0 ? effectiveLinearIndex + 1 : '!'}
             </span>
             <span>
@@ -132,7 +133,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
           <button
             type="button"
             onClick={() => setMobileExpanded(!mobileExpanded)}
-            className="-my-3 inline-flex min-h-11 items-center gap-1 rounded-xs px-2 font-semibold text-[var(--color-primary-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="-my-3 inline-flex min-h-11 items-center gap-1 rounded-sm px-2 font-semibold text-[var(--color-primary-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-expanded={mobileExpanded}
           >
             <span>{mobileExpanded ? 'Thu gọn' : 'Xem tiến trình'}</span>
@@ -171,7 +172,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
 
             let nodeClass = 'border-2 border-edge bg-surface-muted text-content-muted';
             if (isCompleted) {
-              nodeClass = 'border-2 border-status-success bg-status-success text-white shadow-2xs';
+              nodeClass = 'border-2 border-status-success bg-status-success text-white';
             } else if (isBranchPoint) {
               nodeClass = isBranchWaiting
                 ? 'border-2 border-status-warning bg-status-warning text-white ring-4 ring-status-warning-bg'
@@ -203,7 +204,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
 
                 {/* Node circle */}
                 <div
-                  className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold text-xs transition-all ${nodeClass}`}
+                  className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold text-xs transition-colors ${nodeClass}`}
                 >
                   {isCompleted ? (
                     <Check className="h-4 w-4 stroke-[2.5]" aria-hidden="true" />
@@ -223,7 +224,7 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
                   <span
                     className={`text-xs font-semibold ${
                       isCurrent || isBranchPoint
-                        ? 'text-[var(--color-primary-ink)] font-bold'
+                        ? 'text-[var(--color-primary-ink)] font-semibold'
                         : isCompleted
                         ? 'text-content'
                         : 'text-content-muted'
@@ -250,90 +251,52 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
         </ol>
       </div>
 
-      {/* Callout chờ phản hồi chỉ hiện khi kèm thao tác; nếu không, SlaPauseBanner đã nói điều này. */}
+      {/* Ghi chú nhánh chỉ hiện khi kèm thao tác: trạng thái đã có ở tiêu đề phiếu, banner SLA
+          và cột thao tác, nên không lặp lại một khối cảnh báo thứ ba. */}
       {isBranchWaiting && (onActionClick || actionsSlot) && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="mt-4 rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 @2xl:p-4 text-status-warning"
-        >
+        <div className="mt-4 rounded-lg border border-status-warning-border bg-status-warning-bg p-3 text-sm text-status-warning">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
-                <Pause className="h-3.5 w-3.5" aria-hidden="true" />
-              </span>
-              <h3 className="text-xs font-bold uppercase tracking-wider">
-                ĐANG CHỜ NGƯỜI TẠO PHIẾU PHẢN HỒI · SLA TẠM DỪNG
-              </h3>
-            </div>
+            <h3 className="flex items-center gap-2 font-semibold">
+              <Pause className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Đang chờ người tạo phiếu phản hồi · SLA tạm dừng
+            </h3>
             {pausedMinutes > 0 && (
-              <span className="tabular-nums text-xs font-semibold">
+              <span data-numeric className="text-xs font-medium">
                 Thời gian đã dừng: {pausedMinutes} phút
               </span>
             )}
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-content">
-            Kỹ thuật viên cần người tạo phiếu bổ sung thông tin để xử lý tiếp. Thời hạn SLA tạm
-            dừng cho đến khi có phản hồi.
+          <p className="mt-1 text-content">
+            Kỹ thuật viên cần người tạo phiếu bổ sung thông tin để xử lý tiếp.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {onActionClick && (
-              <button
-                type="button"
-                onClick={() => onActionClick('reply')}
-                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-md bg-status-warning px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-warning"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span>Phản hồi ngay</span>
-              </button>
+              <Button size="sm" leftIcon={<MessageSquare className="h-3.5 w-3.5" />} onClick={() => onActionClick('reply')}>
+                Phản hồi ngay
+              </Button>
             )}
             {actionsSlot}
           </div>
         </div>
       )}
 
-      {/* Conditional Branch Callout: Pending Manager Approval */}
-      {isBranchApproval && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="mt-4 rounded-md border border-status-pending-border bg-status-pending-bg p-3.5 @2xl:p-4 text-status-pending"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-pending text-white">
-                <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
-              </span>
-              <h3 className="text-xs font-bold uppercase tracking-wider">
-                CHỜ PHÊ DUYỆT TỪ QUẢN LÝ DỊCH VỤ
-              </h3>
-            </div>
-          </div>
-          <p className="mt-2 text-xs leading-relaxed text-content">
-            Yêu cầu này cần được phê duyệt trước khi giao kỹ thuật viên xử lý.
-          </p>
-          {actionsSlot && <div className="mt-3">{actionsSlot}</div>}
+      {isBranchApproval && actionsSlot && (
+        <div className="mt-4 rounded-lg border border-status-pending-border bg-status-pending-bg p-3 text-sm text-status-pending">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
+            Chờ Quản lý phê duyệt
+          </h3>
+          <p className="mt-1 text-content">Yêu cầu này cần được phê duyệt trước khi giao kỹ thuật viên xử lý.</p>
+          <div className="mt-3">{actionsSlot}</div>
         </div>
       )}
 
-      {/* Conditional Branch Callout: Cancelled */}
+      {/* Phiếu đã hủy: các bước phía trên không còn bước hiện tại, nên nói rõ một dòng và lối đi tiếp. */}
       {isBranchCancelled && (
-        <div
-          role="status"
-          className="mt-4 rounded-md border border-status-danger-border bg-status-danger-bg p-3.5 @2xl:p-4 text-status-danger"
-        >
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-danger text-white">
-              <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
-            </span>
-            <h3 className="text-xs font-bold uppercase tracking-wider">
-              PHIẾU ĐÃ HỦY
-            </h3>
-          </div>
-          <p className="mt-2 text-xs leading-relaxed text-content">
-            Phiếu này đã hủy và không thể xử lý tiếp. Nếu sự cố vẫn còn, hãy tạo phiếu mới.
-          </p>
-        </div>
+        <p className="mt-4 flex items-start gap-2 text-sm text-content-muted">
+          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-status-danger" aria-hidden="true" />
+          Phiếu đã hủy nên không xử lý tiếp. Nếu sự cố vẫn còn, hãy tạo phiếu mới.
+        </p>
       )}
     </section>
   );

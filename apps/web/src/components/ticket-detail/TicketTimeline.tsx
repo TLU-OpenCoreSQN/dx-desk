@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ArrowRight, Calendar, History } from 'lucide-react';
 import { TicketEvent } from '../../types/api';
 import { StatusBadge } from '../common/Badge';
@@ -49,7 +49,8 @@ function eventSummary(evt: TicketEvent): {
     sla_breached: 'Đã vi phạm SLA',
     ai_suggestion_applied: 'Đã xác nhận đề xuất AI',
   };
-  let heading = headings[evt.event_type] || evt.event_type;
+  // Loại sự kiện chưa có nhãn: câu chung, không hiện mã kỹ thuật.
+  let heading = headings[evt.event_type] || 'Cập nhật phiếu';
   if (evt.event_type === 'created') heading = 'Đã tiếp nhận phiếu';
   else if (evt.event_type === 'status_changed') {
     heading =
@@ -83,35 +84,55 @@ const formatDayLabel = (isoString: string): string => {
   });
 };
 
+type TimelineOrder = 'oldest' | 'newest';
+
 export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
+  const [order, setOrder] = useState<TimelineOrder>('oldest');
   const eventGroups = useMemo<EventGroup[]>(() => {
     const groups: EventGroup[] = [];
-    for (const evt of events) {
+    const ordered = order === 'newest' ? [...events].reverse() : events;
+    for (const evt of ordered) {
       const key = dayKey(evt.created_at);
       const last = groups[groups.length - 1];
       if (last && last.key === key) last.items.push(evt);
       else groups.push({ key, label: formatDayLabel(evt.created_at), items: [evt] });
     }
     return groups;
-  }, [events]);
+  }, [events, order]);
 
   return (
-    <section className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] px-5 py-3.5">
-        <div className="flex items-center gap-2">
-          <History className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
-          <h2 className="dx-section-title">
+    <section className="overflow-hidden rounded-lg border border-edge bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-5 py-3">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h2 className="dx-section-title flex items-center gap-2">
+            <History className="h-4 w-4 shrink-0 self-center text-[var(--color-primary-ink)]" aria-hidden="true" />
             Dòng thời gian xử lý
           </h2>
+          <span data-numeric className="text-xs text-content-muted">{events.length} sự kiện</span>
         </div>
-        <span className="rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-2 py-0.5 tabular-nums text-xs font-semibold text-[var(--color-content-muted)]">
-          {events.length} sự kiện
-        </span>
+        {events.length > 1 && (
+          <div role="group" aria-label="Thứ tự sự kiện" className="inline-flex rounded-md border border-edge bg-surface p-0.5">
+            {([['oldest', 'Cũ nhất trước'], ['newest', 'Mới nhất trước']] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={order === key}
+                onClick={() => setOrder(key)}
+                className={`inline-flex min-h-[44px] items-center rounded-sm px-2.5 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-8 ${
+                  order === key ? 'bg-primary text-white' : 'text-content-muted hover:bg-state-hover hover:text-content'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="px-5 py-5">
         {events.length === 0 ? (
           <EmptyState
+            headingLevel={3}
             title="Chưa có sự kiện nào"
             description="Phiếu này chưa ghi nhận thêm sự kiện xử lý nào trên hệ thống."
             icon={<History className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
@@ -120,18 +141,16 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
           <div className="space-y-5">
             {eventGroups.map((group) => (
               <section key={group.key} aria-label={`Sự kiện ngày ${group.label}`}>
-                <h3 className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-content-muted">
+                <h3 className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-content-muted">
                   <Calendar className="h-3 w-3" aria-hidden="true" />
                   <span>{group.label}</span>
-                  <span className="rounded-sm bg-surface-muted px-1.5 py-0.5 tabular-nums text-xs normal-case tracking-normal text-content-muted">
-                    {group.items.length} sự kiện
-                  </span>
+                  <span data-numeric className="font-normal">· {group.items.length} sự kiện</span>
                 </h3>
 
                 <div className="relative">
                   <span
                     aria-hidden="true"
-                    className="absolute bottom-3 left-3.5 top-3 w-px bg-[var(--color-edge-subtle)]"
+                    className="absolute bottom-3 left-3.5 top-3 w-px bg-edge"
                   />
                   <ol className="space-y-3">
                     {group.items.map((evt, idx) => {
@@ -144,7 +163,7 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                         <li key={evt.id || idx} className="relative pl-10">
                           <span
                             aria-hidden="true"
-                            className="absolute left-0 top-0 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] shadow-2xs ring-4 ring-surface"
+                            className="absolute left-0 top-0 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] ring-4 ring-surface"
                           >
                             {Icon ? (
                               <Icon className="h-3.5 w-3.5" />
@@ -168,10 +187,10 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
 
                             <p className="mt-0.5 text-xs text-content-muted">
                               Thực hiện bởi{' '}
-                              <span className="break-all tabular-nums font-semibold text-content">
+                              <span className="break-words font-medium text-content">
                                 {evt.actor_type === 'system' || evt.actor_type === 'ai'
                                   ? `${evt.actor_type === 'ai' ? 'AI' : 'Hệ thống'}${evt.actor_name ? ` (${evt.actor_name})` : ''}`
-                                  : evt.actor_name || evt.actor_id || 'Không có thông tin tác nhân'}
+                                  : evt.actor_name || 'người dùng chưa có tên hiển thị'}
                               </span>
                             </p>
 
@@ -189,21 +208,21 @@ export const TicketTimeline: React.FC<TicketTimelineProps> = ({ events }) => {
                             )}
 
                             {summary.note && (
-                              <div className="mt-2 rounded-md border border-edge-subtle bg-surface-muted/80 px-3 py-2">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-content-muted">
+                              <div className="mt-2 rounded-md border border-edge bg-surface-muted px-3 py-2">
+                                <p className="text-xs font-semibold text-content-muted">
                                   Ghi chú
                                 </p>
-                                <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-content">
+                                <p className="mt-0.5 whitespace-pre-wrap break-words text-[0.8125rem] leading-relaxed text-content">
                                   {summary.note}
                                 </p>
                               </div>
                             )}
                             {summary.resolutionNote && (
                               <div className="mt-2 rounded-md border border-status-success-border bg-status-success-bg px-3 py-2">
-                                <p className="text-xs font-semibold uppercase tracking-wider text-status-success">
+                                <p className="text-xs font-semibold text-status-success">
                                   Cách giải quyết
                                 </p>
-                                <p className="mt-0.5 whitespace-pre-wrap break-words text-xs leading-relaxed text-status-success">
+                                <p className="mt-0.5 whitespace-pre-wrap break-words text-[0.8125rem] leading-relaxed text-content">
                                   {summary.resolutionNote}
                                 </p>
                               </div>

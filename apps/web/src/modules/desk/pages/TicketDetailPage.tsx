@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ClipboardList, FileText, Info } from 'lucide-react';
 import { getTicketById, getTicketEvents, getCategories } from '../../../services/api';
 import { Ticket, TicketEvent, Category } from '../../../types/api';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
+import { Skeleton, SkeletonText } from '../../../components/common/Skeleton';
+import { requestFieldEntries } from '../../../lib/requestFields';
 import { TicketDetailHeader, TicketDetailNav } from '../../../components/ticket-detail/TicketDetailHeader';
 import { TicketTimeline } from '../../../components/ticket-detail/TicketTimeline';
 import {
@@ -20,7 +22,6 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 export const TicketDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { profile, roles } = useAuth();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -76,42 +77,33 @@ export const TicketDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div
-        className="mx-auto w-full max-w-6xl space-y-5"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-      >
+      <div className="w-full space-y-5" role="status" aria-busy="true">
         <span className="sr-only">Đang tải thông tin chi tiết phiếu yêu cầu...</span>
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] pb-2">
-          <div className="h-9 w-44 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
-          <div className="h-9 w-24 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+        <div className="flex items-center justify-between gap-2 border-b border-edge pb-2">
+          <Skeleton decorative className="h-8 w-44" />
+          <Skeleton decorative className="h-8 w-24" />
         </div>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_288px] xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-5">
-            <div className="rounded-[4px] border border-[var(--color-edge-subtle)] p-5">
+            <div className="rounded-lg border border-edge p-5">
               <div className="flex flex-wrap gap-2">
-                <div className="h-5 w-20 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
-                <div className="h-5 w-16 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
+                <Skeleton decorative className="h-5 w-20" />
+                <Skeleton decorative className="h-5 w-16" />
               </div>
-              <div className="mt-4 h-7 w-3/4 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
-              <div className="mt-3 h-4 w-1/2 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
-              <div className="mt-6 h-24 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+              <Skeleton decorative className="mt-4 h-7 w-3/4" />
+              <Skeleton decorative className="mt-3 h-4 w-1/2" />
+              <Skeleton decorative className="mt-6 h-24 w-full" />
             </div>
-            <div className="rounded-[4px] border border-[var(--color-edge-subtle)] p-5">
-              <div className="h-4 w-36 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
-              <div className="mt-4 space-y-2">
-                <div className="h-3 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
-                <div className="h-3 w-11/12 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
-                <div className="h-3 w-2/3 animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
-              </div>
+            <div className="rounded-lg border border-edge p-5">
+              <Skeleton decorative className="h-4 w-36" />
+              <SkeletonText decorative className="mt-4" lineHeight="h-3" lines={3} />
             </div>
           </div>
-          <div className="rounded-[4px] border border-[var(--color-edge-subtle)] p-4 max-lg:hidden">
-            <div className="h-4 w-24 animate-pulse rounded-[4px] bg-[var(--color-surface-muted)]" />
+          <div className="rounded-lg border border-edge p-4 max-lg:hidden">
+            <Skeleton decorative className="h-4 w-24" />
             <div className="mt-4 space-y-2">
-              <div className="h-10 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
-              <div className="h-10 w-full animate-pulse rounded-[4px] bg-[var(--color-surface-warm)]" />
+              <Skeleton decorative className="h-10 w-full" />
+              <Skeleton decorative className="h-10 w-full" />
             </div>
           </div>
         </div>
@@ -122,14 +114,13 @@ export const TicketDetailPage: React.FC = () => {
   if (error || !ticket) {
     return (
       <div className="w-full space-y-4">
-        <button
-          type="button"
-          onClick={() => navigate('/tickets')}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-primary-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
+        <Link
+          to="/tickets"
+          className="-ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-sm px-1 text-[0.8125rem] font-medium text-content-muted transition-colors duration-150 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-8"
         >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Quay lại danh sách phiếu</span>
-        </button>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Về danh sách phiếu
+        </Link>
         <ErrorMessage
           error={error || new Error('Không tìm thấy thông tin phiếu yêu cầu.')}
           onRetry={() => void loadTicketData()}
@@ -140,20 +131,16 @@ export const TicketDetailPage: React.FC = () => {
   }
 
   const isStaff = roles.some((role) => role === 'Agent' || role === 'Manager');
-  const ticketFields = ticket.request_fields || {};
-  const hasFields = Object.values(ticketFields).some((value) => typeof value === 'string');
+  // Nhãn tiếng Việt theo danh mục (hoặc nhãn dự phòng); không bao giờ hiện khóa kỹ thuật.
+  const fieldEntries = requestFieldEntries(ticket.request_fields, category);
 
   return (
     <div
       className={`w-full space-y-5 pb-6 lg:space-y-6 ${
-        bottomBar === 'tall' ? 'max-lg:pb-[75vh]' : bottomBar === 'compact' ? 'max-lg:pb-40' : ''
+        bottomBar === 'tall' ? 'max-lg:pb-[calc(55dvh+1rem)]' : bottomBar === 'compact' ? 'max-lg:pb-40' : ''
       }`}
     >
-      <TicketDetailNav
-        isRefreshing={isRefreshing}
-        onRefresh={() => void loadTicketData(true)}
-        onBack={() => navigate('/tickets')}
-      />
+      <TicketDetailNav isRefreshing={isRefreshing} onRefresh={() => void loadTicketData(true)} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_288px] xl:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
         {/* Cột trái là một container: tiêu đề, banner và tiến trình co theo bề rộng cột,
@@ -177,11 +164,11 @@ export const TicketDetailPage: React.FC = () => {
             />
           )}
 
-          <section className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
-            <div className="flex items-center gap-2 border-b border-[var(--color-edge-subtle)] px-5 py-3.5">
+          <section className="overflow-hidden rounded-lg border border-edge bg-surface">
+            <div className="flex items-center gap-2 border-b border-edge px-5 py-3">
               <FileText className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
               <h2 className="dx-section-title">
-                Mô tả chi tiết nội dung sự cố
+                Mô tả sự cố
               </h2>
             </div>
             <div className="px-5 py-4">
@@ -190,38 +177,31 @@ export const TicketDetailPage: React.FC = () => {
               </p>
             </div>
 
-            {hasFields && (
-              <div className="border-t border-[var(--color-edge-subtle)] px-5 py-4">
-                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--color-content)]">
+            {fieldEntries.length > 0 && (
+              <div className="border-t border-edge px-5 py-4">
+                <h3 className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-content">
                   <ClipboardList className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
                   <span>Thông tin bổ sung theo danh mục</span>
                 </h3>
                 <dl className="mt-2.5 grid grid-cols-1 gap-2 @md:grid-cols-2">
-                  {Object.entries(ticketFields).map(([key, val]) =>
-                    typeof val === 'string' ? (
-                      <div
-                        key={key}
-                        className="min-w-0 rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-3"
-                      >
-                        <dt className="mb-0.5 break-all text-xs text-[var(--color-content-muted)]">
-                          {category?.requirement_fields?.find((field) => field.key === key)?.label || key}
-                        </dt>
-                        <dd className="whitespace-pre-wrap break-words text-xs font-semibold text-[var(--color-content)]">
-                          {val}
-                        </dd>
-                      </div>
-                    ) : null
-                  )}
+                  {fieldEntries.map((field) => (
+                    <div key={field.key} className="min-w-0 rounded-md border border-edge bg-surface-muted p-3">
+                      <dt className="mb-0.5 text-xs text-content-muted">{field.label}</dt>
+                      <dd className="whitespace-pre-wrap break-words text-[0.8125rem] font-medium text-content">
+                        {field.value}
+                      </dd>
+                    </div>
+                  ))}
                 </dl>
               </div>
             )}
 
             {ticket.resolution_note && (
-              <section aria-label="Kết quả xử lý" className="border-t border-[var(--color-edge-subtle)] px-5 py-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-content)]">
+              <section aria-label="Kết quả xử lý" className="border-t border-edge px-5 py-4">
+                <h3 className="text-[0.8125rem] font-semibold text-content">
                   Kết quả xử lý
                 </h3>
-                <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--color-content)]">
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-content">
                   {ticket.resolution_note}
                 </p>
               </section>
@@ -235,10 +215,10 @@ export const TicketDetailPage: React.FC = () => {
           {/* Người tạo phiếu: cho biết khi nào trang này cần họ. Quy tắc ghi chú giải quyết
               chỉ nằm ở form "Đánh dấu đã giải quyết", nơi nó có tác dụng. */}
           {!isStaff && (
-            <div className="flex items-start gap-3 rounded-[8px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] p-4 text-xs text-[var(--color-content-muted)] shadow-2xs">
+            <div className="flex items-start gap-3 rounded-lg border border-edge bg-surface-muted p-4 text-[0.8125rem] text-content-muted">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
               <p className="leading-relaxed">
-                <span className="font-bold text-[var(--color-content)]">Lưu ý:</span> Khi phiếu cần
+                <span className="font-semibold text-[var(--color-content)]">Lưu ý:</span> Khi phiếu cần
                 bạn, thao tác sẽ xuất hiện tại đây: trả lời khi kỹ thuật viên hỏi thêm, hoặc xác nhận
                 đóng phiếu khi sự cố đã được giải quyết.
               </p>

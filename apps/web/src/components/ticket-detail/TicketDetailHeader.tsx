@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, RefreshCw, Tag, User, UserCheck, Users } from 'lucide-react';
 import { Ticket, Category } from '../../types/api';
 import { PriorityBadge, StatusBadge } from '../common/Badge';
+import { Button } from '../common/Button';
 
 export interface TicketDetailNavProps {
   isRefreshing?: boolean;
   onRefresh?: () => void;
-  onBack?: () => void;
 }
 
 export interface TicketDetailHeaderProps {
@@ -31,40 +32,33 @@ const formatDateTime = (isoString?: string): string => {
 };
 
 /** Hàng điều hướng trên cùng, trải hết chiều rộng trang (trên lưới nội dung và cột thao tác). */
-export const TicketDetailNav: React.FC<TicketDetailNavProps> = ({
-  isRefreshing = false,
-  onRefresh,
-  onBack,
-}) => (
-  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-edge)] pb-2">
-    <button
-      type="button"
-      onClick={onBack}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] px-2 text-xs font-semibold text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-primary-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-9"
+export const TicketDetailNav: React.FC<TicketDetailNavProps> = ({ isRefreshing = false, onRefresh }) => (
+  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge pb-2">
+    {/* Liên kết thật tới danh sách: trang chi tiết thường được mở trực tiếp từ thông báo. */}
+    <Link
+      to="/tickets"
+      className="-ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-sm px-1 text-[0.8125rem] font-medium text-content-muted transition-colors duration-150 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-8"
     >
-      <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-      <span>Quay lại danh sách phiếu</span>
-    </button>
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      Về danh sách phiếu
+    </Link>
 
-    <button
-      type="button"
+    <Button
+      variant="secondary"
+      size="sm"
       onClick={onRefresh}
       disabled={isRefreshing}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-[4px] border border-[var(--color-edge)] bg-surface px-3 text-xs font-semibold text-[var(--color-content)] shadow-xs transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-9"
+      leftIcon={<RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} />}
     >
-      <RefreshCw
-        className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`}
-        aria-hidden="true"
-      />
-      <span>{isRefreshing ? 'Đang làm mới...' : 'Làm mới'}</span>
-    </button>
+      {isRefreshing ? 'Đang làm mới...' : 'Làm mới'}
+    </Button>
   </div>
 );
 
 /** Thẻ tiêu đề phiếu: trạng thái, ưu tiên, mã, tiêu đề và thông tin chính. */
 export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, category }) => {
   return (
-    <header className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs">
+    <header className="overflow-hidden rounded-lg border border-edge bg-surface">
       <div className="px-5 py-5 sm:px-6 sm:py-6">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={ticket.status} />
@@ -72,7 +66,8 @@ export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, 
           {/* Mã ngắn giống danh sách phiếu; mã đầy đủ vẫn có trong title và cho trình đọc màn hình. */}
           <span
             title={ticket.id}
-            className="tabular-nums text-xs font-semibold text-[var(--color-content-muted)]"
+            data-numeric
+            className="font-mono text-xs text-content-muted"
           >
             <span className="sr-only">Mã phiếu {ticket.id}</span>
             <span aria-hidden="true">#{ticket.id.slice(0, 8)}</span>
@@ -83,20 +78,20 @@ export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, 
           {ticket.title}
         </h1>
 
-        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2.5 text-xs @md:grid-cols-2">
+        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2.5 text-[0.8125rem] @md:grid-cols-2">
           <div className="flex min-w-0 items-start gap-1.5">
             <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
             <dt className="shrink-0 text-[var(--color-content-muted)]">Người tạo:</dt>
-            <dd className="min-w-0 break-all tabular-nums font-semibold text-[var(--color-content)]">
-              {ticket.requester_name || ticket.requester_id}
+            <dd className="min-w-0 break-words font-medium text-content">
+              {ticket.requester_name || <span className="font-normal text-content-muted">Chưa có tên hiển thị</span>}
             </dd>
           </div>
 
           <div className="flex min-w-0 items-start gap-1.5">
             <Tag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
             <dt className="shrink-0 text-[var(--color-content-muted)]">Danh mục:</dt>
-            <dd className="min-w-0 break-words font-semibold text-[var(--color-content)]">
-              {category ? category.name : ticket.category_id}
+            <dd className="min-w-0 break-words font-medium text-content">
+              {category ? category.name : <span className="font-normal text-content-muted">Chưa xác định</span>}
             </dd>
           </div>
 
@@ -106,11 +101,11 @@ export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, 
               aria-hidden="true"
             />
             <dt className="shrink-0 text-[var(--color-content-muted)]">Phụ trách:</dt>
-            <dd className="min-w-0 break-all font-semibold text-[var(--color-content)]">
+            <dd className="min-w-0 break-words font-medium text-content">
               {ticket.assigned_to ? (
-                <span className="text-[var(--color-primary-ink)]">{ticket.assignee_name || ticket.assigned_to}</span>
+                ticket.assignee_name || 'Kỹ thuật viên đã nhận'
               ) : (
-                <span className="font-normal italic text-[var(--color-content-muted)]">Chưa phân công</span>
+                <span className="font-normal text-content-muted">Chưa phân công</span>
               )}
             </dd>
           </div>
@@ -118,12 +113,13 @@ export const TicketDetailHeader: React.FC<TicketDetailHeaderProps> = ({ ticket, 
           <div className="flex min-w-0 items-start gap-1.5">
             <Users className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
             <dt className="shrink-0 text-[var(--color-content-muted)]">Nhóm xử lý:</dt>
-            <dd className="min-w-0 break-words font-semibold text-[var(--color-content)]">
-              {ticket.team_name || (ticket.assigned_team_id ? (
-                `Chưa có tên nhóm (${ticket.assigned_team_id})`
-              ) : (
-                <span className="font-normal italic text-[var(--color-content-muted)]">Chưa gán nhóm</span>
-              ))}
+            <dd className="min-w-0 break-words font-medium text-content">
+              {/* Không bao giờ hiện UUID của nhóm cho người dùng. */}
+              {ticket.team_name || (
+                <span className="font-normal text-content-muted">
+                  {ticket.assigned_team_id ? 'Nhóm chưa có tên hiển thị' : 'Chưa gán nhóm'}
+                </span>
+              )}
             </dd>
           </div>
 

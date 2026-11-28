@@ -64,12 +64,14 @@ describe('TicketListPage Component', () => {
       </MemoryRouter>
     );
 
-  it('khung bảng không tạo vùng cuộn riêng để header sticky không đè lên phiếu đầu', async () => {
-    vi.spyOn(apiService, 'getTickets').mockResolvedValue({ data: mockTickets, limit: 25, offset: 0 });
+  it('renders a semantic table with column headers and an SLA column', async () => {
+    vi.spyOn(apiService, 'getTickets').mockResolvedValue({ data: mockTickets, limit: 25, offset: 0, total: 2 });
     renderComponent();
-    const table = await screen.findByTestId('ticket-table');
-    // overflow-hidden làm khung thành scroll container của header `sticky top-14`.
-    expect(table.className).not.toMatch(/overflow-(hidden|auto|scroll)/);
+    const table = await screen.findByRole('table', { name: 'Danh sách phiếu yêu cầu' });
+    const headers = Array.from(table.querySelectorAll('th')).map((th) => th.textContent);
+    expect(headers).toEqual(['Mã', 'Tiêu đề', 'Ưu tiên', 'Trạng thái', 'Phụ trách', 'Hạn SLA', 'Cập nhật']);
+    table.querySelectorAll('th').forEach((th) => expect(th).toHaveAttribute('scope', 'col'));
+    expect(screen.queryByText(/chỉ áp dụng cho trang/i)).not.toBeInTheDocument();
   });
 
   it('renders ticket table with real data', async () => {
@@ -104,19 +106,29 @@ describe('TicketListPage Component', () => {
     });
   });
 
-  it('can return from an empty last page even with a filter active', async () => {
-    const firstPage = Array.from({ length: 25 }, (_, i) => ({ ...mockTickets[0], id: `ticket-${i}` }));
-    const request = vi.spyOn(apiService, 'getTickets').mockImplementation(async (_limit, offset) => ({
-      data: offset === 0 ? firstPage : [], limit: 25, offset: offset ?? 0,
-    }));
-    renderComponent();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Trang sau' })).toBeEnabled());
-    fireEvent.change(screen.getByLabelText('Tìm trong trang hiện tại'), { target: { value: 'không trùng' } });
-    expect(screen.getByText('Không tìm thấy kết quả phù hợp')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Trang trước' })).toBeEnabled());
-    fireEvent.click(screen.getByRole('button', { name: 'Trang trước' }));
-    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0));
+  it('sends search, priority and status to the server and resets to page 1', async () => {
+    const request = vi.spyOn(apiService, 'getTickets').mockResolvedValue({ data: mockTickets, limit: 25, offset: 25, total: 60 });
+    render(
+      <MemoryRouter initialEntries={['/tickets?page=2']}>
+        <TicketListPage />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 25, {}));
+    expect(await screen.findByText('60 phiếu · Trang 2/3')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Mức ưu tiên'), { target: { value: 'high' } });
+    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0, { priority: 'high' }));
+
+    fireEvent.change(screen.getByLabelText('Trạng thái'), { target: { value: 'new' } });
+    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0, { priority: 'high', status: 'new' }));
+
+    fireEvent.change(screen.getByLabelText('Tìm phiếu'), { target: { value: '  VPN ' } });
+    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0, { q: 'VPN', priority: 'high', status: 'new' }));
+
+    fireEvent.change(screen.getByLabelText('Sắp xếp'), { target: { value: 'sla' } });
+    await waitFor(() =>
+      expect(request).toHaveBeenLastCalledWith(25, 0, { q: 'VPN', priority: 'high', status: 'new', sort: 'sla_due' })
+    );
   });
 
   it('offers a return to the previous page when the next page is empty', async () => {
@@ -128,7 +140,7 @@ describe('TicketListPage Component', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Trang sau' }));
     expect(await screen.findByText('Trang này không còn phiếu')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Quay lại trang trước' }));
-    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0));
+    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0, {}));
   });
 
   it('allows returning to the previous page after a page load error', async () => {
@@ -141,7 +153,7 @@ describe('TicketListPage Component', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Trang sau' }));
     await screen.findByText('Không thể tải danh sách phiếu yêu cầu');
     fireEvent.click(screen.getByRole('button', { name: 'Trang trước' }));
-    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0));
+    await waitFor(() => expect(request).toHaveBeenLastCalledWith(25, 0, {}));
   });
 
   it('renders error state and retry button on API failure', async () => {
@@ -165,7 +177,7 @@ describe('TicketListPage Component', () => {
     });
   });
 
-  it('renders an 8-character ticket code and makes the whole row a real link', async () => {
+  it('renders an 8-character ticket code and a real link to the ticket', async () => {
     const longId = 'abcdef12-3456-7890';
     vi.spyOn(apiService, 'getTickets').mockResolvedValue({
       data: [{ ...mockTickets[0], id: longId, title: 'Sự cố máy in tầng 3' }],
@@ -180,31 +192,33 @@ describe('TicketListPage Component', () => {
     expect(screen.getByText('#abcdef12')).toHaveAttribute('title', longId);
   });
 
-  it('shows the filtered result count and clears filters from the empty state', async () => {
-    vi.spyOn(apiService, 'getTickets').mockResolvedValue({
-      data: mockTickets,
-      limit: 25,
-      offset: 0,
-    });
+  it('shows the server total for filters and clears them from the empty state', async () => {
+    vi.spyOn(apiService, 'getTickets').mockImplementation(async (_limit, _offset, filters = {}) =>
+      filters.q === 'không trùng'
+        ? { data: [], limit: 25, offset: 0, total: 0 }
+        : filters.q === 'VPN'
+          ? { data: [mockTickets[1]], limit: 25, offset: 0, total: 1 }
+          : { data: mockTickets, limit: 25, offset: 0, total: 2 }
+    );
 
     renderComponent();
     await screen.findByText('Cài đặt phần mềm VPN');
-    expect(screen.getByText('2 phiếu trên trang này')).toBeInTheDocument();
+    expect(screen.getByText('2 phiếu · Trang 1/1')).toBeInTheDocument();
 
-    const search = screen.getByLabelText('Tìm trong trang hiện tại');
+    const search = screen.getByLabelText('Tìm phiếu');
     fireEvent.change(search, { target: { value: 'VPN' } });
-    expect(screen.getByText('1/2 phiếu khớp bộ lọc')).toBeInTheDocument();
+    expect(await screen.findByText('1 phiếu khớp bộ lọc · Trang 1/1')).toBeInTheDocument();
 
     fireEvent.change(search, { target: { value: 'không trùng' } });
-    expect(screen.getByText('Không tìm thấy kết quả phù hợp')).toBeInTheDocument();
+    expect(await screen.findByText('Không tìm thấy kết quả phù hợp')).toBeInTheDocument();
 
     // Toolbar and empty state must not expose two identically named clear buttons.
     const clearButtons = screen.getAllByRole('button', { name: 'Xóa bộ lọc' });
     expect(clearButtons).toHaveLength(1);
     fireEvent.click(clearButtons[0]);
 
-    expect(screen.getByText('Cài đặt phần mềm VPN')).toBeInTheDocument();
-    expect(screen.getByText('2 phiếu trên trang này')).toBeInTheDocument();
+    expect(await screen.findByText('Cài đặt phần mềm VPN')).toBeInTheDocument();
+    expect(screen.getByText('2 phiếu · Trang 1/1')).toBeInTheDocument();
   });
 
   it('hides pagination controls when the current page has no tickets', async () => {
@@ -256,7 +270,7 @@ describe('TicketListPage Component', () => {
         <TicketListPage />
       </MemoryRouter>
     );
-    await waitFor(() => expect(getSpy).toHaveBeenCalledWith(25, 25));
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith(25, 25, {}));
 
     // Trang 2 còn đang tải thì người dùng quay về trang 1 (ví dụ nút Back của trình duyệt).
     act(() => goTo('/tickets?page=1'));

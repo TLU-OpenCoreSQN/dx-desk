@@ -183,7 +183,7 @@ describe('CreateTicketPage Draft Auto-Save & Restore', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('ticket-created-999')).toBeInTheDocument();
+      expect(screen.getByText('#ticket-c')).toHaveAttribute('title', 'ticket-created-999');
       expect(localStorage.getItem(DRAFT_STORAGE_KEY)).toBeNull();
     });
   });

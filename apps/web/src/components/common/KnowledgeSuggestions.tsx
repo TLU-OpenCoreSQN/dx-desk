@@ -3,6 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, CheckCircle2, ExternalLink, Home, PenLine } from 'lucide-react';
+import { Button } from './Button';
 import { getCategoryArticles, recordSelfService } from '../../services/api';
 import { KnowledgeArticle } from '../../types/api';
 import { ErrorMessage } from './ErrorMessage';
@@ -68,20 +69,20 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
   return (
     <section
       aria-labelledby="knowledge-suggestions-title"
-      className="rounded-[6px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] p-4"
+      className="rounded-lg border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] p-4"
     >
-      <h3 id="knowledge-suggestions-title" className="flex items-center gap-1.5 text-xs font-bold text-content">
+      <h2 id="knowledge-suggestions-title" className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-content">
         <BookOpen className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
         Thử tự xử lý trước khi gửi phiếu
-      </h3>
-      <p className="mt-1 text-[11px] text-content-muted">
+      </h2>
+      <p className="mt-1 text-xs text-content-muted">
         Các bài hướng dẫn dưới đây thường giải quyết được sự cố thuộc danh mục này.
       </p>
       {recordedFor && continueTicket ? (
         <p
           ref={continueNoteRef}
           tabIndex={-1}
-          className="mt-3 flex items-start gap-1.5 text-xs text-content-muted focus:outline-none"
+          className="mt-3 flex items-start gap-1.5 text-xs text-content-muted focus-visible:outline-none"
         >
           <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
           Bạn có thể tiếp tục điền phiếu bên dưới.
@@ -92,43 +93,33 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
           aria-labelledby="knowledge-self-service-confirm"
           className="mt-3 rounded-md border border-status-success-border bg-status-success-bg p-3.5"
         >
-          <h4
+          <h3
             id="knowledge-self-service-confirm"
             ref={confirmHeadingRef}
             tabIndex={-1}
-            className="flex items-start gap-1.5 text-xs font-bold text-status-success focus:outline-none"
+            className="flex items-start gap-1.5 text-[0.8125rem] font-semibold text-status-success focus-visible:outline-none"
           >
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             Đã ghi nhận bạn tự xử lý được. Cảm ơn bạn!
-          </h4>
+          </h3>
           <p className="mt-1 pl-5.5 text-xs text-content">
             Sự cố đã được khắc phục thì bạn không cần gửi phiếu nữa.
           </p>
           <div className="mt-3 flex flex-wrap gap-2 pl-5.5">
             {onGoHome && (
-              <button
-                type="button"
-                onClick={onGoHome}
-                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md bg-primary px-3.5 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-              >
-                <Home className="h-3.5 w-3.5" aria-hidden="true" />
+              <Button size="sm" onClick={onGoHome} leftIcon={<Home className="h-3.5 w-3.5" />}>
                 Về trang chủ
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              onClick={() => setContinueTicket(true)}
-              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md border border-edge bg-surface px-3.5 text-xs font-semibold text-content shadow-2xs transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
+            <Button variant="secondary" size="sm" onClick={() => setContinueTicket(true)} leftIcon={<PenLine className="h-3.5 w-3.5" />}>
               Tôi vẫn cần gửi phiếu
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
         <ul className="mt-3 space-y-2">
           {articles.map((article) => (
-            <li key={article.id} className="rounded-[4px] border border-edge-subtle bg-surface p-3">
+            <li key={article.id} className="rounded-md border border-edge bg-surface p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   {article.url ? (
@@ -145,13 +136,13 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
                   ) : (
                     <span className="text-xs font-semibold text-content">{article.title}</span>
                   )}
-                  {article.summary && <p className="mt-0.5 text-[11px] text-content-muted">{article.summary}</p>}
+                  {article.summary && <p className="mt-0.5 text-xs text-content-muted">{article.summary}</p>}
                 </div>
                 <button
                   type="button"
                   onClick={() => void markResolved(article.id)}
                   disabled={saving !== null}
-                  className="inline-flex min-h-[36px] shrink-0 items-center rounded-[6px] border border-[var(--color-edge-subtle)] bg-surface px-3 text-[11px] font-semibold text-content transition-all hover:bg-[var(--color-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex min-h-[36px] shrink-0 items-center rounded-md border border-[var(--color-edge-subtle)] bg-surface px-3 text-xs font-semibold text-content transition-colors hover:bg-[var(--color-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-wait disabled:opacity-60"
                 >
                   {saving === article.id ? 'Đang ghi nhận…' : 'Đã tự xử lý được'}
                 </button>

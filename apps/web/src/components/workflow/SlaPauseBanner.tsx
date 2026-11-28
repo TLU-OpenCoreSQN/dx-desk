@@ -139,13 +139,13 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
       <div
         role="status"
         aria-live="polite"
-        className={`rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning shadow-2xs ${className}`}
+        className={`rounded-lg border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning ${className}`}
       >
         <div className="flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
             <Pause className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
-          <h2 className="text-xs font-bold uppercase tracking-wider">Đang chờ bạn phản hồi</h2>
+          <h2 className="text-[0.8125rem] font-semibold">Đang chờ bạn phản hồi</h2>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-content">
           Thời hạn xử lý được tạm dừng cho tới khi bạn gửi phản hồi, nên thời gian chờ này không
@@ -160,14 +160,14 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
       <div
         role="status"
         aria-live="polite"
-        className={`rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning shadow-2xs ${className}`}
+        className={`rounded-lg border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning ${className}`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
               <Pause className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
-            <h2 className="text-xs font-bold uppercase tracking-wider">
+            <h2 className="text-[0.8125rem] font-semibold">
               SLA tạm dừng · chờ người tạo phiếu phản hồi
             </h2>
           </div>
@@ -201,13 +201,13 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
       return (
         <div
           role="status"
-          className={`rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning shadow-2xs ${className}`}
+          className={`rounded-lg border border-status-warning-border bg-status-warning-bg p-3.5 text-status-warning ${className}`}
         >
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
               <Clock className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
-            <h2 className="text-xs font-bold uppercase tracking-wider">Phiếu đang chậm hơn dự kiến</h2>
+            <h2 className="text-[0.8125rem] font-semibold">Phiếu đang chậm hơn dự kiến</h2>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-content">
             Thời hạn xử lý dự kiến là{' '}
@@ -221,18 +221,18 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
     return (
       <div
         role="status"
-        className={`rounded-md border border-status-danger-border bg-status-danger-bg p-3.5 text-status-danger shadow-2xs ${className}`}
+        className={`rounded-lg border border-status-danger-border bg-status-danger-bg p-3.5 text-status-danger ${className}`}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-danger text-white">
               <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
-            <h2 className="text-xs font-bold uppercase tracking-wider">
+            <h2 className="text-[0.8125rem] font-semibold">
               Quá hạn SLA
             </h2>
           </div>
-          <span className="tabular-nums text-xs font-bold">
+          <span className="tabular-nums text-xs font-semibold">
             Trễ hạn: {overdueText}
           </span>
         </div>
@@ -250,7 +250,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
 
   return (
     <div
-      className={`rounded-md border border-edge bg-surface p-3.5 shadow-2xs ${className}`}
+      className={`rounded-lg border border-edge bg-surface p-3.5 ${className}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -260,7 +260,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="tabular-nums text-xs font-bold text-[var(--color-primary-ink)]">
+          <span className="tabular-nums text-xs font-semibold text-[var(--color-primary-ink)]">
             {formatDuration(remainingMs)} còn lại
           </span>
           <span className="tabular-nums text-xs text-content-muted">
@@ -284,7 +284,7 @@ export const SlaPauseBanner: React.FC<SlaPauseBannerProps> = ({
             aria-label={`Tiến độ SLA: ${elapsedPercent}%`}
           >
             <div
-              className={`h-full transition-all duration-300 ${gaugeColor}`}
+              className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${gaugeColor}`}
               style={{ width: `${elapsedPercent}%` }}
             />
           </div>

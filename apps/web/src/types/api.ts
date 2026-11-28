@@ -115,11 +115,18 @@ export interface UpdateTicketStatusPayload {
 
 export type TicketQueue = 'my_open' | 'team_unassigned' | 'team_assigned' | 'pending_approval';
 
+/** Bộ lọc phía máy chủ của GET /api/tickets (xem docs/api/contract.md): áp dụng trên toàn bộ dữ liệu, không chỉ trang đang xem. */
 export interface TicketFilters {
   queue?: TicketQueue;
   status?: string;
   team_id?: string;
   assignee_id?: string;
+  /** Tìm theo tiêu đề, mô tả, mã phiếu, người yêu cầu, người phụ trách hoặc nhóm. */
+  q?: string;
+  priority?: TicketPriority;
+  sla?: 'breached' | 'at_risk';
+  /** newest (mặc định) hoặc sla_due: quá hạn, sắp quá hạn, đang chạy, tạm dừng. */
+  sort?: 'newest' | 'sla_due';
 }
 
 export interface Team {

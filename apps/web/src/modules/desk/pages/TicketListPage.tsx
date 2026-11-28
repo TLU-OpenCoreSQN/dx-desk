@@ -3,85 +3,73 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Inbox,
-  Kanban,
-  LayoutList,
-  PlusCircle,
-  RefreshCw,
-  Search,
-  SearchX,
-  Tag,
-  UserCheck,
-  X,
-} from 'lucide-react';
+import { Inbox, Kanban, LayoutList, PlusCircle, RefreshCw, Search, SearchX } from 'lucide-react';
 import { getTickets, getCategories, claimTicket, ApiClientError } from '../../../services/api';
-import { Ticket, Category } from '../../../types/api';
+import { Category, Ticket, TicketFilters, TicketPriority } from '../../../types/api';
 import { PriorityBadge, StatusBadge } from '../../../components/common/Badge';
+import { Button, buttonClass } from '../../../components/common/Button';
+import { fieldClass } from '../../../components/common/FormField';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
 import { EmptyState } from '../../../components/common/EmptyState';
+import { SlaRemaining } from '../../../components/common/SlaRemaining';
+import {
+  cellClass,
+  DataTable,
+  DataTableBody,
+  DataTableHead,
+  rowClass,
+  TicketCode,
+  Th,
+} from '../../../components/common/DataTable';
 import { TicketKanbanBoard } from '../../../components/workflow';
+import { computeSlaSnapshot, slaRisk } from '../../../lib/sla';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const PAGE_SIZE = 25;
+const SEARCH_DEBOUNCE_MS = 300;
 
-/** Desktop column track (minimum md row height comes from the row link classes). */
-const TABLE_GRID = 'lg:grid-cols-[84px_minmax(0,1fr)_104px_140px_120px_116px]';
-/** Mobile card track: code | flexible middle | right-aligned meta. */
-const MOBILE_GRID = 'grid-cols-[auto_minmax(0,1fr)_auto]';
-
-const FOCUS_RING =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]';
-
-const VALID_PRIORITIES = ['all', 'critical', 'high', 'normal', 'low'];
-const VALID_STATUSES = [
-  'all',
-  'new',
-  'triaged',
-  'assigned',
-  'cancelled',
-  'in_progress',
-  'waiting_user',
-  'pending_approval',
-  'resolved',
-  'closed',
+const PRIORITY_OPTIONS: { value: TicketPriority | 'all'; label: string }[] = [
+  { value: 'all', label: 'Tất cả ưu tiên' },
+  { value: 'critical', label: 'Khẩn cấp' },
+  { value: 'high', label: 'Cao' },
+  { value: 'normal', label: 'Bình thường' },
+  { value: 'low', label: 'Thấp' },
 ];
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'new', label: 'Mới tạo' },
+  { value: 'triaged', label: 'Đã phân loại' },
+  { value: 'assigned', label: 'Đã phân công' },
+  { value: 'in_progress', label: 'Đang xử lý' },
+  { value: 'waiting_user', label: 'Chờ phản hồi' },
+  { value: 'pending_approval', label: 'Chờ phê duyệt' },
+  { value: 'resolved', label: 'Đã giải quyết' },
+  { value: 'closed', label: 'Đã đóng' },
+  { value: 'cancelled', label: 'Đã hủy' },
+];
+const VALID_PRIORITIES = PRIORITY_OPTIONS.map((o) => o.value as string);
+const VALID_STATUSES = STATUS_OPTIONS.map((o) => o.value);
 
-interface DateParts {
-  date: string;
-  time: string;
-  full: string;
-}
-
-function formatDateParts(isoString: string): DateParts {
+function formatUpdated(isoString: string): { date: string; time: string; full: string } {
   const parsed = new Date(isoString);
-  if (Number.isNaN(parsed.getTime())) {
-    return { date: isoString, time: '', full: isoString };
-  }
+  if (Number.isNaN(parsed.getTime())) return { date: isoString, time: '', full: isoString };
   return {
-    date: parsed.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }),
-    time: parsed.toLocaleTimeString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    full: parsed.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
+    date: parsed.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    time: parsed.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    full: parsed.toLocaleString('vi-VN'),
   };
 }
 
-const shortTicketId = (id: string) => id.slice(0, 8);
+/** Chuỗi tìm kiếm trên URL đổi ngay khi gõ; lời gọi máy chủ đợi người dùng ngừng gõ. */
+function useDebounced<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
 
 export const TicketListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -89,6 +77,7 @@ export const TicketListPage: React.FC = () => {
   const { roles } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [total, setTotal] = useState<number | undefined>();
   const [categories, setCategories] = useState<Record<string, Category>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<unknown>(null);
@@ -98,23 +87,31 @@ export const TicketListPage: React.FC = () => {
   const [claimNotice, setClaimNotice] = useState<string | null>(null);
   const claimInFlight = useRef(false);
 
-  // URL query parameter synchronization
+  // Bộ lọc nằm trên URL để chia sẻ, tải lại và nút Back đều giữ đúng ngữ cảnh.
   const qParam = searchParams.get('q') ?? '';
   const rawPriority = searchParams.get('priority') ?? 'all';
   const filterPriority = VALID_PRIORITIES.includes(rawPriority) ? rawPriority : 'all';
   const rawStatus = searchParams.get('status') ?? 'all';
   const filterStatus = VALID_STATUSES.includes(rawStatus) ? rawStatus : 'all';
+  const sortParam = searchParams.get('sort') === 'sla' ? 'sla' : 'newest';
   const pageParam = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
   const offset = (pageParam - 1) * PAGE_SIZE;
-  const viewParam = searchParams.get('view') ?? 'table';
-  const viewMode = viewParam === 'kanban' ? 'kanban' : 'table';
+  const viewMode = searchParams.get('view') === 'kanban' ? 'kanban' : 'table';
 
-  // Local state for immediate zero-latency search input responsiveness
-  const [searchQuery, setSearchQuery] = useState<string>(qParam);
-
+  const [searchInput, setSearchInput] = useState<string>(qParam);
   useEffect(() => {
-    setSearchQuery(qParam);
+    setSearchInput(qParam);
   }, [qParam]);
+  const debouncedQ = useDebounced(qParam.trim(), SEARCH_DEBOUNCE_MS);
+
+  const filters = useMemo<TicketFilters>(() => {
+    const next: TicketFilters = {};
+    if (debouncedQ) next.q = debouncedQ;
+    if (filterPriority !== 'all') next.priority = filterPriority as TicketPriority;
+    if (filterStatus !== 'all') next.status = filterStatus;
+    if (sortParam === 'sla') next.sort = 'sla_due';
+    return next;
+  }, [debouncedQ, filterPriority, filterStatus, sortParam]);
 
   const updateSearchParams = useCallback(
     (updates: Record<string, string | number | undefined | null>, replace = true) => {
@@ -128,7 +125,8 @@ export const TicketListPage: React.FC = () => {
               value === '' ||
               value === 'all' ||
               (key === 'page' && Number(value) <= 1) ||
-              (key === 'view' && value === 'table')
+              (key === 'view' && value === 'table') ||
+              (key === 'sort' && value === 'newest')
             ) {
               next.delete(key);
             } else {
@@ -146,46 +144,43 @@ export const TicketListPage: React.FC = () => {
   const isStaff = roles.includes('Agent') || roles.includes('Manager');
   const requestRevision = useRef(0);
 
-  const loadData = useCallback(async (currentOffset: number) => {
+  const loadData = useCallback(async (currentOffset: number, currentFilters: TicketFilters) => {
     const revision = ++requestRevision.current;
     setIsLoading(true);
     setError(null);
     try {
       const [ticketRes, categoryRes] = await Promise.allSettled([
-        getTickets(PAGE_SIZE, currentOffset),
+        getTickets(PAGE_SIZE, currentOffset, currentFilters),
         getCategories(),
       ]);
 
       if (revision !== requestRevision.current) return;
 
-      if (ticketRes.status === 'fulfilled') {
-        setTickets(ticketRes.value.data || []);
-      } else {
-        throw ticketRes.reason;
-      }
+      if (ticketRes.status === 'rejected') throw ticketRes.reason;
+      setTickets(ticketRes.value.data || []);
+      setTotal(ticketRes.value.total);
 
       if (categoryRes.status === 'fulfilled' && categoryRes.value.data) {
-        const catMap: Record<string, Category> = {};
-        for (const cat of categoryRes.value.data) {
-          catMap[cat.id] = cat;
-        }
-        setCategories(catMap);
+        setCategories(Object.fromEntries(categoryRes.value.data.map((cat) => [cat.id, cat])));
       }
     } catch (err) {
       if (revision !== requestRevision.current) return;
       setTickets([]);
+      setTotal(undefined);
       setError(err);
     } finally {
       if (revision === requestRevision.current) setIsLoading(false);
     }
   }, []);
 
+  const reload = useCallback(() => loadData(offset, filters), [loadData, offset, filters]);
+
   useEffect(() => {
-    void loadData(offset);
+    void reload();
     return () => {
       requestRevision.current += 1;
     };
-  }, [loadData, offset]);
+  }, [reload]);
 
   const handleClaim = async (ticket: Ticket) => {
     if (claimInFlight.current) return;
@@ -196,11 +191,11 @@ export const TicketListPage: React.FC = () => {
     try {
       await claimTicket(ticket.id);
       setClaimNotice('Đã nhận phiếu. Phiếu có trong hàng đợi Đang phụ trách.');
-      await loadData(offset);
+      await reload();
     } catch (err) {
       if (err instanceof ApiClientError && err.statusCode === 409) {
         setClaimNotice('Phiếu vừa được người khác cập nhật. Danh sách đã được tải lại; hãy kiểm tra trước khi thao tác tiếp.');
-        await loadData(offset);
+        await reload();
       } else {
         setClaimError(err);
       }
@@ -210,486 +205,279 @@ export const TicketListPage: React.FC = () => {
     }
   };
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const hasActiveFilters = qParam.trim() !== '' || filterPriority !== 'all' || filterStatus !== 'all';
 
-  const filteredTickets = useMemo(
-    () =>
-      tickets.filter((ticket) => {
-        const matchesSearch =
-          normalizedQuery === '' ||
-          ticket.title.toLowerCase().includes(normalizedQuery) ||
-          ticket.id.toLowerCase().includes(normalizedQuery);
-        const matchesPriority =
-          filterPriority === 'all' || ticket.priority === filterPriority;
-        const matchesStatus =
-          filterStatus === 'all' || ticket.status === filterStatus;
-        return matchesSearch && matchesPriority && matchesStatus;
-      }),
-    [tickets, normalizedQuery, filterPriority, filterStatus]
+  // Đổi bộ lọc thì kết quả khác hẳn, nên luôn quay về trang 1.
+  const resetFilters = () => {
+    setSearchInput('');
+    updateSearchParams({ q: undefined, priority: undefined, status: undefined, page: undefined });
+  };
+
+  const pageCount = total !== undefined ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : undefined;
+  const hasNext = total === undefined ? tickets.length === PAGE_SIZE : offset + PAGE_SIZE < total;
+  const canPaginate = !error && (offset > 0 || hasNext);
+  const pageLabel = pageCount ? `Trang ${pageParam}/${pageCount}` : `Trang ${pageParam}`;
+
+  const goToPage = (page: number) => {
+    if (!isLoading) updateSearchParams({ page: page > 1 ? page : undefined }, false);
+  };
+
+  const resultSummary = isLoading
+    ? 'Đang tải dữ liệu...'
+    : error
+      ? 'Không thể tải danh sách phiếu.'
+      : total !== undefined
+        ? `${total} phiếu${hasActiveFilters ? ' khớp bộ lọc' : ''} · ${pageLabel}`
+        : `${tickets.length} phiếu trên trang này · ${pageLabel}`;
+
+  const rows = useMemo(() => {
+    const now = Date.now();
+    return tickets.map((ticket) => {
+      const sla = computeSlaSnapshot(ticket, now);
+      return { ticket, sla, risk: slaRisk(sla) };
+    });
+  }, [tickets]);
+
+  const viewToggle = (
+    <div role="group" aria-label="Chế độ xem" className="inline-flex rounded-md border border-edge bg-surface p-0.5">
+      {([['table', 'Bảng danh sách', LayoutList], ['kanban', 'Kanban luồng việc', Kanban]] as const).map(([key, label, Icon]) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={viewMode === key}
+          onClick={() => updateSearchParams({ view: key })}
+          className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-9 ${
+            viewMode === key ? 'bg-primary text-white' : 'text-content-muted hover:bg-state-hover hover:text-content'
+          }`}
+        >
+          <Icon className="h-4 w-4" aria-hidden="true" />
+          {label}
+        </button>
+      ))}
+    </div>
   );
 
-  const hasActiveFilters =
-    normalizedQuery !== '' || filterPriority !== 'all' || filterStatus !== 'all';
+  const table = (
+    <DataTable label="Danh sách phiếu yêu cầu">
+      <DataTableHead>
+        <Th width="w-24">Mã</Th>
+        <Th>Tiêu đề</Th>
+        <Th width="w-32">Ưu tiên</Th>
+        <Th width="w-40">Trạng thái</Th>
+        <Th width="w-40">Phụ trách</Th>
+        <Th width="w-48">Hạn SLA</Th>
+        <Th width="w-28" align="right">Cập nhật</Th>
+      </DataTableHead>
+      <DataTableBody>
+        {rows.map(({ ticket, sla, risk }) => {
+          const categoryName = categories[ticket.category_id]?.name;
+          const updated = formatUpdated(ticket.updated_at || ticket.created_at);
+          return (
+            <tr key={ticket.id} className={rowClass()}>
+              <td className={`${cellClass()} order-2 @3xl:order-none`}>
+                <TicketCode id={ticket.id} />
+              </td>
+              <td className={`${cellClass({ span: true })} order-1 @3xl:order-none`}>
+                <Link
+                  to={`/tickets/${encodeURIComponent(ticket.id)}`}
+                  className="block max-w-full rounded-sm text-sm font-semibold text-content hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <span className="line-clamp-2 break-words">{ticket.title}</span>
+                </Link>
+                {categoryName && <p className="mt-0.5 truncate text-xs text-content-muted">{categoryName}</p>}
+              </td>
+              <td className={`${cellClass()} order-3 @3xl:order-none`}>
+                <PriorityBadge priority={ticket.priority} />
+              </td>
+              <td className={`${cellClass()} order-4 @3xl:order-none`}>
+                <StatusBadge status={ticket.status} />
+              </td>
+              <td className={`${cellClass()} order-5 @3xl:order-none`}>
+                {ticket.assigned_to ? (
+                  <p className="truncate text-[0.8125rem] font-medium text-content" title={ticket.assignee_name || undefined}>
+                    {ticket.assignee_name || 'Kỹ thuật viên đã nhận'}
+                  </p>
+                ) : (
+                  <p className="truncate text-[0.8125rem] text-content-muted">Chưa phân công</p>
+                )}
+                {ticket.team_name && <p className="truncate text-xs text-content-muted">{ticket.team_name}</p>}
+              </td>
+              <td className={`${cellClass()} order-6 @3xl:order-none`}>
+                <SlaRemaining snapshot={sla} risk={risk} />
+              </td>
+              <td className={`${cellClass({ align: 'right' })} order-7 @3xl:order-none`}>
+                <time dateTime={ticket.updated_at || ticket.created_at} title={updated.full} className="block tabular-nums text-xs text-content-muted">
+                  <span className="block whitespace-nowrap">{updated.date}</span>
+                  <span className="block whitespace-nowrap">{updated.time}</span>
+                </time>
+              </td>
+            </tr>
+          );
+        })}
+      </DataTableBody>
+    </DataTable>
+  );
 
-  const resetFilters = () => {
-    setSearchQuery('');
-    // Chỉ xoá bộ lọc; giữ nguyên trang đang xem.
-    updateSearchParams({ q: undefined, priority: undefined, status: undefined });
-  };
-
-  const isFirstPage = offset === 0;
-  const isLastPage = tickets.length < PAGE_SIZE;
-  const canPaginate = tickets.length > 0 || offset > 0;
-
-  const handlePrevPage = () => {
-    if (!isLoading && offset >= PAGE_SIZE) {
-      const prevPage = pageParam - 1;
-      updateSearchParams({ page: prevPage > 1 ? prevPage : undefined }, false);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (!isLoading && tickets.length === PAGE_SIZE) {
-      updateSearchParams({ page: pageParam + 1 }, false);
-    }
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    updateSearchParams({ q: value || undefined });
-  };
-
-  const handlePriorityChange = (value: string) => {
-    updateSearchParams({ priority: value === 'all' ? undefined : value });
-  };
-
-  const handleStatusChange = (value: string) => {
-    updateSearchParams({ status: value === 'all' ? undefined : value });
-  };
-
-  const resultSummary = hasActiveFilters
-    ? `${filteredTickets.length}/${tickets.length} phiếu khớp bộ lọc`
-    : `${tickets.length} phiếu trên trang này`;
+  let body: React.ReactNode;
+  if (isLoading) {
+    body = <LoadingSpinner label="Đang tải danh sách phiếu từ máy chủ..." />;
+  } else if (error) {
+    body = <ErrorMessage error={error} onRetry={() => void reload()} title="Không thể tải danh sách phiếu yêu cầu" />;
+  } else if (tickets.length === 0) {
+    body = offset > 0 ? (
+      <EmptyState
+        title="Trang này không còn phiếu"
+        description="Hãy quay lại trang trước để xem các phiếu còn lại."
+        actionText="Quay lại trang trước"
+        onAction={() => goToPage(pageParam - 1)}
+        icon={<Inbox className="h-6 w-6 text-content-muted" aria-hidden="true" />}
+      />
+    ) : hasActiveFilters ? (
+      <EmptyState
+        title="Không tìm thấy kết quả phù hợp"
+        description="Không có phiếu nào khớp với từ khóa hoặc bộ lọc hiện tại."
+        actionText="Xóa bộ lọc"
+        onAction={resetFilters}
+        icon={<SearchX className="h-6 w-6 text-content-muted" aria-hidden="true" />}
+      />
+    ) : (
+      <EmptyState
+        title="Chưa có phiếu yêu cầu nào"
+        description="Hệ thống chưa ghi nhận phiếu hỗ trợ IT nào. Bạn có thể tạo phiếu mới để gửi sự cố tới bộ phận hỗ trợ."
+        actionText="Tạo phiếu hỗ trợ ngay"
+        onAction={() => navigate('/tickets/new')}
+        icon={<Inbox className="h-6 w-6 text-content-muted" aria-hidden="true" />}
+      />
+    );
+  } else if (viewMode === 'kanban') {
+    body = (
+      <div className="space-y-3">
+        {claimNotice && (
+          <p role="status" className="rounded-lg border border-status-success-border bg-status-success-bg p-3 text-sm text-status-success">
+            {claimNotice}
+          </p>
+        )}
+        {claimError != null && <ErrorMessage error={claimError} title="Không nhận được phiếu" />}
+        <TicketKanbanBoard
+          tickets={tickets}
+          canClaim={(t) => isStaff && t.status === 'assigned' && !t.assigned_to}
+          busyTicketId={claimBusyId}
+          onClaimTicket={handleClaim}
+        />
+      </div>
+    );
+  } else {
+    body = table;
+  }
 
   return (
-    <div className="w-full space-y-5">
-      {/* Page title & primary actions */}
-      <div className="flex flex-col gap-3 border-b border-[var(--color-edge-subtle)] pb-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="w-full space-y-4">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="dx-page-title">
-              Danh sách phiếu yêu cầu IT
-            </h1>
-            <span className="inline-flex items-center rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--color-primary-text)] shadow-2xs">
-              {isStaff ? 'Toàn bộ phiếu' : 'Phiếu của tôi'}
-            </span>
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-[var(--color-content-muted)]">
-            Mỗi trang hiển thị tối đa {PAGE_SIZE} phiếu. Tìm kiếm và bộ lọc chỉ áp dụng cho
-            trang đang xem - dùng phân trang để xem các phiếu còn lại.
+          <h1 className="dx-page-title">Danh sách phiếu yêu cầu IT</h1>
+          <p className="mt-1 text-sm text-content-muted">
+            {isStaff ? 'Toàn bộ phiếu bạn có quyền xem.' : 'Các phiếu bạn đã gửi.'} Tìm kiếm và bộ lọc áp dụng cho mọi trang.
           </p>
         </div>
-
-        <div className="flex flex-wrap shrink-0 items-center gap-2.5">
-          <div role="group" aria-label="Chế độ xem" className="inline-flex rounded-md border border-edge bg-surface p-0.5 shadow-2xs">
-            <button
-              type="button"
-              aria-pressed={viewMode === 'table'}
-              onClick={() => updateSearchParams({ view: undefined })}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-[4px] transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-primary text-white shadow-2xs'
-                  : 'text-content-muted hover:text-content hover:bg-surface-muted'
-              }`}
-            >
-              <LayoutList className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Bảng danh sách</span>
-            </button>
-            <button
-              type="button"
-              aria-pressed={viewMode === 'kanban'}
-              onClick={() => updateSearchParams({ view: 'kanban' })}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-[4px] transition-colors ${
-                viewMode === 'kanban'
-                  ? 'bg-primary text-white shadow-2xs'
-                  : 'text-content-muted hover:text-content hover:bg-surface-muted'
-              }`}
-            >
-              <Kanban className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Kanban luồng việc</span>
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => void loadData(offset)}
+        <div className="flex flex-wrap items-center gap-2">
+          {viewToggle}
+          <Button
+            variant="secondary"
+            onClick={() => void reload()}
             disabled={isLoading}
-            className={`inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-[6px] border border-[var(--color-edge-subtle)] bg-surface px-3.5 text-xs font-semibold text-[var(--color-content)] shadow-2xs transition-all hover:bg-[var(--color-surface-muted)] hover:border-[var(--color-edge)] disabled:cursor-not-allowed disabled:text-[var(--color-content-subtle)] sm:min-h-[38px] ${FOCUS_RING}`}
-            title="Làm mới danh sách"
+            leftIcon={<RefreshCw className="h-4 w-4" />}
           >
-            <RefreshCw
-              className={`h-3.5 w-3.5 text-[var(--color-content-muted)] ${isLoading ? 'animate-spin' : ''}`}
-              aria-hidden="true"
-            />
-            <span>Làm mới</span>
-          </button>
-
-          <Link
-            to="/tickets/new"
-            className={`inline-flex min-h-[40px] items-center justify-center gap-2 rounded-[6px] bg-primary hover:bg-primary-hover active:bg-primary-active px-4 text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] sm:min-h-[38px] ${FOCUS_RING}`}
-          >
+            Làm mới
+          </Button>
+          <Link to="/tickets/new" className={`${buttonClass('primary')} gap-2`}>
             <PlusCircle className="h-4 w-4" aria-hidden="true" />
-            <span>Tạo phiếu mới</span>
+            Tạo phiếu mới
           </Link>
         </div>
-      </div>
+      </header>
 
-      {/* Consolidated toolbar: search + filters + clear + result count */}
-      <section
-        aria-label="Tìm kiếm và lọc phiếu"
-        className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-4 shadow-2xs transition-all"
-      >
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
-          <div className="min-w-0 flex-1">
-            <label
-              htmlFor="ticket-search"
-              className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
-            >
-              Tìm kiếm
-            </label>
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-content-subtle)]"
-                aria-hidden="true"
-              />
-              <input
-                id="ticket-search"
-                type="text"
-                aria-label="Tìm trong trang hiện tại"
-                placeholder="Tìm theo mã hoặc tiêu đề trong trang này..."
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] py-2 pl-9 pr-10 text-xs text-[var(--color-content)] placeholder:text-[var(--color-content-subtle)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px]"
-              />
-              {searchQuery !== '' && (
-                <button
-                  type="button"
-                  onClick={() => handleSearchChange('')}
-                  aria-label="Xóa từ khóa tìm kiếm"
-                  className={`absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[4px] text-[var(--color-content-subtle)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] ${FOCUS_RING}`}
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end sm:gap-3">
-            <div className="min-w-0">
-              <label
-                htmlFor="ticket-filter-priority"
-                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
-              >
-                Ưu tiên
-              </label>
-              <select
-                id="ticket-filter-priority"
-                aria-label="Mức ưu tiên"
-                value={filterPriority}
-                onChange={(e) => handlePriorityChange(e.target.value)}
-                className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] px-3 py-1.5 text-xs text-[var(--color-content)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[168px]"
-              >
-                <option value="all">Tất cả ưu tiên</option>
-                <option value="critical">Khẩn cấp</option>
-                <option value="high">Cao</option>
-                <option value="normal">Bình thường</option>
-                <option value="low">Thấp</option>
-              </select>
-            </div>
-
-            <div className="min-w-0">
-              <label
-                htmlFor="ticket-filter-status"
-                className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
-              >
-                Trạng thái
-              </label>
-              <select
-                id="ticket-filter-status"
-                aria-label="Trạng thái"
-                value={filterStatus}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="min-h-[42px] w-full rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-sidebar)] px-3 py-1.5 text-xs text-[var(--color-content)] focus:border-[var(--color-primary)] focus:bg-surface focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all sm:min-h-[38px] sm:w-[176px]"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="new">Mới tạo</option>
-                <option value="triaged">Đã phân loại</option>
-                <option value="assigned">Đã phân công</option>
-                <option value="cancelled">Đã hủy</option>
-                <option value="in_progress">Đang xử lý</option>
-                <option value="waiting_user">Chờ phản hồi</option>
-                <option value="pending_approval">Chờ phê duyệt</option>
-                <option value="resolved">Đã giải quyết</option>
-                <option value="closed">Đã đóng</option>
-              </select>
-            </div>
-          </div>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className={`inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-[6px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)] px-3 text-xs font-semibold text-[var(--color-content)] transition-all hover:bg-[var(--color-surface-muted)] sm:min-h-[38px] ${FOCUS_RING}`}
-            >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Bỏ lọc</span>
-            </button>
-          )}
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] leading-relaxed border-t border-[var(--color-edge-subtle)] pt-2.5">
-          <p aria-live="polite" className="font-semibold text-[var(--color-content)]">
-            {isLoading
-              ? 'Đang tải dữ liệu...'
-              : error
-                ? 'Không thể tải danh sách phiếu.'
-                : tickets.length > 0
-                  ? resultSummary
-                  : 'Không có phiếu nào trên trang này'}
-          </p>
-          <p className="text-[var(--color-content-subtle)]">Áp dụng cho trang đang xem.</p>
-        </div>
+      <section aria-label="Tìm kiếm và lọc phiếu" className="flex flex-wrap items-end gap-3">
+        <label htmlFor="ticket-search" className="min-w-0 flex-1 basis-64 text-[0.8125rem] font-medium text-content">
+          Tìm kiếm
+          <span className="relative mt-1 block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" aria-hidden="true" />
+            <input
+              id="ticket-search"
+              type="search"
+              aria-label="Tìm phiếu"
+              placeholder="Tiêu đề, mô tả, mã phiếu, người phụ trách…"
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                updateSearchParams({ q: e.target.value || undefined, page: undefined });
+              }}
+              className={`${fieldClass(false)} pl-9`}
+            />
+          </span>
+        </label>
+        <label htmlFor="ticket-filter-priority" className="w-[calc(50%-6px)] text-[0.8125rem] font-medium text-content sm:w-44">
+          Ưu tiên
+          <select
+            id="ticket-filter-priority"
+            aria-label="Mức ưu tiên"
+            value={filterPriority}
+            onChange={(e) => updateSearchParams({ priority: e.target.value, page: undefined })}
+            className={`${fieldClass(false)} mt-1 block`}
+          >
+            {PRIORITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </label>
+        <label htmlFor="ticket-filter-status" className="w-[calc(50%-6px)] text-[0.8125rem] font-medium text-content sm:w-48">
+          Trạng thái
+          <select
+            id="ticket-filter-status"
+            aria-label="Trạng thái"
+            value={filterStatus}
+            onChange={(e) => updateSearchParams({ status: e.target.value, page: undefined })}
+            className={`${fieldClass(false)} mt-1 block`}
+          >
+            {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </label>
+        <label htmlFor="ticket-sort" className="w-[calc(50%-6px)] text-[0.8125rem] font-medium text-content sm:w-48">
+          Sắp xếp
+          <select
+            id="ticket-sort"
+            value={sortParam}
+            onChange={(e) => updateSearchParams({ sort: e.target.value, page: undefined })}
+            className={`${fieldClass(false)} mt-1 block`}
+          >
+            <option value="newest">Mới tạo trước</option>
+            <option value="sla">Hạn SLA gần nhất</option>
+          </select>
+        </label>
+        {hasActiveFilters && (
+          <Button variant="ghost" onClick={resetFilters}>
+            Bỏ lọc
+          </Button>
+        )}
       </section>
 
-      {/* Ticket list */}
-      {isLoading ? (
-        <LoadingSpinner label="Đang tải danh sách phiếu từ máy chủ..." />
-      ) : error ? (
-        <ErrorMessage
-          error={error}
-          onRetry={() => void loadData(offset)}
-          title="Không thể tải danh sách phiếu yêu cầu"
-        />
-      ) : filteredTickets.length === 0 ? (
-        tickets.length === 0 && offset > 0 && !hasActiveFilters ? (
-          <EmptyState
-            title="Trang này không còn phiếu"
-            description="Hãy quay lại trang trước để xem các phiếu đã tải."
-            actionText="Quay lại trang trước"
-            onAction={handlePrevPage}
-            icon={<Inbox className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
-          />
-        ) : tickets.length === 0 && !hasActiveFilters ? (
-          <EmptyState
-            title="Chưa có phiếu yêu cầu nào"
-            description="Hệ thống chưa ghi nhận phiếu hỗ trợ IT nào trong danh mục này. Bạn có thể tạo phiếu mới để gửi sự cố tới bộ phận hỗ trợ."
-            actionText="Tạo phiếu hỗ trợ ngay"
-            onAction={() => navigate('/tickets/new')}
-            icon={<Inbox className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
-          />
-        ) : (
-          <EmptyState
-            title="Không tìm thấy kết quả phù hợp"
-            description={
-              tickets.length === 0
-                ? 'Trang này không còn phiếu nào. Hãy quay lại trang trước hoặc xóa bộ lọc để xem các phiếu khác.'
-                : 'Không có phiếu nào trên trang này khớp với từ khóa hoặc bộ lọc hiện tại. Hãy xóa bộ lọc hoặc chuyển sang trang khác.'
-            }
-            actionText="Xóa bộ lọc"
-            onAction={resetFilters}
-            icon={<SearchX className="h-6 w-6 text-[var(--color-content-muted)]" aria-hidden="true" />}
-          />
-        )
-      ) : viewMode === 'kanban' ? (
-        <div className="space-y-3">
-          {claimNotice && (
-            <p role="status" className="rounded-md border border-status-success-border bg-status-success-bg p-3 text-sm text-status-success">
-              {claimNotice}
-            </p>
-          )}
-          {claimError != null && <ErrorMessage error={claimError} title="Không nhận được phiếu" />}
-          <TicketKanbanBoard
-            tickets={filteredTickets}
-            onTicketClick={(t) => navigate(`/tickets/${encodeURIComponent(t.id)}`)}
-            canClaim={(t) => isStaff && t.status === 'assigned' && !t.assigned_to}
-            busyTicketId={claimBusyId}
-            onClaimTicket={handleClaim}
-          />
-        </div>
-      ) : (
-        // `overflow-clip`, không phải `overflow-hidden`: hidden biến khung này thành vùng cuộn của
-        // header sticky, header bị ghim cách mép khung 56px và đè lên phiếu đầu tiên.
-        <div
-          data-testid="ticket-table"
-          className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs overflow-clip"
-        >
-          {/* Sticky column header (desktop only, sticks below the app header) */}
-          <div
-            aria-hidden="true"
-            className={`dx-ticket-list-header sticky top-14 z-20 hidden border-b border-[var(--color-edge-subtle)] bg-[color-mix(in_srgb,var(--color-primary-tint)_35%,var(--color-surface-warm))] px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)] lg:grid lg:gap-x-4 ${TABLE_GRID}`}
-          >
-            <span>Mã phiếu</span>
-            <span>Tiêu đề</span>
-            <span>Ưu tiên</span>
-            <span>Trạng thái</span>
-            <span>Người xử lý</span>
-            <span>Thời gian</span>
-          </div>
+      <p aria-live="polite" className="text-[0.8125rem] text-content-muted">{resultSummary}</p>
 
-          <ul
-            aria-label="Danh sách phiếu yêu cầu"
-            className="dx-ticket-list divide-y divide-[var(--color-edge-subtle)] bg-surface"
-          >
-            {filteredTickets.map((ticket) => {
-              const categoryName = categories[ticket.category_id]?.name || 'Chưa xác định';
-              const created = formatDateParts(ticket.created_at);
-              const ticketHref = `/tickets/${ticket.id}`;
+      {body}
 
-              return (
-                <li key={ticket.id}>
-                  {/* The whole row is a real link: middle-click / Ctrl+click open a new tab. */}
-                  <Link
-                    to={ticketHref}
-                    className={`group grid min-h-[44px] items-start gap-x-3 gap-y-1.5 px-4 py-3.5 transition-all hover:bg-state-hover focus-visible:bg-state-selected focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-primary)] lg:min-h-[58px] lg:items-center lg:gap-x-4 lg:gap-y-0 lg:py-0 ${MOBILE_GRID} ${TABLE_GRID}`}
-                  >
-                    {/* Short ticket code */}
-                    <div className="col-start-1 row-start-1 lg:col-auto lg:row-auto">
-                      <span
-                        title={ticket.id}
-                        className="inline-flex items-center rounded-[4px] border border-[var(--color-edge-subtle)] bg-[var(--color-surface-muted)] px-1.5 py-0.5 tabular-nums text-[10px] font-bold tracking-tight text-[var(--color-content-muted)] group-hover:border-[var(--color-primary-border)] group-hover:bg-[var(--color-primary-tint)] group-hover:text-[var(--color-primary-text)] transition-colors"
-                      >
-                        #{shortTicketId(ticket.id)}
-                      </span>
-                    </div>
-
-                    {/* Title (2 lines max) + category */}
-                    <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:col-auto lg:row-auto">
-                      <p
-                        title={ticket.title}
-                        className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-content)] transition-colors group-hover:text-[var(--color-primary-ink)]"
-                      >
-                        {ticket.title}
-                      </p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--color-content-muted)]">
-                        <Tag className="h-3 w-3 shrink-0 text-[var(--color-content-subtle)]" aria-hidden="true" />
-                        <span className="truncate">{categoryName}</span>
-                      </p>
-                    </div>
-
-                    {/* Priority */}
-                    <div className="col-start-1 row-start-3 justify-self-start lg:col-auto lg:row-auto">
-                      <PriorityBadge priority={ticket.priority} />
-                    </div>
-
-                    {/* Status */}
-                    <div className="col-start-3 row-start-1 justify-self-end lg:col-auto lg:row-auto lg:justify-self-start">
-                      <StatusBadge status={ticket.status} />
-                    </div>
-
-                    {/* Assignee */}
-                    <div className="col-start-2 row-start-3 min-w-0 lg:col-auto lg:row-auto">
-                      {ticket.assigned_to ? (
-                        <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-content-muted)] lg:text-xs">
-                          <UserCheck
-                            className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary-ink)]"
-                            aria-hidden="true"
-                          />
-                          <span
-                            className="truncate font-semibold text-[var(--color-content)]"
-                            title={ticket.assignee_name || ticket.assigned_to}
-                          >
-                            {ticket.assignee_name || ticket.assigned_to}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] italic text-[var(--color-content-subtle)] lg:text-xs">
-                          Chưa phân công
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Created at */}
-                    <div className="col-start-3 row-start-3 justify-self-end text-right lg:col-auto lg:row-auto lg:text-left">
-                      <p className="whitespace-nowrap tabular-nums text-[11px] leading-tight text-[var(--color-content-muted)]">
-                        {created.date}
-                      </p>
-                      <p className="whitespace-nowrap tabular-nums text-[10px] leading-tight text-[var(--color-content-subtle)]">
-                        {created.time}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      {canPaginate && !isLoading && (
+        <nav aria-label="Phân trang danh sách phiếu" className="flex flex-wrap items-center justify-between gap-3">
+          <Button variant="secondary" disabled={offset === 0 || isLoading} onClick={() => goToPage(pageParam - 1)}>
+            Trang trước
+          </Button>
+          <span data-numeric className="text-[0.8125rem] text-content-muted">{pageLabel}</span>
+          <Button variant="secondary" disabled={!hasNext || isLoading} onClick={() => goToPage(pageParam + 1)}>
+            Trang sau
+          </Button>
+        </nav>
       )}
 
       {Boolean(error) && offset > 0 && (
-        <button
-          type="button"
-          onClick={handlePrevPage}
-          className={`inline-flex min-h-[44px] items-center gap-1 rounded-[6px] border border-[var(--color-edge-subtle)] bg-surface px-3 text-sm font-semibold text-[var(--color-content)] ${FOCUS_RING}`}
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        <Button variant="secondary" onClick={() => goToPage(pageParam - 1)}>
           Trang trước
-        </button>
-      )}
-
-      {/* Pagination - hidden when there is nothing to page through */}
-      {!isLoading && !error && canPaginate && (
-        <nav
-          aria-label="Phân trang danh sách phiếu"
-          className="flex flex-col gap-3 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface px-4 py-3 text-xs text-[var(--color-content-muted)] shadow-2xs sm:flex-row sm:items-center sm:justify-between"
-        >
-          <p className="leading-relaxed">
-            {tickets.length > 0 ? (
-              <>
-                Hiển thị{' '}
-                <span className="font-semibold text-[var(--color-content)]">
-                  {offset + 1}–{offset + tickets.length}
-                </span>{' '}
-                phiếu · Trang{' '}
-                <span className="font-semibold text-[var(--color-content)]">{pageParam}</span>
-              </>
-            ) : (
-              <>
-                Trang <span className="font-semibold text-[var(--color-content)]">{pageParam}</span> · Không
-                có phiếu nào
-              </>
-            )}
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrevPage}
-              disabled={isFirstPage || isLoading}
-              className={`inline-flex min-h-[38px] items-center justify-center gap-1 rounded-[6px] border px-3 text-xs font-semibold transition-all sm:min-h-[36px] ${FOCUS_RING} ${
-                isFirstPage || isLoading
-                  ? 'cursor-not-allowed border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)] text-[var(--color-content-subtle)]'
-                  : 'border-[var(--color-edge-subtle)] bg-surface text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] shadow-2xs'
-              }`}
-            >
-              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Trang trước</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleNextPage}
-              disabled={isLastPage || isLoading}
-              className={`inline-flex min-h-[38px] items-center justify-center gap-1 rounded-[6px] border px-3 text-xs font-semibold transition-all sm:min-h-[36px] ${FOCUS_RING} ${
-                isLastPage || isLoading
-                  ? 'cursor-not-allowed border-[var(--color-edge-subtle)] bg-[var(--color-surface-warm)] text-[var(--color-content-subtle)]'
-                  : 'border-[var(--color-edge-subtle)] bg-surface text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] shadow-2xs'
-              }`}
-            >
-              <span>Trang sau</span>
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          </div>
-        </nav>
+        </Button>
       )}
     </div>
   );

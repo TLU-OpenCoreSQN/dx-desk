@@ -63,12 +63,12 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
   return (
     <section
       aria-label="Tiến trình cấp phát thiết bị"
-      className={`rounded-lg border border-edge bg-surface p-4 shadow-2xs sm:p-5 ${className}`}
+      className={`rounded-lg border border-edge bg-surface p-4 sm:p-5 ${className}`}
     >
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge-subtle pb-3">
         <div className="flex items-center gap-2">
-          <span className="tabular-nums text-xs font-semibold tracking-wider text-[var(--color-primary-ink)]">
+          <span className="tabular-nums text-xs font-semibold text-[var(--color-primary-ink)]">
             TIẾN TRÌNH CẤP PHÁT
           </span>
           <span className="tabular-nums text-xs text-content-subtle">
@@ -114,7 +114,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
 
             let nodeClass = 'border-2 border-edge bg-surface-muted text-content-subtle';
             if (isCompleted) {
-              nodeClass = 'border-2 border-status-success bg-status-success text-white shadow-2xs';
+              nodeClass = 'border-2 border-status-success bg-status-success text-white';
             } else if (isCurrent) {
               nodeClass = 'border-2 border-primary bg-primary text-white ring-4 ring-primary-tint';
             }
@@ -142,7 +142,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
 
                 {/* Node Circle */}
                 <div
-                  className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold text-xs transition-all ${nodeClass}`}
+                  className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold text-xs transition-colors ${nodeClass}`}
                 >
                   {isCompleted ? (
                     <Check className="h-4 w-4 stroke-[2.5]" aria-hidden="true" />
@@ -158,7 +158,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
                   <span
                     className={`text-xs font-semibold ${
                       isCurrent
-                        ? 'text-[var(--color-primary-ink)] font-bold'
+                        ? 'text-[var(--color-primary-ink)] font-semibold'
                         : isCompleted
                         ? 'text-content'
                         : 'text-content-subtle'
@@ -166,7 +166,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
                   >
                     {step.label}
                   </span>
-                  <span className="tabular-nums text-[10px] text-content-subtle mt-0.5 max-w-[140px] truncate">
+                  <span className="tabular-nums text-xs text-content-subtle mt-0.5 max-w-[140px] truncate">
                     {stepDetail}
                   </span>
                 </div>
@@ -187,8 +187,8 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-danger text-white">
                 <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
-              <h4 className="text-xs font-bold uppercase tracking-wider">
-                YÊU CẦU ĐÃ BỊ TỪ CHỐI BỞI QUẢN LÝ
+              <h4 className="text-[0.8125rem] font-semibold">
+                Quản lý đã từ chối yêu cầu
               </h4>
             </div>
             {request.decided_at && (
@@ -211,7 +211,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
         </div>
       )}
 
-      {/* Case 2: Handover Completed & SeaweedFS PDF Chip */}
+      {/* Case 2: đã bàn giao, có biên bản PDF */}
       {isHandedOver && (
         <div
           role="status"
@@ -223,17 +223,17 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-success text-white">
                 <Check className="h-3.5 w-3.5 stroke-[2.5]" aria-hidden="true" />
               </span>
-              <h4 className="text-xs font-bold uppercase tracking-wider">
-                ĐÃ BÀN GIAO THÀNH CÔNG VÀO LÚC {formatTime(request.handed_over_at)}
+              <h4 className="text-[0.8125rem] font-semibold">
+                Đã bàn giao lúc {formatTime(request.handed_over_at)}
               </h4>
             </div>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-content">
             Thiết bị đã được kiểm tra, cài đặt phần mềm chuẩn hóa và bàn giao đầy đủ cho nhân viên.
-            Biên bản bàn giao lưu trữ an toàn trên hệ thống SeaweedFS.
+            Biên bản bàn giao được lưu trữ an toàn.
           </p>
 
-          {/* SeaweedFS PDF Handover Chip */}
+          {/* Biên bản bàn giao PDF */}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {handoverUrl ? (
               <a
@@ -241,7 +241,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
                 target="_blank"
                 rel="noreferrer"
                 download
-                className="inline-flex min-h-[38px] items-center gap-2 rounded-md border border-status-success-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-status-success shadow-2xs hover:bg-status-success-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-success"
+                className="inline-flex min-h-[38px] items-center gap-2 rounded-md border border-status-success-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-status-success hover:bg-status-success-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-success"
               >
                 <FileText className="h-4 w-4" />
                 <span>Tải biên bản bàn giao (.PDF)</span>
@@ -252,7 +252,7 @@ export const DeviceWorkflowStepper: React.FC<DeviceWorkflowStepperProps> = ({
                 type="button"
                 onClick={onDownloadHandover}
                 disabled={isDownloading}
-                className="inline-flex min-h-[38px] items-center gap-2 rounded-md border border-status-success-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-status-success shadow-2xs hover:bg-status-success-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-success disabled:opacity-60"
+                className="inline-flex min-h-[38px] items-center gap-2 rounded-md border border-status-success-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-status-success hover:bg-status-success-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-success disabled:opacity-60"
               >
                 <FileText className="h-4 w-4" />
                 <span>{isDownloading ? 'Đang tải biên bản...' : 'Tải biên bản bàn giao (.PDF)'}</span>

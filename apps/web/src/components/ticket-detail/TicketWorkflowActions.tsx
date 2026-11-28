@@ -64,7 +64,7 @@ const formatRequestTime = (iso: string): string =>
   });
 
 const TEXTAREA_CLASS =
-  'w-full rounded-md border border-edge bg-surface-sidebar p-3 text-xs leading-relaxed text-content focus:bg-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm transition-all';
+  'w-full rounded-md border border-edge bg-surface-sidebar p-3 text-xs leading-relaxed text-content focus:bg-surface focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm transition-colors';
 
 const edgeKey = (edge: TransitionEdge): string => `${edge.from}-${edge.to}-${edge.label}`;
 
@@ -338,20 +338,19 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
   return (
     <aside aria-label="Thao tác chuyển trạng thái" className="z-10 lg:sticky lg:top-20 lg:self-start">
       <div
-        className={`lg:max-h-[calc(100vh_-_6rem)] lg:overflow-y-auto lg:rounded-[8px] lg:border lg:border-[var(--color-edge-subtle)] lg:bg-surface lg:shadow-2xs ${
+        className={`lg:max-h-[calc(100vh_-_6rem)] lg:overflow-y-auto lg:rounded-lg lg:border lg:border-edge lg:bg-surface ${
           isBottomBar
-            ? 'max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:max-h-[70vh] max-lg:overflow-y-auto max-lg:border-t max-lg:border-[var(--color-edge-subtle)] max-lg:bg-surface/95 max-lg:px-4 max-lg:pb-3 max-lg:pt-3 max-lg:shadow-[0_-8px_24px_rgba(33,31,27,0.12)] max-lg:backdrop-blur-sm'
+            ? 'max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-20 max-lg:max-h-[55dvh] max-lg:overflow-y-auto max-lg:border-t max-lg:border-[var(--color-edge-subtle)] max-lg:bg-surface max-lg:px-4 max-lg:pb-3 max-lg:pt-3 max-lg:shadow-[0_-4px_12px_rgb(15_23_42_/_8%)]'
             : ''
         }`}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--color-edge-subtle)] px-4 py-3 max-lg:hidden bg-[var(--color-surface-sidebar)]">
+        <div className="flex items-center justify-between gap-2 border-b border-edge bg-surface-muted px-4 py-3 max-lg:hidden">
           <div className="flex min-w-0 items-center gap-2">
             <GitBranch className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
             <h2 className="dx-section-title truncate">
               Thao tác
             </h2>
           </div>
-          <StatusBadge status={ticket.status} />
         </div>
 
         <div className="space-y-3 lg:p-4">
@@ -371,7 +370,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 type="button"
                 onClick={() => setSuccessMessage(null)}
                 aria-label="Đóng thông báo chuyển trạng thái"
-                className="-mr-1 -mt-0.5 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[4px] text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-content)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
+                className="-mr-1 -mt-0.5 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-sm text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-content)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -399,7 +398,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 }
               }}
               aria-labelledby="transition-dialog-title"
-              className="space-y-3 rounded-[4px] border border-[var(--color-primary-border)] bg-surface-warm p-3 sm:p-4"
+              className="space-y-3 rounded-sm border border-[var(--color-primary-border)] bg-surface-muted p-3 sm:p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -407,7 +406,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                     id="transition-dialog-title"
                     ref={formHeadingRef}
                     tabIndex={-1}
-                    className="break-words outline-none text-sm font-bold leading-snug text-[var(--color-content)]"
+                    className="break-words outline-none text-sm font-semibold leading-snug text-[var(--color-content)]"
                   >
                     Chuyển phiếu sang “{statusLabel(activeEdge.to)}”
                   </h3>
@@ -421,7 +420,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                   type="button"
                   onClick={cancelTransitionForm}
                   aria-label="Đóng form chuyển trạng thái"
-                  className="-mr-1 -mt-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-[4px] text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-content)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
+                  className="-mr-1 -mt-1 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-sm text-[var(--color-content-muted)] transition-colors hover:text-[var(--color-content)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] lg:min-h-8 lg:min-w-8"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -452,7 +451,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                   <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                     <label
                       htmlFor="transition-resolution-note"
-                      className="text-xs font-bold uppercase tracking-wider text-content"
+                      className="text-xs font-semibold text-content"
                     >
                       Mô tả cách giải quyết{' '}
                       <span className="text-status-danger" aria-hidden="true">
@@ -482,7 +481,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                     placeholder="Mô tả nguyên nhân gốc, cách khắc phục và kết quả kiểm tra..."
                     className={`${TEXTAREA_CLASS} ${
                       showResolutionError
-                        ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
+                        ? 'border-status-danger focus:border-status-danger focus-visible:ring-status-danger'
                         : ''
                     }`}
                   />
@@ -508,7 +507,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                 <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                   <label
                     htmlFor="transition-note"
-                    className="text-xs font-bold uppercase tracking-wider text-content"
+                    className="text-xs font-semibold text-content"
                   >
                     {noteLabel(activeEdge)}{' '}
                     <span className="font-normal normal-case tracking-normal text-content-muted">
@@ -536,7 +535,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                   placeholder={notePlaceholder(activeEdge)}
                   className={`${TEXTAREA_CLASS} ${
                     showNoteError
-                      ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
+                      ? 'border-status-danger focus:border-status-danger focus-visible:ring-status-danger'
                       : ''
                   }`}
                 />
@@ -576,7 +575,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
             <form onSubmit={sendReply} noValidate aria-labelledby="reply-composer-title" className="space-y-3">
               <h3
                 id="reply-composer-title"
-                className="flex items-center gap-2 text-sm font-bold leading-snug text-[var(--color-content)]"
+                className="flex items-center gap-2 text-sm font-semibold leading-snug text-[var(--color-content)]"
               >
                 <MessageSquare className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
                 Trả lời kỹ thuật viên
@@ -619,7 +618,7 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
                   placeholder="VD: Mình đã cài lại chứng chỉ VPN, giờ báo lỗi khác: ..."
                   className={`${TEXTAREA_CLASS} text-sm ${
                     replyTouched && replyNoteError
-                      ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
+                      ? 'border-status-danger focus:border-status-danger focus-visible:ring-status-danger'
                       : ''
                   }`}
                 />

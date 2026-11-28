@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowLeft,
@@ -22,6 +22,7 @@ import { ATTACHMENT_TYPES, fileError } from '../../../lib/attachments';
 import { Category, RequirementField, TicketPriority } from '../../../types/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Alert } from '../../../components/common/Alert';
+import { Button, buttonClass } from '../../../components/common/Button';
 import { Modal } from '../../../components/common/Modal';
 import { ErrorMessage } from '../../../components/common/ErrorMessage';
 import { FieldError, fieldClass } from '../../../components/common/FormField';
@@ -46,11 +47,11 @@ const Legend: React.FC<{ step: string; icon: React.ReactNode; children: React.Re
   children,
 }) => (
   <legend className="mb-3 flex w-full items-center gap-2 border-b border-edge-subtle pb-2">
-    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-primary-tint text-[10px] font-bold text-[var(--color-primary-text)]">
+    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-primary-tint text-xs font-semibold text-[var(--color-primary-text)]">
       {step}
     </span>
     {icon}
-    <span className="text-[11px] font-bold uppercase tracking-wider text-content">{children}</span>
+    <span className="text-[0.8125rem] font-semibold text-content">{children}</span>
   </legend>
 );
 
@@ -102,6 +103,12 @@ export const CreateTicketPage: React.FC = () => {
 
   const [submitAttempted, setSubmitAttempted] = useState<boolean>(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  // Mỗi lần gửi không hợp lệ tăng bộ đếm để đưa tiêu điểm tới bảng tóm tắt lỗi.
+  const [failedSubmits, setFailedSubmits] = useState(0);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (failedSubmits > 0) errorSummaryRef.current?.focus();
+  }, [failedSubmits]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [serverError, setServerError] = useState<unknown>(null);
   const [successTicketId, setSuccessTicketId] = useState<string | null>(null);
@@ -274,13 +281,14 @@ export const CreateTicketPage: React.FC = () => {
     (f) => f.required && !(fieldValues[f.key] || '').trim()
   );
 
-  const missingFieldLabels: string[] = [];
-  if (baseErrors.categoryId) missingFieldLabels.push('Danh mục sự cố');
-  if (baseErrors.title) missingFieldLabels.push('Tiêu đề phiếu (từ 5 đến 200 ký tự)');
-  if (baseErrors.description) missingFieldLabels.push('Mô tả chi tiết sự cố (từ 10 đến 5000 ký tự)');
-  if (baseErrors.priority) missingFieldLabels.push('Mức ưu tiên (Khẩn cấp chỉ dành cho Quản lý)');
+  // Mỗi mục trỏ tới đúng ô cần sửa (id của trường) để bảng tóm tắt lỗi dẫn thẳng tới đó.
+  const missingFields: { id: string; label: string }[] = [];
+  if (baseErrors.categoryId) missingFields.push({ id: 'ticket-category', label: 'Danh mục sự cố' });
+  if (baseErrors.title) missingFields.push({ id: 'ticket-title', label: 'Tiêu đề phiếu (từ 5 đến 200 ký tự)' });
+  if (baseErrors.description) missingFields.push({ id: 'ticket-description', label: 'Mô tả chi tiết sự cố (từ 10 đến 5000 ký tự)' });
+  if (baseErrors.priority) missingFields.push({ id: 'ticket-priority-normal', label: 'Mức ưu tiên (Khẩn cấp chỉ dành cho Quản lý)' });
   for (const f of missingRequiredFields) {
-    missingFieldLabels.push(`${f.label} (bắt buộc theo danh mục)`);
+    missingFields.push({ id: `requirement-${f.key}`, label: `${f.label} (bắt buộc theo danh mục)` });
   }
 
   const canSubmit = Object.keys(baseErrors).length === 0 && missingRequiredFields.length === 0;
@@ -359,6 +367,7 @@ export const CreateTicketPage: React.FC = () => {
     setPriority('normal');
     setFieldValues({});
     setSubmitAttempted(false);
+    setFailedSubmits(0);
     setTouched({});
   };
 
@@ -368,6 +377,7 @@ export const CreateTicketPage: React.FC = () => {
     setSubmitAttempted(true);
 
     if (!canSubmit) {
+      setFailedSubmits((n) => n + 1);
       return;
     }
 
@@ -400,26 +410,20 @@ export const CreateTicketPage: React.FC = () => {
   return (
     <div className="w-full space-y-5">
       {/* Top Header */}
-      <div className="flex items-center justify-between gap-3 border-b border-edge pb-3">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="-ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-[4px] px-1 text-xs font-semibold text-content-muted transition-colors hover:text-[var(--color-primary-ink)] focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          <span>Quay lại</span>
-        </button>
-        <span className="hidden items-center gap-1.5 rounded-[4px] border border-edge-subtle bg-primary-subtle px-2 py-1 text-[11px] font-semibold text-[var(--color-primary-ink)] sm:inline-flex">
-          <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
-          Biểu mẫu tiếp nhận IT
-        </span>
-      </div>
+      {/* Luôn về danh sách phiếu: trang có thể được mở trực tiếp, không có lịch sử để quay lại. */}
+      <Link
+        to="/tickets"
+        className="-ml-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-sm px-1 text-[0.8125rem] font-medium text-content-muted transition-colors duration-150 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-8"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Về danh sách phiếu
+      </Link>
 
       <div>
         <h1 className="dx-page-title">
           Tạo phiếu yêu cầu hỗ trợ IT
         </h1>
-        <p className="mt-1 text-xs text-content-muted sm:text-sm">
+        <p className="mt-1 text-sm text-content-muted">
           Điền đầy đủ thông tin để bộ phận IT tiếp nhận và phân loại xử lý kịp thời.
         </p>
       </div>
@@ -427,10 +431,10 @@ export const CreateTicketPage: React.FC = () => {
       {restoredBannerVisible && (
         <div
           role="status"
-          className="flex items-center justify-between gap-3 rounded-[6px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-4 py-2.5 text-xs text-[var(--color-primary-text)]"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-status-info-border bg-status-info-bg px-4 py-2 text-sm text-status-info"
         >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
               Đã khôi phục nội dung nháp chưa gửi
               {initialDraft?.savedAt
@@ -442,92 +446,72 @@ export const CreateTicketPage: React.FC = () => {
               .
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={clearDraftAndReset}
-              className="font-semibold text-status-danger underline hover:text-status-danger/80"
-            >
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={clearDraftAndReset}>
               Xóa nháp
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setRestoredBannerVisible(false)}
               aria-label="Đóng thông báo khôi phục nháp"
-              className="text-[var(--color-content-muted)] hover:text-[var(--color-content)]"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
+              leftIcon={<X className="h-4 w-4" />}
+            />
           </div>
         </div>
       )}
 
       {successTicketId ? (
-        <div className="mx-auto max-w-2xl space-y-4 rounded-lg border border-status-success-border bg-surface p-6 text-center shadow-xs sm:p-10">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg border border-status-success-border bg-status-success-bg text-status-success shadow-2xs">
-            <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
-          </div>
-          <h2 className="dx-section-title">
-            Tạo phiếu yêu cầu thành công!
-          </h2>
-          <p className="mx-auto max-w-md text-xs leading-relaxed text-[var(--color-content-muted)] sm:text-sm">
-            Phiếu của bạn đã được ghi nhận vào hệ thống với mã định danh{' '}
-            <code className="break-all rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2 py-0.5 font-mono font-bold text-[var(--color-primary-text)]">
-              {successTicketId}
-            </code>
-            . Đội ngũ kỹ thuật IT sẽ xem xét theo mức ưu tiên đã định.
-          </p>
-          {attachmentFile && (
-            <div aria-live="polite">
-              {isSubmitting ? (
-                <p>Phiếu đã được tạo. Đang quét và tải tệp…</p>
-              ) : attachmentUploaded ? (
-                <p>Tệp {attachmentFile.name} đã được quét và lưu an toàn.</p>
-              ) : (
-                <div>
-                  {attachmentError != null && (
-                    <ErrorMessage
-                      error={attachmentError}
-                      title="Phiếu đã tạo; tệp chưa tải thành công"
-                    />
-                  )}
-                  <button
-                    type="button"
-                    className="text-[var(--color-primary-ink)] underline"
-                    disabled={isSubmitting}
-                    onClick={async () => {
-                      setIsSubmitting(true);
-                      try {
-                        await sendFile(successTicketId);
-                      } finally {
-                        setIsSubmitting(false);
-                      }
-                    }}
-                  >
-                    Thử tải lại tệp vào phiếu này
-                  </button>
-                </div>
-              )}
+        <section className="mx-auto max-w-2xl space-y-4 rounded-lg border border-edge bg-surface p-6 sm:p-8">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-status-success" aria-hidden="true" />
+            <div className="min-w-0">
+              <h2 className="dx-section-title">Tạo phiếu yêu cầu thành công!</h2>
+              <p className="mt-1 text-sm leading-relaxed text-content-muted">
+                Phiếu{' '}
+                <span data-numeric title={successTicketId} className="font-mono font-medium text-content">
+                  #{successTicketId.slice(0, 8)}
+                </span>{' '}
+                đã được ghi nhận. Đội kỹ thuật IT sẽ xem xét theo mức ưu tiên đã chọn.
+              </p>
             </div>
-          )}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => navigate(`/tickets/${successTicketId}`)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-primary hover:bg-primary-hover active:bg-primary-active px-5 text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-            >
-              Xem chi tiết phiếu
-            </button>
-            <button
-              type="button"
-              onClick={resetForm}
-              disabled={isSubmitting}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] border border-[var(--color-edge-subtle)] bg-surface px-5 text-xs font-semibold text-[var(--color-content)] transition-all hover:bg-[var(--color-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-            >
-              Tạo phiếu khác
-            </button>
           </div>
-        </div>
+          {attachmentFile && (
+            isSubmitting ? (
+              <Alert type="info">Phiếu đã được tạo. Đang quét và tải tệp…</Alert>
+            ) : attachmentUploaded ? (
+              <Alert type="success">Tệp {attachmentFile.name} đã được quét và lưu an toàn.</Alert>
+            ) : (
+              <div className="space-y-2">
+                {attachmentError != null && (
+                  <ErrorMessage error={attachmentError} title="Phiếu đã tạo; tệp chưa tải thành công" />
+                )}
+                <Button
+                  variant="secondary"
+                  disabled={isSubmitting}
+                  onClick={async () => {
+                    setIsSubmitting(true);
+                    try {
+                      await sendFile(successTicketId);
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }}
+                >
+                  Thử tải lại tệp vào phiếu này
+                </Button>
+              </div>
+            )
+          )}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Link to={`/tickets/${encodeURIComponent(successTicketId)}`} className={buttonClass('primary')}>
+              Xem chi tiết phiếu
+            </Link>
+            <Button variant="secondary" onClick={resetForm} disabled={isSubmitting}>
+              Tạo phiếu khác
+            </Button>
+          </div>
+        </section>
       ) : (
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* Main form */}
@@ -535,7 +519,7 @@ export const CreateTicketPage: React.FC = () => {
             <form
               onSubmit={handleSubmit}
               noValidate
-              className="rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs"
+              className="rounded-lg border border-edge bg-surface"
             >
               <div className="space-y-6 p-4 sm:p-6">
                 {!!serverError && (
@@ -596,14 +580,14 @@ export const CreateTicketPage: React.FC = () => {
                       <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2">
                         <label
                           htmlFor="ticket-title"
-                          className="flex items-center gap-1 text-xs font-semibold text-content"
+                          className="flex items-center gap-1 text-[0.8125rem] font-medium text-content"
                         >
-                          Tiêu đề phiếu <span className="text-danger" aria-hidden="true">*</span>
+                          Tiêu đề phiếu <span className="text-status-danger" aria-hidden="true">*</span>
                         </label>
                         <span
-                          className={`tabular-nums text-[11px] ${
+                          className={`tabular-nums text-xs ${
                             titleLength > 200 || (titleLength > 0 && titleLength < 5)
-                              ? 'font-semibold text-danger'
+                              ? 'font-semibold text-status-danger'
                               : 'text-content-subtle'
                           }`}
                         >
@@ -631,16 +615,16 @@ export const CreateTicketPage: React.FC = () => {
                       <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2">
                         <label
                           htmlFor="ticket-description"
-                          className="flex items-center gap-1 text-xs font-semibold text-content"
+                          className="flex items-center gap-1 text-[0.8125rem] font-medium text-content"
                         >
                           Mô tả chi tiết sự cố{' '}
-                          <span className="text-danger" aria-hidden="true">*</span>
+                          <span className="text-status-danger" aria-hidden="true">*</span>
                         </label>
                         <span
-                          className={`tabular-nums text-[11px] ${
+                          className={`tabular-nums text-xs ${
                             descriptionLength > 5000 ||
                             (descriptionLength > 0 && descriptionLength < 10)
-                              ? 'font-semibold text-danger'
+                              ? 'font-semibold text-status-danger'
                               : 'text-content-subtle'
                           }`}
                         >
@@ -692,29 +676,31 @@ export const CreateTicketPage: React.FC = () => {
                       return (
                         <button
                           key={p}
+                          id={`ticket-priority-${p}`}
                           type="button"
                           disabled={locked}
-                          aria-disabled={locked ? 'true' : undefined}
                           aria-pressed={isSelected}
                           onClick={() => setPriority(p)}
-                          className={`min-h-[58px] rounded-[6px] border p-3 text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
+                          className={`min-h-[58px] rounded-md border p-3 text-left transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                             locked
-                              ? 'cursor-not-allowed border-edge bg-surface-muted/70 opacity-50'
+                              ? 'cursor-not-allowed border-dashed border-edge bg-surface-muted'
                               : isSelected
                                 ? isCritical
-                                  ? 'border-danger bg-danger-tint shadow-xs'
-                                  : 'border-primary bg-primary-tint shadow-xs'
-                                : 'border-edge bg-surface hover:border-edge-strong hover:bg-surface-warm/40'
+                                  ? 'border-status-danger bg-status-danger-bg'
+                                  : 'border-primary bg-primary-tint'
+                                : 'border-edge bg-surface hover:border-edge-strong hover:bg-state-hover'
                           }`}
                         >
                           <span className="flex items-center justify-between gap-1">
                             <span
-                              className={`text-xs font-bold ${
-                                isSelected
-                                  ? isCritical
-                                    ? 'text-status-danger'
-                                    : 'text-[var(--color-primary-ink)]'
-                                  : 'text-content'
+                              className={`text-[0.8125rem] font-semibold ${
+                                locked
+                                  ? 'text-content-muted'
+                                  : isSelected
+                                    ? isCritical
+                                      ? 'text-status-danger'
+                                      : 'text-[var(--color-primary-ink)]'
+                                    : 'text-content'
                               }`}
                             >
                               {PRIORITY_META[p].name}
@@ -727,7 +713,7 @@ export const CreateTicketPage: React.FC = () => {
                             )}
                           </span>
                           <span
-                            className={`mt-1 block text-[11px] leading-snug ${
+                            className={`mt-1 block text-xs leading-snug ${
                               isSelected
                                 ? isCritical
                                   ? 'text-status-danger'
@@ -745,7 +731,7 @@ export const CreateTicketPage: React.FC = () => {
                   {!isManager && (
                     <p
                       id="critical-priority-hint"
-                      className="mt-2 flex items-start gap-1.5 text-[11px] text-content-muted"
+                      className="mt-2 flex items-start gap-1.5 text-xs text-content-muted"
                     >
                       <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                       <span>
@@ -758,27 +744,33 @@ export const CreateTicketPage: React.FC = () => {
                   )}
                 </fieldset>
 
-                {/* Error summary */}
-                {missingFieldLabels.length > 0 && (
+                {/* Tóm tắt lỗi: chỉ hiện sau khi bấm Gửi; tiêu điểm chuyển tới đây, mỗi mục dẫn tới ô cần sửa. */}
+                {submitAttempted && missingFields.length > 0 && (
                   <div
+                    ref={errorSummaryRef}
                     id="missing-fields-summary"
-                    aria-live="polite"
-                    className="rounded-md border border-status-warning-border bg-status-warning-bg p-3 text-xs text-status-warning"
+                    role="alert"
+                    tabIndex={-1}
+                    aria-labelledby="missing-fields-title"
+                    className="rounded-lg border border-status-danger-border bg-status-danger-bg p-3 text-sm text-status-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-status-danger"
                   >
-                    <p className="flex items-start gap-1.5 font-semibold">
-                      <AlertCircle
-                        className="mt-0.5 h-4 w-4 shrink-0 text-status-warning"
-                        aria-hidden="true"
-                      />
+                    <p id="missing-fields-title" className="flex items-start gap-1.5 font-semibold">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                       <span>Chưa thể gửi phiếu - còn thiếu hoặc chưa hợp lệ:</span>
                     </p>
-                    <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                      {missingFieldLabels.map((label) => (
-                        <li
-                          key={label}
-                          className="rounded-sm border border-status-warning-border bg-surface px-2 py-0.5 font-medium text-content"
-                        >
-                          {label}
+                    <ul className="mt-1.5 list-disc space-y-1 pl-6">
+                      {missingFields.map((field) => (
+                        <li key={field.id}>
+                          <a
+                            href={`#${field.id}`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              document.getElementById(field.id)?.focus();
+                            }}
+                            className="font-medium underline underline-offset-2 hover:no-underline"
+                          >
+                            {field.label}
+                          </a>
                         </li>
                       ))}
                     </ul>
@@ -841,11 +833,11 @@ export const CreateTicketPage: React.FC = () => {
                         'Bấm để chọn tệp hoặc kéo thả vào đây.'
                       )}
                     </span>
-                    <span className="mt-0.5 block text-[11px] text-content-subtle">
+                    <span className="mt-0.5 block text-xs text-content-subtle">
                       PNG, JPEG, GIF, WebP, PDF, TXT; tối đa 10 MiB. Phiếu được tạo trước khi quét và lưu tệp.
                     </span>
                   </span>
-                  <span className="hidden shrink-0 rounded-md border border-edge bg-surface px-3 py-1.5 font-semibold text-content shadow-2xs transition-colors group-hover:border-primary group-hover:text-[var(--color-primary-ink)] sm:inline-flex">
+                  <span className="hidden shrink-0 rounded-md border border-edge-strong bg-surface px-3 py-1.5 font-semibold text-content transition-colors group-hover:border-primary group-hover:text-[var(--color-primary-ink)] sm:inline-flex">
                     {attachmentFile ? 'Đổi tệp' : 'Chọn tệp'}
                   </span>
                   <input
@@ -877,65 +869,42 @@ export const CreateTicketPage: React.FC = () => {
               </div>
 
               {/* Action bar */}
-              <div className="sticky bottom-0 z-20 flex items-center gap-2.5 border-t border-edge bg-surface/95 px-4 py-3 backdrop-blur sm:px-6 lg:static lg:bg-surface-warm/30 rounded-b-[8px]">
-                <p className="mr-auto hidden text-[11px] text-content-muted lg:block">
-                  Mục có dấu <span className="font-semibold text-danger">*</span> là bắt buộc.
+              <div className="sticky bottom-0 z-20 flex items-center gap-2.5 rounded-b-lg border-t border-edge bg-surface px-4 py-3 sm:px-6 lg:static lg:bg-surface-muted">
+                <p className="mr-auto hidden text-xs text-content-muted lg:block">
+                  Mục có dấu <span className="font-semibold text-status-danger">*</span> là bắt buộc.
                 </p>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[6px] border border-edge bg-surface px-4 text-xs font-semibold text-content-muted transition-all hover:bg-surface-warm hover:text-content focus:outline-none focus:ring-2 focus:ring-primary lg:min-h-[40px]"
-                >
+                <Button variant="secondary" onClick={handleCancel}>
                   Hủy bỏ
-                </button>
-                <button
+                </Button>
+                {/* Nút luôn bấm được (trừ khi đang gửi): bấm khi còn thiếu sẽ hiện tóm tắt lỗi. */}
+                <Button
                   type="submit"
-                  disabled={isSubmitting || categoriesLoading}
-                  aria-disabled={!canSubmit || undefined}
-                  aria-busy={isSubmitting || undefined}
-                  aria-describedby={
-                    missingFieldLabels.length > 0 ? 'missing-fields-summary' : undefined
-                  }
-                  className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[6px] px-5 text-xs font-bold text-white shadow-xs transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:flex-none lg:min-h-[40px] ${
-                    canSubmit && !isSubmitting && !categoriesLoading
-                      ? 'bg-primary hover:bg-primary-hover active:bg-primary-active'
-                      : 'cursor-not-allowed bg-primary opacity-50'
-                  }`}
+                  className="flex-1 sm:flex-none"
+                  disabled={categoriesLoading}
+                  isLoading={isSubmitting}
+                  leftIcon={<Send className="h-4 w-4" />}
                 >
-                  {isSubmitting ? (
-                    <>
-                      <span
-                        className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
-                        aria-hidden="true"
-                      />
-                      <span>Đang gửi phiếu...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" aria-hidden="true" />
-                      <span>Gửi phiếu hỗ trợ</span>
-                    </>
-                  )}
-                </button>
+                  {isSubmitting ? 'Đang gửi phiếu...' : 'Gửi phiếu hỗ trợ'}
+                </Button>
               </div>
             </form>
           </div>
 
           {/* Summary panel */}
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start">
-            <section className="rounded-[8px] border border-edge bg-surface shadow-2xs overflow-hidden">
-              <div className="flex items-center justify-between gap-2 border-b border-edge-subtle bg-surface-warm/60 px-4 py-3">
-                <h2 className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
+            <section className="overflow-hidden rounded-lg border border-edge bg-surface">
+              <div className="flex items-center justify-between gap-2 border-b border-edge bg-surface-muted px-4 py-3">
+                <h2 className="text-[0.8125rem] font-semibold text-content">
                   Tóm tắt phiếu
                 </h2>
-                <span className="tabular-nums text-[11px] font-semibold text-[var(--color-primary-text)] bg-primary-tint px-2 py-0.5 rounded-[4px] border border-[var(--color-primary-border)]">
+                <span data-numeric className="text-xs font-medium text-content-muted">
                   {completedRequired}/{requiredChecklist.length} bắt buộc
                 </span>
               </div>
 
               <dl className="divide-y divide-edge-subtle">
                 <div className="px-4 py-3">
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-content-muted">
+                  <dt className="text-xs font-medium text-content-muted">
                     Danh mục
                   </dt>
                   <dd className="mt-1 flex min-w-0 items-center gap-2">
@@ -944,7 +913,7 @@ export const CreateTicketPage: React.FC = () => {
                       {selectedCategory ? selectedCategory.name : 'Chưa chọn'}
                     </span>
                     {selectedCategory && (
-                      <span className="shrink-0 rounded-[4px] border border-edge bg-surface-muted px-1.5 py-0.5 tabular-nums text-[10px] font-semibold uppercase tracking-wide text-content-muted">
+                      <span className="shrink-0 rounded-sm border border-edge bg-surface-muted px-1.5 py-0.5 font-mono text-xs text-content-muted">
                         {selectedCategory.code}
                       </span>
                     )}
@@ -952,7 +921,7 @@ export const CreateTicketPage: React.FC = () => {
                 </div>
 
                 <div className="px-4 py-3">
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-content-muted">
+                  <dt className="text-xs font-medium text-content-muted">
                     Mức ưu tiên
                   </dt>
                   <dd className="mt-1 flex items-start gap-2">
@@ -964,16 +933,16 @@ export const CreateTicketPage: React.FC = () => {
                 </div>
 
                 <div className="px-4 py-3">
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-content-muted">
+                  <dt className="text-xs font-medium text-content-muted">
                     Tiến độ điền phiếu
                   </dt>
                   <dd className="mt-1.5">
                     <ul className="space-y-1.5">
                       {checklist.map((item) => (
-                        <li key={item.key} className="flex items-start gap-2 text-[11px]">
+                        <li key={item.key} className="flex items-start gap-2 text-xs">
                           {item.ready ? (
                             <Check
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success"
+                              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-status-success"
                               aria-hidden="true"
                             />
                           ) : (
@@ -986,7 +955,7 @@ export const CreateTicketPage: React.FC = () => {
                             {item.label}
                           </span>
                           {item.required && (
-                            <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-content-subtle">
+                            <span className="ml-auto shrink-0 text-xs text-content-muted">
                               bắt buộc
                             </span>
                           )}
@@ -998,12 +967,12 @@ export const CreateTicketPage: React.FC = () => {
               </dl>
             </section>
 
-            <section className="rounded-[4px] border border-edge bg-surface-muted/60 p-4">
-              <h2 className="flex items-center gap-1.5 text-xs font-bold text-content">
+            <section className="rounded-lg border border-edge bg-surface-muted p-4">
+              <h2 className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-content">
                 <HelpCircle className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
                 <span>Mẹo viết phiếu nhanh được xử lý</span>
               </h2>
-              <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-content-muted">
+              <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-content-muted">
                 <li className="flex gap-1.5">
                   <span aria-hidden="true">•</span>
                   <span>Ghi rõ vị trí làm việc (phòng, tầng, số bàn).</span>
@@ -1041,40 +1010,25 @@ export const CreateTicketPage: React.FC = () => {
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             {hasDraftContent ? (
               <>
-                <button
-                  type="button"
-                  onClick={discardDraftAndLeave}
-                  className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-status-danger-border bg-status-danger-bg px-4 text-xs font-semibold text-status-danger transition-colors hover:bg-status-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
-                >
+                <Button variant="dangerOutline" onClick={discardDraftAndLeave}>
                   Xóa nháp và rời trang
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     setCancelDialogOpen(false);
                     leaveToTicketList();
                   }}
-                  className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-edge bg-surface px-4 text-xs font-semibold text-content transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   Giữ nháp và rời trang
-                </button>
+                </Button>
               </>
             ) : (
-              <button
-                type="button"
-                onClick={discardDraftAndLeave}
-                className="inline-flex min-h-[40px] items-center justify-center rounded-md border border-status-danger-border bg-status-danger-bg px-4 text-xs font-semibold text-status-danger transition-colors hover:bg-status-danger hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger"
-              >
+              <Button variant="dangerOutline" onClick={discardDraftAndLeave}>
                 Bỏ tệp và rời trang
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              onClick={() => setCancelDialogOpen(false)}
-              className="inline-flex min-h-[40px] items-center justify-center rounded-md bg-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              Tiếp tục điền
-            </button>
+            <Button onClick={() => setCancelDialogOpen(false)}>Tiếp tục điền</Button>
           </div>
         }
       >

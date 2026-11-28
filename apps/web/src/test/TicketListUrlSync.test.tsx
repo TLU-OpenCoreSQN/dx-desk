@@ -65,9 +65,10 @@ describe('TicketListPage URL Search Parameters Synchronization', () => {
 
   it('restores filters and page from initial URL search parameters', async () => {
     const getTicketsSpy = vi.spyOn(apiService, 'getTickets').mockResolvedValue({
-      data: mockTickets,
+      data: [mockTickets[1]],
       limit: 25,
       offset: 25,
+      total: 26,
     });
 
     render(
@@ -76,24 +77,16 @@ describe('TicketListPage URL Search Parameters Synchronization', () => {
       </MemoryRouter>
     );
 
-    // Verified offset = (page 2 - 1) * 25 = 25
+    // offset = (trang 2 - 1) * 25 = 25; bộ lọc từ URL được gửi lên máy chủ ngay lần tải đầu.
     await waitFor(() => {
-      expect(getTicketsSpy).toHaveBeenCalledWith(25, 25);
+      expect(getTicketsSpy).toHaveBeenCalledWith(25, 25, { q: 'VPN', priority: 'normal', status: 'in_progress' });
     });
 
-    const searchInput = screen.getByLabelText('Tìm trong trang hiện tại');
-    expect(searchInput).toHaveValue('VPN');
-
-    const prioritySelect = screen.getByLabelText('Mức ưu tiên');
-    expect(prioritySelect).toHaveValue('normal');
-
-    const statusSelect = screen.getByLabelText('Trạng thái');
-    expect(statusSelect).toHaveValue('in_progress');
-
-    // Filtered result matching on the page
-    // Chờ danh sách hiển thị xong; kiểm tra đồng bộ ngay sau lời gọi API sẽ chập chờn.
+    expect(screen.getByLabelText('Tìm phiếu')).toHaveValue('VPN');
+    expect(screen.getByLabelText('Mức ưu tiên')).toHaveValue('normal');
+    expect(screen.getByLabelText('Trạng thái')).toHaveValue('in_progress');
+    // Kết quả là những gì máy chủ trả về; trang không lọc lại phía trình duyệt.
     expect(await screen.findByText('Cài đặt phần mềm VPN')).toBeInTheDocument();
-    expect(screen.queryByText('Mất kết nối mạng dây phòng 401')).not.toBeInTheDocument();
   });
 
   it('omits default values from URL query string and syncs updates bidirectionally', async () => {
@@ -120,7 +113,7 @@ describe('TicketListPage URL Search Parameters Synchronization', () => {
     expect(currentSearch).toBe('');
 
     // Update search query
-    const searchInput = screen.getByLabelText('Tìm trong trang hiện tại');
+    const searchInput = screen.getByLabelText('Tìm phiếu');
     fireEvent.change(searchInput, { target: { value: 'mạng dây' } });
     expect(currentSearch).toContain('q=m%E1%BA%A1ng+d%C3%A2y');
 

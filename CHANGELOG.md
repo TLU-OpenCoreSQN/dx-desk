@@ -6,6 +6,8 @@
 
 ### Thay đổi
 - ADR 0011: bỏ Ollama cục bộ, mô hình AI (chat có công cụ của trợ lý, gợi ý phân loại phiếu, nhúng bài Wiki) gọi qua API bên thứ ba chuẩn OpenAI-compatible, mặc định Google Gemini (`gemini-flash-latest`, `gemini-embedding-001`). Cấu hình bằng `AI_API_BASE_URL`, `AI_API_KEY`, `ASSISTANT_CHAT_MODEL`, `ASSISTANT_EMBED_MODEL`; client `apps/assistant/llm.mjs`.
+- Giao diện doanh nghiệp tối giản (`docs/de-xuat-thiet-ke-toi-gian-doanh-nghiep.md`, pha 1–3): token 3 tầng dùng chung cho cả hai ứng dụng (`src/styles/tokens.css`, `check-config` kiểm giống hệt), bề mặt phẳng viền 1px, cỡ chữ tối thiểu 12px, bán kính 4/6/8px, không còn hiệu ứng lặp vô hạn; ứng dụng thiết bị dùng Be Vietnam Pro, JetBrains Mono và lucide-react như DX-Desk. Danh sách phiếu, bảng việc kỹ thuật viên và phê duyệt dùng bảng `<table>` ngữ nghĩa có cột hạn SLA; phê duyệt quyết định ngay trong khung xem nhanh; trang chủ theo vai trò; tạo phiếu chỉ báo thiếu sau khi bấm Gửi, tóm tắt lỗi dẫn tới ô cần sửa; không hiển thị UUID hay khóa kỹ thuật cho người dùng.
+- `GET /api/tickets` nhận `q`, `priority`, `sla=breached|at_risk`, `sort=newest|sla_due`; tìm kiếm, lọc và "việc gấp trước" chạy phía máy chủ trên toàn bộ dữ liệu (trước đây chỉ trong 25 phiếu của trang đang xem), `total` đếm sau khi lọc.
 
 ### Gỡ bỏ
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).

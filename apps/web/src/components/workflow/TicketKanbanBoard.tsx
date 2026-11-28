@@ -2,27 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useMemo, useState } from 'react';
-import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  Filter,
-  Inbox,
-  Layers,
-  Pause,
-  RotateCw,
-  Search,
-  User,
-  UserCheck,
-  Wrench,
-} from 'lucide-react';
-import { Ticket, TicketPriority } from '../../types/api';
-import { computeSlaSnapshot, slaGaugeColor } from '../../lib/sla';
+import { Link } from 'react-router-dom';
+import { AlertCircle, ArrowRight, CheckCircle2, Clock, Inbox, Pause, UserCheck, Wrench } from 'lucide-react';
+import { Ticket } from '../../types/api';
+import { computeSlaSnapshot, formatSlaDuration, slaGaugeColor } from '../../lib/sla';
+import { CountBadge, PriorityBadge } from '../common/Badge';
+import { Button } from '../common/Button';
 
 export interface TicketKanbanBoardProps {
+  /** Phiếu của trang đang xem; tìm kiếm và lọc do trang chứa bảng thực hiện phía máy chủ. */
   tickets: Ticket[];
-  onTicketClick?: (ticket: Ticket) => void;
+  /** Đường dẫn chi tiết phiếu; tiêu đề thẻ là liên kết thật (mở được tab mới). */
+  ticketHref?: (ticket: Ticket) => string;
   onClaimTicket?: (ticket: Ticket) => Promise<void> | void;
   canClaim?: (ticket: Ticket) => boolean;
   busyTicketId?: string | null;
@@ -49,35 +40,35 @@ export const KANBAN_COLUMNS: KanbanColumnDef[] = [
   {
     key: 'new',
     label: 'Mới tiếp nhận',
-    sublabel: 'new / triaged',
+    sublabel: 'Mới tạo, đã phân loại',
     icon: Inbox,
     accentColor: 'text-status-info-solid',
   },
   {
     key: 'team_queue',
     label: 'Hàng đợi nhóm',
-    sublabel: 'Chưa nhận',
+    sublabel: 'Chưa có người nhận',
     icon: UserCheck,
     accentColor: 'text-status-pending-solid',
   },
   {
     key: 'in_progress',
     label: 'Đang xử lý',
-    sublabel: 'in_progress',
+    sublabel: 'Đã nhận, đang làm',
     icon: Wrench,
     accentColor: 'text-[var(--color-primary-ink)]',
   },
   {
     key: 'waiting',
     label: 'Chờ phản hồi / duyệt',
-    sublabel: 'waiting / approval',
+    sublabel: 'Chờ người yêu cầu hoặc Quản lý',
     icon: Pause,
     accentColor: 'text-status-warning-solid',
   },
   {
     key: 'resolved',
     label: 'Đã giải quyết',
-    sublabel: 'resolved / closed',
+    sublabel: 'Đã giải quyết, đã đóng',
     icon: CheckCircle2,
     accentColor: 'text-status-success',
   },
@@ -102,12 +93,6 @@ interface SlaStatus {
   isPaused: boolean;
   isFinished: boolean;
   gaugeColor: string;
-}
-
-function formatMinutes(totalMinutes: number): string {
-  return totalMinutes >= 60
-    ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
-    : `${totalMinutes}m`;
 }
 
 function computeSla(ticket: Ticket, now: number): SlaStatus {
@@ -137,11 +122,11 @@ function computeSla(ticket: Ticket, now: number): SlaStatus {
 
   let remainingText: string;
   if (sla.isBreached) {
-    remainingText = `Trễ ${formatMinutes(Math.floor(Math.max(0, -sla.remainingMs) / 60000))}`;
+    remainingText = sla.remainingMs < 0 ? `Quá hạn ${formatSlaDuration(sla.remainingMs)}` : 'Đã vi phạm SLA';
   } else if (sla.isPaused) {
-    remainingText = '⏸ SLA Tạm dừng';
+    remainingText = 'SLA tạm dừng';
   } else {
-    remainingText = `${formatMinutes(Math.floor(sla.remainingMs / 60000))} còn lại`;
+    remainingText = `Còn ${formatSlaDuration(sla.remainingMs)}`;
   }
 
   return {
@@ -159,299 +144,187 @@ function isCriticalLane(ticket: Ticket, sla: SlaStatus): boolean {
   return !sla.isFinished && (ticket.priority === 'critical' || sla.isBreached);
 }
 
+const defaultHref = (ticket: Ticket) => `/tickets/${encodeURIComponent(ticket.id)}`;
+
 export const TicketKanbanBoard: React.FC<TicketKanbanBoardProps> = ({
   tickets,
-  onTicketClick,
+  ticketHref = defaultHref,
   onClaimTicket,
   canClaim,
   busyTicketId,
   groupBySwimlanes = true,
   className = '',
 }) => {
-  const [priorityFilter, setPriorityFilter] = useState<TicketPriority | 'all'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [swimlanesEnabled, setSwimlanesEnabled] = useState(groupBySwimlanes);
-
-  // Filtered tickets
-  const filteredTickets = useMemo(() => {
-    return tickets.filter((ticket) => {
-      if (priorityFilter !== 'all' && ticket.priority !== priorityFilter) return false;
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const titleMatch = ticket.title.toLowerCase().includes(query);
-        const idMatch = ticket.id.toLowerCase().includes(query);
-        const assigneeMatch = ticket.assignee_name?.toLowerCase().includes(query);
-        if (!titleMatch && !idMatch && !assigneeMatch) return false;
-      }
-      return true;
-    });
-  }, [tickets, priorityFilter, searchQuery]);
 
   // Tính SLA một lần cho mỗi phiếu và dùng chung cho phân làn lẫn thẻ.
   const slaById = useMemo(() => {
     const now = Date.now();
-    return new Map(filteredTickets.map((t) => [t.id, computeSla(t, now)] as const));
-  }, [filteredTickets]);
+    return new Map(tickets.map((t) => [t.id, computeSla(t, now)] as const));
+  }, [tickets]);
 
   const criticalTickets = useMemo(
-    () => filteredTickets.filter((t) => isCriticalLane(t, slaById.get(t.id)!)),
-    [filteredTickets, slaById]
+    () => tickets.filter((t) => isCriticalLane(t, slaById.get(t.id)!)),
+    [tickets, slaById]
   );
 
   const standardTickets = useMemo(
-    () => filteredTickets.filter((t) => !isCriticalLane(t, slaById.get(t.id)!)),
-    [filteredTickets, slaById]
+    () => tickets.filter((t) => !isCriticalLane(t, slaById.get(t.id)!)),
+    [tickets, slaById]
   );
 
-  const renderKanbanGrid = (subset: Ticket[]) => {
-    return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {KANBAN_COLUMNS.map((col) => {
-          const colTickets = subset.filter((t) => classifyTicketColumn(t) === col.key);
-          const ColIcon = col.icon;
+  // h2 = bảng; khi phân làn, tên làn là h3 và tiêu đề thẻ là h4, không nhảy cấp.
+  const CardHeading = swimlanesEnabled ? 'h4' : 'h3';
 
-          return (
-            <div
-              key={col.key}
-              className="flex flex-col rounded-lg border border-edge bg-surface-muted/50 p-2.5 sm:p-3"
-            >
-              {/* Column Header */}
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-edge-subtle">
-                <div className="flex items-center gap-1.5">
-                  <ColIcon className={`h-4 w-4 ${col.accentColor}`} aria-hidden="true" />
-                  <span className="text-xs font-semibold text-content">{col.label}</span>
-                </div>
-                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-surface px-1.5 tabular-nums text-[11px] font-bold text-content-muted shadow-2xs">
-                  {colTickets.length}
-                </span>
+  const renderKanbanGrid = (subset: Ticket[], laneLabel: string) => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {KANBAN_COLUMNS.map((col) => {
+        const colTickets = subset.filter((t) => classifyTicketColumn(t) === col.key);
+        const ColIcon = col.icon;
+
+        return (
+          <section
+            key={col.key}
+            aria-label={`${laneLabel}: ${col.label}, ${colTickets.length} phiếu`}
+            className="flex flex-col rounded-lg border border-edge bg-surface-muted p-2.5"
+          >
+            <div className="mb-2 flex items-start justify-between gap-2 border-b border-edge pb-2">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-content">
+                  <ColIcon className={`h-4 w-4 shrink-0 ${col.accentColor}`} aria-hidden="true" />
+                  <span>{col.label}</span>
+                </p>
+                <p className="mt-0.5 text-xs text-content-muted">{col.sublabel}</p>
               </div>
+              <CountBadge value={colTickets.length} />
+            </div>
 
-              {/* Column Cards Container */}
-              <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto max-h-[720px] pr-0.5">
-                {colTickets.length === 0 ? (
-                  <div className="flex h-24 items-center justify-center rounded-md border border-dashed border-edge/60 bg-surface/40 p-3 text-center text-xs text-content-subtle">
-                    Không có phiếu
-                  </div>
-                ) : (
-                  colTickets.map((ticket) => {
-                    const sla = slaById.get(ticket.id)!;
-                    const isClaimable =
-                      canClaim ? canClaim(ticket) : !ticket.assigned_to && onClaimTicket;
-                    const isBusy = busyTicketId === ticket.id;
+            <ul className="flex max-h-[720px] flex-1 flex-col gap-2 overflow-y-auto">
+              {colTickets.length === 0 ? (
+                <li className="flex h-20 items-center justify-center rounded-md border border-dashed border-edge p-3 text-center text-xs text-content-muted">
+                  Không có phiếu
+                </li>
+              ) : (
+                colTickets.map((ticket) => {
+                  const sla = slaById.get(ticket.id)!;
+                  const isClaimable = canClaim ? canClaim(ticket) : !ticket.assigned_to && Boolean(onClaimTicket);
+                  const isBusy = busyTicketId === ticket.id;
 
-                    return (
-                      <article
-                        key={ticket.id}
-                        onClick={() => onTicketClick?.(ticket)}
-                        className="group relative flex flex-col justify-between rounded-md border border-edge bg-surface p-3 shadow-2xs transition-all hover:border-primary hover:shadow-xs cursor-pointer"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          // Bỏ qua phím từ phần tử con (nút nhận phiếu) để không chặn kích hoạt của nút.
-                          if (e.target !== e.currentTarget) return;
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onTicketClick?.(ticket);
-                          }
-                        }}
-                        aria-label={`Phiếu #${ticket.id.slice(0, 8)}: ${ticket.title}`}
-                      >
-                        {/* Top: ID & SLA Badge */}
-                        <div className="flex items-center justify-between gap-1 text-[11px]">
-                          <span className="tabular-nums font-bold text-[var(--color-primary-ink)]">
-                            #{ticket.id.slice(0, 8).toUpperCase()}
-                          </span>
-                          <span
-                            className={`tabular-nums text-[10px] font-semibold px-1.5 py-0.5 rounded-xs ${
-                              sla.isBreached
-                                ? 'bg-status-danger-bg text-status-danger'
-                                : sla.isPaused
+                  return (
+                    <li
+                      key={ticket.id}
+                      className="flex flex-col rounded-md border border-edge bg-surface p-3 transition-colors duration-150 hover:border-edge-strong motion-reduce:transition-none"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span data-numeric title={ticket.id} className="font-mono text-content-muted">
+                          #{ticket.id.slice(0, 8)}
+                        </span>
+                        <span
+                          className={`whitespace-nowrap rounded-sm px-1.5 py-0.5 font-medium tabular-nums ${
+                            sla.isBreached
+                              ? 'bg-status-danger-bg text-status-danger'
+                              : sla.isPaused
                                 ? 'bg-status-warning-bg text-status-warning'
                                 : 'bg-surface-muted text-content-muted'
-                            }`}
-                          >
-                            {sla.remainingText}
-                          </span>
-                        </div>
-
-                        {/* Title */}
-                        <h4 className="mt-1.5 line-clamp-2 text-xs font-semibold text-content group-hover:text-[var(--color-primary-ink)] transition-colors">
-                          {ticket.title}
-                        </h4>
-
-                        {/* Assignee / Team */}
-                        <div className="mt-2 flex items-center justify-between gap-1 text-[11px] text-content-muted">
-                          <span className="flex items-center gap-1 truncate max-w-[140px]">
-                            <User className="h-3 w-3 shrink-0 text-content-subtle" />
-                            <span className="truncate">
-                              {ticket.assignee_name || ticket.team_name || 'Chưa gán'}
-                            </span>
-                          </span>
-                          <span
-                            className={`rounded-xs px-1.5 py-0.5 font-semibold text-[10px] ${
-                              ticket.priority === 'critical'
-                                ? 'bg-status-danger-bg text-status-danger'
-                                : ticket.priority === 'high'
-                                ? 'bg-status-warning-bg text-status-warning'
-                                : 'bg-surface-muted text-content-subtle'
-                            }`}
-                          >
-                            {ticket.priority.toUpperCase()}
-                          </span>
-                        </div>
-
-                        {/* 1-Click Claim Affordance */}
-                        {isClaimable && onClaimTicket && (
-                          <div className="mt-2.5 pt-2 border-t border-edge-subtle">
-                            <button
-                              type="button"
-                              disabled={isBusy}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void onClaimTicket(ticket);
-                              }}
-                              className="w-full inline-flex min-h-[30px] items-center justify-center gap-1 rounded-sm bg-primary px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 transition-colors"
-                            >
-                              {isBusy ? (
-                                <>
-                                  <RotateCw className="h-3 w-3 animate-spin" />
-                                  <span>Đang nhận...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <span>Nhận xử lý ngay</span>
-                                  <ArrowRight className="h-3 w-3" />
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* 4px SLA Progress Gauge Bar */}
-                        <div
-                          className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-edge-subtle"
-                          title={`Tiến độ SLA: ${sla.elapsedPercent}%`}
-                          aria-label={`Tiến độ SLA: ${sla.elapsedPercent}%`}
-                          role="progressbar"
-                          aria-valuenow={sla.elapsedPercent}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
+                          }`}
                         >
-                          <div
-                            className={`h-full transition-all duration-300 ${sla.gaugeColor}`}
-                            style={{ width: `${sla.elapsedPercent}%` }}
-                          />
-                        </div>
-                      </article>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+                          {sla.remainingText}
+                        </span>
+                      </div>
+
+                      <CardHeading className="mt-1.5 text-[0.8125rem] font-semibold leading-snug text-content">
+                        <Link
+                          to={ticketHref(ticket)}
+                          className="line-clamp-2 rounded-sm hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        >
+                          {ticket.title}
+                        </Link>
+                      </CardHeading>
+
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-content-muted">
+                        <span className="min-w-0 truncate">
+                          {ticket.assignee_name || ticket.team_name || 'Chưa phân công'}
+                        </span>
+                        <PriorityBadge priority={ticket.priority} />
+                      </div>
+
+                      {isClaimable && onClaimTicket && (
+                        <Button
+                          size="sm"
+                          className="mt-2.5 w-full"
+                          disabled={busyTicketId != null}
+                          isLoading={isBusy}
+                          rightIcon={isBusy ? undefined : <ArrowRight className="h-3.5 w-3.5" />}
+                          onClick={() => void onClaimTicket(ticket)}
+                        >
+                          {isBusy ? 'Đang nhận...' : 'Nhận xử lý ngay'}
+                        </Button>
+                      )}
+
+                      <div
+                        className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-edge"
+                        role="progressbar"
+                        aria-label="Tiến độ SLA"
+                        aria-valuenow={sla.elapsedPercent}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
+                        <div
+                          className={`h-full transition-[width] duration-300 motion-reduce:transition-none ${sla.gaugeColor}`}
+                          style={{ width: `${sla.elapsedPercent}%` }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
 
   return (
-    <section
-      aria-label="Bảng Kanban luồng việc kỹ thuật viên"
-      className={`rounded-lg border border-edge bg-surface p-4 shadow-2xs sm:p-5 ${className}`}
-    >
-      {/* Top Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge-subtle pb-4 mb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 font-bold text-sm text-content">
-            <Layers className="h-4 w-4 text-[var(--color-primary-ink)]" aria-hidden="true" />
-            <span>KANBAN VẬN HÀNH IT</span>
-          </div>
-          <span className="tabular-nums text-xs text-content-subtle">
-            ({filteredTickets.length} phiếu)
-          </span>
+    <section aria-labelledby="kanban-board-title" className={`rounded-lg border border-edge bg-surface p-4 ${className}`}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-edge pb-3">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h2 id="kanban-board-title" className="text-sm font-semibold text-content">Kanban luồng việc</h2>
+          <span data-numeric className="text-xs text-content-muted">{tickets.length} phiếu trên trang này</span>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search box */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-content-subtle" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo tiêu đề, mã..."
-              className="h-[34px] rounded-md border border-edge bg-surface pl-8 pr-3 text-xs text-content placeholder:text-content-subtle focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary w-40 sm:w-52"
-            />
-          </div>
-
-          {/* Priority filter */}
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value as TicketPriority | 'all')}
-            className="h-[34px] rounded-md border border-edge bg-surface px-2.5 text-xs text-content focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            aria-label="Lọc theo mức ưu tiên"
-          >
-            <option value="all">Tất cả ưu tiên</option>
-            <option value="critical">Khẩn cấp (Critical)</option>
-            <option value="high">Cao (High)</option>
-            <option value="normal">Bình thường (Normal)</option>
-            <option value="low">Thấp (Low)</option>
-          </select>
-
-          {/* Swimlane Toggle */}
-          <button
-            type="button"
-            onClick={() => setSwimlanesEnabled(!swimlanesEnabled)}
-            className={`inline-flex h-[34px] items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-2xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-              swimlanesEnabled
-                ? 'border-primary bg-primary-tint text-[var(--color-primary-ink)]'
-                : 'border-edge bg-surface text-content hover:bg-surface-muted'
-            }`}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            <span>Phân làn khẩn cấp</span>
-          </button>
-        </div>
+        <Button variant="secondary" size="sm" aria-pressed={swimlanesEnabled} onClick={() => setSwimlanesEnabled((on) => !on)}>
+          Tách làn khẩn cấp
+        </Button>
       </div>
 
-      {/* Grid Content */}
       {swimlanesEnabled ? (
         <div className="space-y-6">
-          {/* Swimlane 1: Critical & SLA Breached */}
           {criticalTickets.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-md border border-status-danger-border bg-status-danger-bg px-3.5 py-2 text-status-danger">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">
-                    HÀNG ĐỢI KHẨN CẤP / CRITICAL SWIMLANE (SLA RỦI RO CAO)
-                  </span>
-                </div>
-                <span className="tabular-nums text-xs font-bold">
-                  {criticalTickets.length} phiếu đang mở
-                </span>
+              <div className="flex items-center justify-between gap-2 rounded-md border border-status-danger-border bg-status-danger-bg px-3 py-2 text-status-danger">
+                <h3 className="flex items-center gap-2 text-[0.8125rem] font-semibold">
+                  <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Khẩn cấp hoặc đã quá hạn SLA
+                </h3>
+                <span data-numeric className="text-xs font-medium">{criticalTickets.length} phiếu đang mở</span>
               </div>
-              {renderKanbanGrid(criticalTickets)}
+              {renderKanbanGrid(criticalTickets, 'Làn khẩn cấp')}
             </div>
           )}
 
-          {/* Swimlane 2: Standard (High / Normal / Low) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-md border border-edge bg-surface-muted px-3.5 py-2 text-content-muted">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-[var(--color-primary-ink)]" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  HÀNG ĐỢI TIÊU CHUẨN / STANDARD SWIMLANE
-                </span>
-              </div>
-              <span className="tabular-nums text-xs font-semibold">
-                {standardTickets.length} phiếu
-              </span>
+            <div className="flex items-center justify-between gap-2 rounded-md border border-edge bg-surface-muted px-3 py-2 text-content">
+              <h3 className="flex items-center gap-2 text-[0.8125rem] font-semibold">
+                <Clock className="h-4 w-4 shrink-0 text-content-muted" aria-hidden="true" />
+                Các phiếu còn lại
+              </h3>
+              <span data-numeric className="text-xs text-content-muted">{standardTickets.length} phiếu</span>
             </div>
-            {renderKanbanGrid(standardTickets)}
+            {renderKanbanGrid(standardTickets, 'Làn thường')}
           </div>
         </div>
       ) : (
-        renderKanbanGrid(filteredTickets)
+        renderKanbanGrid(tickets, 'Kanban')
       )}
     </section>
   );

@@ -137,6 +137,13 @@ it('renames a conversation and requires confirmation before deleting its history
   fireEvent.change(screen.getByLabelText('Tên cuộc trò chuyện'), { target: { value: 'VPN làm việc từ xa' } });
   fireEvent.click(screen.getByRole('button', { name: 'Lưu tên cuộc trò chuyện' }));
   expect(await screen.findByRole('button', { name: 'VPN làm việc từ xa' })).toBeInTheDocument();
+  // Lưu xong, tiêu điểm trở lại nút đổi tên thay vì rơi về đầu trang.
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Đổi tên VPN làm việc từ xa' })).toHaveFocus());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Đổi tên VPN làm việc từ xa' }));
+  fireEvent.keyDown(screen.getByLabelText('Tên cuộc trò chuyện'), { key: 'Escape' });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Đổi tên VPN làm việc từ xa' })).toHaveFocus());
+
   fireEvent.click(screen.getByRole('button', { name: 'Xóa VPN làm việc từ xa' }));
   const dialog = await screen.findByRole('dialog');
   expect(api.deleteAssistantSession).not.toHaveBeenCalled();

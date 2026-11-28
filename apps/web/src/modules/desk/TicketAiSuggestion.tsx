@@ -1,14 +1,16 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useId, useRef, useState } from 'react';
+import { Alert } from '../../components/common/Alert';
 import { Button } from '../../components/common/Button';
+import { fieldClass } from '../../components/common/FormField';
 import { AiTriageDiff } from '../../components/workflow';
 import { getTeams } from '../../services/api';
 import type { Category, Team, Ticket } from '../../types/api';
 import { decideAiSuggestion, getAiSuggestion, type AiSuggestion, type SuggestionValues } from './aiSuggestionApi';
 
 const priorities = { low: 'Thấp', normal: 'Bình thường', high: 'Cao' };
-const input = 'block w-full rounded-md border border-edge bg-surface p-2 text-sm text-content focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary';
+const input = `${fieldClass(false)} mt-1 block`;
 
 interface Props {
   ticketId: string;
@@ -108,25 +110,25 @@ export function TicketAiSuggestion({ ticketId, ticketStatus, assignedTo, categor
       )}
 
       {draft && (
-        <section aria-labelledby={heading} className="space-y-3 rounded-lg border border-edge bg-surface p-4 text-sm shadow-2xs">
-          <h2 id={heading} className="font-semibold text-content">Chỉnh sửa đề xuất của AI</h2>
+        <section aria-labelledby={heading} className="space-y-3 rounded-lg border border-edge bg-surface p-4 text-sm">
+          <h2 id={heading} className="dx-section-title">Chỉnh sửa đề xuất của AI</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-semibold text-content">Danh mục
+            <label className="text-[0.8125rem] font-medium text-content">Danh mục
               <select className={input} value={draft.category_id} onChange={event => setDraft({ ...draft, category_id: event.target.value })}>
                 {categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
-            <label className="text-xs font-semibold text-content">Nhóm xử lý
+            <label className="text-[0.8125rem] font-medium text-content">Nhóm xử lý
               <select className={input} value={draft.team_id} onChange={event => setDraft({ ...draft, team_id: event.target.value })}>
                 {teams.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
-            <label className="text-xs font-semibold text-content">Ưu tiên
+            <label className="text-[0.8125rem] font-medium text-content">Ưu tiên
               <select className={input} value={draft.priority} onChange={event => setDraft({ ...draft, priority: event.target.value as SuggestionValues['priority'] })}>
                 {Object.entries(priorities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
-            <label className="sm:col-span-2 text-xs font-semibold text-content">Tóm tắt
+            <label className="sm:col-span-2 text-[0.8125rem] font-medium text-content">Tóm tắt
               <textarea className={input} maxLength={2000} value={draft.summary} onChange={event => setDraft({ ...draft, summary: event.target.value })} />
             </label>
           </div>
@@ -138,8 +140,8 @@ export function TicketAiSuggestion({ ticketId, ticketStatus, assignedTo, categor
         </section>
       )}
 
-      {notice && <p role="status" className="rounded-md border border-status-success-border bg-status-success-bg p-3 text-sm text-status-success">{notice}</p>}
-      {error && <p role="alert" className="rounded-md border border-status-danger-border bg-status-danger-bg p-3 text-sm text-status-danger">{error}</p>}
+      {notice && <Alert type="success">{notice}</Alert>}
+      {error && <Alert type="error">{error}</Alert>}
     </div>
   );
 }
