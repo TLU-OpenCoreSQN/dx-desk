@@ -6,6 +6,7 @@ import { answer, proposalStore, tools } from './chat.mjs';
 import { searchKnowledge, wikiKnowledge } from './knowledge.mjs';
 import { chatStream } from './llm.mjs';
 import { conversationContext } from './context.mjs';
+import { classifySupportTopic } from './policy.mjs';
 
 const errorWith = (status, message) => Object.assign(new Error(message), { status });
 const MAX_BODY = 40000;
@@ -211,6 +212,8 @@ export function assistantDependencies(env = process.env) {
       return result.json();
     },
     knowledge: (question, signal) => searchKnowledge(config, question, signal),
+    routeTopic: (question, history, signal) => classifySupportTopic(question, history,
+      (messages, available, current) => chatStream(config.ai, messages, available, current), signal),
     async available(token) {
       const result = await call('/api/assistant-tools', token);
       if (result.status === 404) { await result.body?.cancel(); return []; }
