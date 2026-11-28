@@ -603,6 +603,8 @@ Trên điện thoại, nút **Mở lịch sử hội thoại** mở danh sách n
 Mỗi lần gửi tiếp, server đọc lịch sử của chính cuộc trò chuyện đang chọn. Khi
 lịch sử vượt khoảng 48.000 ký tự, các lượt cũ được tóm tắt vào bộ nhớ của hội thoại,
 giữ các lượt gần nhất trong prompt. Lịch sử đầy đủ vẫn có thể tải qua **Tải tin nhắn cũ**.
+Nếu tóm tắt lỗi hoặc rỗng, trợ lý vẫn trả lời bằng các lượt gần nhất và bộ nhớ đã lưu;
+lượt sau thử tóm tắt lại lịch sử gốc. Bản tóm tắt dài quá được giới hạn 12.000 ký tự.
 Nút **Dừng trả lời** giữ phần đã nhận và cho phép gửi tiếp. Một hội thoại xử lý một
 lượt tại một thời điểm. Sau sự cố tiến trình, lượt đang dở được mở lại sau lease 5 phút.
 Một tin nhắn nhận tối đa 8.000 ký tự. Enter gửi tin và Shift+Enter xuống dòng.

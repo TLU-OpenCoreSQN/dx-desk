@@ -237,3 +237,49 @@ it('ignores an older history refresh that arrives after a newer message', async 
   await act(async () => resolveOld!(old!));
   expect(screen.getByRole('heading', { name: 'Tin tiếp theo.' })).toBeInTheDocument();
 });
+
+it('retries a failed pending-turn poll and unlocks sending when the next poll completes', async () => {
+  const pending: api.AssistantTurn = {
+    id: 'remote-turn', question: 'Một tab khác đang hỏi.', answer: '', status: 'pending',
+    metadata: { steps: [], sources: [] }, created_at: '2026-11-28T10:00:00Z',
+  };
+  vi.mocked(api.getAssistantSession)
+    .mockResolvedValueOnce({ session: sessions[0], turns: [pending], has_more: false })
+    .mockRejectedValueOnce(new Error('Mạng tạm thời gián đoạn.'))
+    .mockResolvedValueOnce({ session: sessions[0], turns: [{ ...pending, answer: 'Đã trả lời xong.', status: 'complete' }], has_more: false });
+  vi.useFakeTimers();
+  let view: ReturnType<typeof mount> | undefined;
+  try {
+    await act(async () => { view = mount(original); });
+    fireEvent.change(screen.getByLabelText('Câu hỏi hỗ trợ IT'), { target: { value: 'Câu hỏi tiếp theo.' } });
+    expect(screen.getByRole('button', { name: 'Gửi câu hỏi' })).toBeDisabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(screen.getByRole('alert')).toHaveTextContent('Mạng tạm thời gián đoạn.');
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(screen.getByText('Đã trả lời xong.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gửi câu hỏi' })).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(api.getAssistantSession).toHaveBeenCalledTimes(3);
+  } finally { view?.unmount(); vi.useRealTimers(); }
+});
+
+it('aborts a pending history poll and cancels retry timers after leaving the page', async () => {
+  histories[original] = [{ id: 'pending', question: 'Đang chờ.', answer: '', status: 'pending', metadata: { steps: [], sources: [] }, created_at: '2026-11-28T10:00:00Z' }];
+  let signal: AbortSignal | undefined;
+  vi.mocked(api.getAssistantSession).mockImplementationOnce(async () => ({ session: sessions[0], turns: histories[original], has_more: false }))
+    .mockImplementationOnce(async (_id, current) => {
+      signal = current;
+      return new Promise<api.SessionDetail>(() => {});
+    });
+  vi.useFakeTimers();
+  let view: ReturnType<typeof mount> | undefined;
+  try {
+    await act(async () => { view = mount(original); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    expect(signal).toBeDefined();
+    view!.unmount();
+    expect(signal!.aborted).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(api.getAssistantSession).toHaveBeenCalledTimes(2);
+  } finally { view?.unmount(); vi.useRealTimers(); }
+});
