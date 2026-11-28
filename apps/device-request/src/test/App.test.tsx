@@ -179,7 +179,8 @@ describe('IT', () => {
 
     expect(screen.getByText('DX')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Xin cấp thiết bị' })).toBeInTheDocument();
-    expect(screen.getByText('Module 2')).toBeInTheDocument();
+    // Không lộ nhãn kỹ thuật nội bộ cho người dùng cuối.
+    expect(screen.queryByText('Module 2')).not.toBeInTheDocument();
 
     const identity = screen.getByTestId('identity');
     expect(identity).toHaveTextContent('employee.a');
@@ -188,7 +189,7 @@ describe('IT', () => {
 
     expect(screen.queryByRole('button', { name: 'Chuyển chế độ giao diện sáng/tối' })).not.toBeInTheDocument();
 
-    const backLink = screen.getByRole('link', { name: '← Về DX-Desk' });
+    const backLink = screen.getByRole('link', { name: 'Về DX-Desk' });
     expect(backLink).toBeInTheDocument();
     expect(backLink).toHaveAttribute('href', '/');
 

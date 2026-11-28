@@ -7,11 +7,11 @@ import { AlertCircle } from 'lucide-react';
 /** Class dùng chung cho ô nhập/select của form; `invalid` đổi viền sang màu lỗi. */
 export const fieldClass = (invalid: boolean): string =>
   [
-    'w-full min-h-[44px] md:min-h-[38px] rounded-md border bg-surface px-3 py-2 text-sm text-content',
-    'transition-all focus:bg-surface focus:outline-none focus:ring-2',
+    'w-full min-h-[44px] md:min-h-10 rounded-md border bg-surface px-3 py-2 text-sm text-content',
+    'transition-colors focus:bg-surface focus-visible:outline-none focus-visible:ring-2',
     invalid
-      ? 'border-status-danger focus:border-status-danger focus:ring-status-danger'
-      : 'border-edge focus:border-primary focus:ring-primary',
+      ? 'border-status-danger focus:border-status-danger focus-visible:ring-status-danger'
+      : 'border-edge focus:border-primary focus-visible:ring-primary',
   ].join(' ');
 
 /** Thông báo lỗi ngay dưới một trường; `id` khớp với `aria-describedby` của trường đó. */

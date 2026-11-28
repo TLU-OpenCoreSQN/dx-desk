@@ -6,8 +6,10 @@ import { listRequests, REQUEST_PAGE_SIZE, type RequestQueue } from './rest';
 import { RequestForm } from './RequestForm';
 import { RequestCard } from './RequestCard';
 import type { CurrentUser, DeviceRequest } from './workflow';
+import { ArrowLeft, LogOut, RefreshCw } from 'lucide-react';
+import { alertClass, buttonClass } from './ui';
 
-const ROLE_LABELS: Record<string, string> = { Employee: 'Nhân viên', Agent: 'IT', Manager: 'Quản lý' };
+const ROLE_LABELS: Record<string, string> = { Employee: 'Nhân viên', Agent: 'Kỹ thuật viên', Manager: 'Quản lý' };
 
 export default function App() {
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -19,13 +21,14 @@ export default function App() {
   if (authError) {
     return (
       <main className="mx-auto max-w-xl p-8">
-        <p role="alert" className="rounded-md border border-danger-edge bg-danger-tint p-4 text-sm text-danger">
+        <h1 className="mb-3 text-2xl font-semibold text-content">Xin cấp thiết bị</h1>
+        <p role="alert" className={alertClass.danger}>
           Không kết nối được máy chủ đăng nhập. Kiểm tra Keycloak rồi tải lại trang.
         </p>
       </main>
     );
   }
-  if (!user) return <p className="p-8 text-sm text-muted" role="status">Đang kiểm tra phiên đăng nhập…</p>;
+  if (!user) return <p className="p-8 text-sm text-content-muted" role="status">Đang kiểm tra phiên đăng nhập…</p>;
   return <Workspace user={user} />;
 }
 
@@ -36,26 +39,21 @@ export function Workspace({ user }: { user: CurrentUser }) {
   const isAgent = user.roles.includes('Agent');
 
   return (
-    <div className="min-h-screen bg-surface-warm text-content">
-      <header className="border-b border-edge bg-surface/95 backdrop-blur-md sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="min-h-screen bg-background text-content">
+      <header className="sticky top-0 z-30 border-b border-edge bg-surface">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-[6px] bg-gradient-to-br from-primary to-primary-hover flex items-center justify-center font-bold text-white text-sm shadow-xs shrink-0">
+            <div aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-white">
               DX
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-semibold tracking-tight text-content">Xin cấp thiết bị</h1>
-                <span className="rounded bg-primary-tint px-1.5 py-0.5 text-[10px] font-semibold text-primary-text border border-primary-edge">
-                  Module 2
-                </span>
-              </div>
-              <p className="text-xs text-muted">Ứng dụng 2 trên nền tảng DX-Desk · dùng chung đăng nhập và dữ liệu</p>
+              <h1 className="text-base font-semibold text-content sm:text-lg">Xin cấp thiết bị</h1>
+              <p className="text-xs text-content-muted">DX-Desk · dùng chung tài khoản đăng nhập</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5 text-sm">
-            <div className="flex items-center gap-2 min-h-9 px-3 py-1 bg-surface-warm border border-edge rounded-[6px] shadow-2xs text-xs">
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-primary-tint to-primary-tint border border-primary-edge text-primary-text font-bold text-[10px] flex items-center justify-center shrink-0">
+            <div className="flex min-h-9 items-center gap-2 rounded-md border border-edge bg-surface-muted px-3 py-1 text-xs">
+              <div aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-primary-border bg-primary-tint text-xs font-semibold text-primary-text">
                 {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <span data-testid="identity" className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
@@ -64,11 +62,11 @@ export function Workspace({ user }: { user: CurrentUser }) {
                   {user.roles.map(role => (
                     <span
                       key={role}
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold border ${
+                      className={`whitespace-nowrap rounded-sm border px-1.5 py-0.5 text-xs font-medium ${
                         role === 'Manager'
-                          ? 'border-warning-edge bg-warning-tint text-warning'
+                          ? 'border-status-warning-border bg-status-warning-bg text-status-warning'
                           : role === 'Agent'
-                          ? 'border-primary-edge bg-primary-tint text-primary-text'
+                          ? 'border-primary-border bg-primary-tint text-primary-text'
                           : 'border-edge bg-surface-muted text-content-muted'
                       }`}
                     >
@@ -77,21 +75,23 @@ export function Workspace({ user }: { user: CurrentUser }) {
                   ))}
                 </span>
                 {user.department && (
-                  <span className="text-muted text-[11px]">· đơn vị {user.department}</span>
+                  <span className="text-xs text-content-muted">· đơn vị {user.department}</span>
                 )}
               </span>
             </div>
             <a
               href="/"
-              className="inline-flex items-center gap-1.5 rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-content hover:bg-surface-warm transition-colors shadow-2xs"
+              className={buttonClass('secondary')}
             >
-              ← Về DX-Desk
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+              Về DX-Desk
             </a>
             <button
               type="button"
               onClick={() => void logout()}
-              className="inline-flex items-center gap-1.5 rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-content hover:text-danger hover:border-danger-edge hover:bg-danger-tint/50 transition-colors shadow-2xs"
+              className={buttonClass('ghost')}
             >
+              <LogOut aria-hidden="true" className="h-4 w-4" />
               Đăng xuất
             </button>
           </div>
@@ -99,12 +99,12 @@ export function Workspace({ user }: { user: CurrentUser }) {
       </header>
 
       <main className="mx-auto grid max-w-5xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <section aria-labelledby="new-request" className="self-start dx-card rounded-lg p-5 shadow-xs">
+        <section aria-labelledby="new-request" className="dx-card self-start p-5">
           <h2 id="new-request" className="mb-3 text-base font-semibold text-content">Đề nghị mới</h2>
           {user.department ? (
             <RequestForm onCreated={reload} />
           ) : (
-            <p role="alert" className="rounded-md border border-warning-edge bg-warning-tint p-3 text-sm text-warning">
+            <p role="alert" className={alertClass.warning}>
               Tài khoản chưa được gán đơn vị nên chưa gửi được đề nghị. Liên hệ quản trị hệ thống.
             </p>
           )}
@@ -122,7 +122,8 @@ export function Workspace({ user }: { user: CurrentUser }) {
               empty="Không có đề nghị nào để theo dõi." revision={revision} user={user} onChanged={reload} />
           )}
           <button type="button" onClick={reload}
-            className="justify-self-start inline-flex items-center gap-1.5 rounded-md border border-edge bg-surface px-3.5 py-1.5 text-xs font-medium text-content hover:bg-surface-warm transition-colors shadow-2xs">
+            className={`justify-self-start ${buttonClass('secondary')}`}>
+            <RefreshCw aria-hidden="true" className="h-4 w-4" />
             Tải lại danh sách
           </button>
         </div>
@@ -167,9 +168,9 @@ function RequestSection(props: { id: RequestQueue; title: string; empty: string;
       <h2 id={props.id} className="mb-2 text-base font-semibold text-content">
         {props.title}
       </h2>
-      {error && <p role="alert" className="rounded-md border border-danger-edge bg-danger-tint p-3 text-sm text-danger">{error}</p>}
-      {!result ? !error && <p className="text-sm text-muted" role="status">Đang tải…</p>
-        : result.rows.length === 0 ? <p className="text-sm text-muted">{props.empty}</p>
+      {error && <p role="alert" className={alertClass.danger}>{error}</p>}
+      {!result ? !error && <p className="text-sm text-content-muted" role="status">Đang tải…</p>
+        : result.rows.length === 0 ? <p className="text-sm text-content-muted">{props.empty}</p>
         : (
           <ul className="grid gap-3">
             {result.rows.map(row => (
@@ -180,10 +181,10 @@ function RequestSection(props: { id: RequestQueue; title: string; empty: string;
       {(page > 0 || result?.more) && (
         <div className="mt-3 flex items-center gap-3 text-sm">
           <button type="button" disabled={page === 0} onClick={() => changePage(page - 1)}
-            className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface-warm disabled:opacity-50 transition-colors shadow-2xs">Trang trước</button>
-          <span className="text-xs text-muted">Trang {page + 1}</span>
+            className={buttonClass('secondary')}>Trang trước</button>
+          <span className="text-xs text-content-muted" data-numeric>Trang {page + 1}</span>
           <button type="button" disabled={!result?.more} onClick={() => changePage(page + 1)}
-            className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface-warm disabled:opacity-50 transition-colors shadow-2xs">Trang sau</button>
+            className={buttonClass('secondary')}>Trang sau</button>
         </div>
       )}
     </section>

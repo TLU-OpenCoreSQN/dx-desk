@@ -3,28 +3,24 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { HelpCircle, Home } from 'lucide-react';
+import { Home } from 'lucide-react';
+import { buttonClass } from '../../../components/common/Button';
 
 export const NotFoundPage: React.FC = () => {
   return (
-    <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center max-w-md mx-auto px-4">
-      <div className="w-16 h-16 rounded-[12px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] flex items-center justify-center mb-5 border border-[var(--color-primary-border)] shadow-sm">
-        <HelpCircle className="w-8 h-8" aria-hidden="true" />
-      </div>
-      <h1 className="text-5xl font-black text-[var(--color-content)] mb-2 tracking-tight">404</h1>
-      <h2 className="dx-section-title mb-2">
-        Không tìm thấy trang yêu cầu
-      </h2>
-      <p className="text-xs sm:text-sm text-[var(--color-content-muted)] mb-6 leading-relaxed">
+    <section className="mx-auto max-w-md px-4 py-16 text-center sm:py-24">
+      <p data-numeric className="font-mono text-sm font-medium text-content-muted">Lỗi 404</p>
+      <h1 className="dx-page-title mt-2">Không tìm thấy trang yêu cầu</h1>
+      <p className="mt-2 text-sm leading-relaxed text-content-muted">
         Đường dẫn bạn truy cập không tồn tại hoặc đã được di chuyển trong hệ thống DX-Desk.
       </p>
       <Link
         to="/"
-        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover active:bg-primary-active text-white text-sm font-semibold rounded-[6px] shadow-xs active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] min-h-[40px]"
+        className={`mt-6 ${buttonClass('primary')}`}
       >
-        <Home className="w-4 h-4" />
-        <span>Về trang chủ</span>
+        <Home className="h-4 w-4" aria-hidden="true" />
+        Về trang chủ
       </Link>
-    </div>
+    </section>
   );
 };

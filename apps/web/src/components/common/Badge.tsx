@@ -13,6 +13,7 @@ import {
   User,
   Wrench,
   XCircle,
+  type LucideIcon,
 } from 'lucide-react';
 import { TicketPriority, UserRole } from '../../types/api';
 import {
@@ -22,167 +23,145 @@ import {
   TicketStatus,
 } from '../../lib/ticketWorkflow';
 
+/*
+ * Lozenge: nhãn định tính (trạng thái, ưu tiên, vai trò). Luôn một dòng, bo 4px,
+ * icon 14px + nhãn tiếng Việt trên nền -bg, viền -border (Atlassian Lozenge / Carbon).
+ * Số đếm (tab hàng đợi, bộ đếm) dùng CountBadge, không dùng Lozenge.
+ */
+export type LozengeTone = 'info' | 'success' | 'warning' | 'danger' | 'pending' | 'neutral';
+
+const TONE_STYLES: Record<LozengeTone, string> = {
+  info: 'bg-status-info-bg text-status-info border-status-info-border',
+  success: 'bg-status-success-bg text-status-success border-status-success-border',
+  warning: 'bg-status-warning-bg text-status-warning border-status-warning-border',
+  danger: 'bg-status-danger-bg text-status-danger border-status-danger-border',
+  pending: 'bg-status-pending-bg text-status-pending border-status-pending-border',
+  neutral: 'bg-status-neutral-bg text-status-neutral border-status-neutral-border',
+};
+
+interface LozengeProps {
+  tone: LozengeTone;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const Lozenge: React.FC<LozengeProps> = ({ tone, icon: Icon, children, className = '' }) => (
+  <span
+    className={`inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm border text-xs font-medium leading-4 ${TONE_STYLES[tone]} ${className}`}
+  >
+    {Icon && (
+      <span aria-hidden="true" className="inline-flex shrink-0">
+        <Icon className="w-3.5 h-3.5" />
+      </span>
+    )}
+    {children}
+  </span>
+);
+
+/** Bộ đếm số thuần: pill trung tính, chữ số cùng độ rộng. */
+export const CountBadge: React.FC<{ value: number; active?: boolean; className?: string }> = ({
+  value,
+  active = false,
+  className = '',
+}) => (
+  <span
+    data-numeric
+    className={`inline-flex min-w-[1.5rem] shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium leading-4 tabular-nums ${
+      active ? 'bg-primary-tint text-primary-text' : 'bg-surface-muted text-content-muted'
+    } ${className}`}
+  >
+    {value}
+  </span>
+);
+
 interface PriorityBadgeProps {
   priority: TicketPriority | string;
 }
 
+const PRIORITY: Record<string, { tone: LozengeTone; icon: LucideIcon; label: string }> = {
+  critical: { tone: 'danger', icon: AlertOctagon, label: 'Khẩn cấp' },
+  high: { tone: 'warning', icon: AlertTriangle, label: 'Cao' },
+  normal: { tone: 'info', icon: Info, label: 'Bình thường' },
+  low: { tone: 'neutral', icon: ArrowDown, label: 'Thấp' },
+};
+
 export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
-  switch (priority) {
-    case 'critical':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2 py-0.5 rounded-sm text-xs font-semibold bg-status-danger-bg text-status-danger border border-status-danger-border shadow-2xs">
-          <AlertOctagon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          Khẩn cấp
-        </span>
-      );
-    case 'high':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-semibold bg-status-warning-bg text-status-warning border border-status-warning-border shadow-2xs">
-          <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Cao
-        </span>
-      );
-    case 'normal':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-semibold bg-status-info-bg text-status-info border border-status-info-border shadow-2xs">
-          <Info className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Bình thường
-        </span>
-      );
-    case 'low':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-status-neutral-bg text-status-neutral border border-status-neutral-border shadow-2xs">
-          <ArrowDown className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Thấp
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-status-neutral-bg text-status-neutral border border-status-neutral-border shadow-2xs">
-          {priority}
-        </span>
-      );
-  }
+  const config = PRIORITY[priority];
+  if (!config) return <Lozenge tone="neutral">{priority}</Lozenge>;
+  return (
+    <Lozenge tone={config.tone} icon={config.icon}>
+      {config.label}
+    </Lozenge>
+  );
 };
 
 interface StatusBadgeProps {
   status: string;
 }
 
-const TICKET_STATUS_STYLES: Record<TicketStatus, string> = {
-  new: 'bg-status-info-bg text-status-info border-status-info-border',
-  triaged: 'bg-status-neutral-bg text-status-neutral border-status-neutral-border',
-  assigned: 'bg-status-neutral-bg text-status-neutral border-status-neutral-border',
-  in_progress: 'bg-status-info-bg text-status-info border-status-info-border',
-  waiting_user: 'bg-status-warning-bg text-status-warning border-status-warning-border',
-  pending_approval: 'bg-status-pending-bg text-status-pending border-status-pending-border',
-  resolved: 'bg-status-success-bg text-status-success border-status-success-border',
-  closed: 'bg-status-neutral-bg text-status-neutral border-status-neutral-border',
-  cancelled: 'bg-status-neutral-bg text-status-neutral border-status-neutral-border',
+const TICKET_STATUS_TONES: Record<TicketStatus, LozengeTone> = {
+  new: 'info',
+  triaged: 'neutral',
+  assigned: 'neutral',
+  in_progress: 'info',
+  waiting_user: 'warning',
+  pending_approval: 'pending',
+  resolved: 'success',
+  closed: 'neutral',
+  cancelled: 'neutral',
+};
+
+// Trạng thái đề nghị cấp thiết bị (module devices).
+const DEVICE_STATUS: Record<string, { tone: LozengeTone; icon: LucideIcon; label: string }> = {
+  pending: { tone: 'warning', icon: Clock, label: 'Chờ xử lý' },
+  open: { tone: 'info', icon: Wrench, label: 'Đang xử lý' },
+  approved: { tone: 'success', icon: CheckCircle2, label: 'Đã duyệt' },
+  rejected: { tone: 'danger', icon: XCircle, label: 'Từ chối' },
+  preparing: { tone: 'info', icon: Wrench, label: 'IT đang chuẩn bị' },
+  handed_over: { tone: 'success', icon: CheckCircle2, label: 'Đã bàn giao' },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const key = status.toLowerCase();
 
   if (isTicketStatus(key)) {
-    const Icon = STATUS_ICONS[key];
-    const styleClass = TICKET_STATUS_STYLES[key] || 'bg-status-neutral-bg text-status-neutral border-status-neutral-border';
-
     return (
-      <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-semibold border shadow-2xs ${styleClass}`}
-      >
-        {Icon && <Icon className="w-3 h-3 shrink-0" aria-hidden="true" />}
+      <Lozenge tone={TICKET_STATUS_TONES[key]} icon={STATUS_ICONS[key]}>
         {STATUS_LABELS[key]}
-      </span>
+      </Lozenge>
     );
   }
 
-  // Device request statuses and fallback
-  switch (key) {
-    case 'pending':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-semibold bg-status-warning-bg text-status-warning border border-status-warning-border shadow-2xs">
-          <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Chờ xử lý
-        </span>
-      );
-    case 'open':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-semibold bg-status-info-bg text-status-info border border-status-info-border shadow-2xs">
-          <Wrench className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Đang xử lý
-        </span>
-      );
-    case 'approved':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-semibold bg-status-success-bg text-status-success border border-status-success-border shadow-2xs">
-          <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Đã duyệt
-        </span>
-      );
-    case 'rejected':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-semibold bg-status-danger-bg text-status-danger border border-status-danger-border shadow-2xs">
-          <XCircle className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Từ chối
-        </span>
-      );
-    case 'preparing':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-semibold bg-status-info-bg text-status-info border border-status-info-border shadow-2xs">
-          <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
-          IT đang chuẩn bị
-        </span>
-      );
-    case 'handed_over':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-semibold bg-status-success-bg text-status-success border border-status-success-border shadow-2xs">
-          <CheckCircle2 className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Đã bàn giao
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1.5 px-2.5 py-0.5 rounded-sm text-xs font-medium bg-status-neutral-bg text-status-neutral border border-status-neutral-border shadow-2xs">
-          {status}
-        </span>
-      );
+  const device = DEVICE_STATUS[key];
+  if (device) {
+    return (
+      <Lozenge tone={device.tone} icon={device.icon}>
+        {device.label}
+      </Lozenge>
+    );
   }
+  return <Lozenge tone="neutral">{status}</Lozenge>;
 };
 
 interface RoleBadgeProps {
   role: UserRole | string;
 }
 
-export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => {
-  switch (role) {
-    case 'Manager':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-semibold bg-status-pending-bg text-status-pending border border-status-pending-border shadow-2xs">
-          <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Quản lý (Manager)
-        </span>
-      );
-    case 'Agent':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-semibold bg-status-info-bg text-status-info border border-status-info-border shadow-2xs">
-          <Wrench className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Kỹ thuật viên (Agent)
-        </span>
-      );
-    case 'Employee':
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-status-neutral-bg text-status-neutral border border-status-neutral-border shadow-2xs">
-          <User className="w-3 h-3 shrink-0" aria-hidden="true" />
-          Nhân viên (Employee)
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex shrink-0 items-center whitespace-nowrap gap-1 px-2 py-0.5 rounded-sm text-xs font-medium bg-status-neutral-bg text-status-neutral border border-status-neutral-border shadow-2xs">
-          {role}
-        </span>
-      );
-  }
+export const ROLE_LABELS: Record<string, string> = {
+  Manager: 'Quản lý',
+  Agent: 'Kỹ thuật viên',
+  Employee: 'Nhân viên',
 };
+
+const ROLE_ICONS: Record<string, LucideIcon> = {
+  Manager: ShieldCheck,
+  Agent: Wrench,
+  Employee: User,
+};
+
+export const RoleBadge: React.FC<RoleBadgeProps> = ({ role }) => (
+  <Lozenge tone="neutral" icon={ROLE_ICONS[role]}>
+    {ROLE_LABELS[role] ?? role}
+  </Lozenge>
+);

@@ -5,21 +5,22 @@ import { handoverUrl, listEvents, transition } from './rest';
 import { actionsFor, DEVICE_LABELS, formatTime, shortId, STATUS_LABELS, validateNote,
   type Action, type CurrentUser, type DeviceRequest, type DeviceRequestEvent, type DeviceStatus } from './workflow';
 import { DeviceWorkflowStepper } from './DeviceWorkflowStepper';
+import { alertClass, buttonClass, fieldClass } from './ui';
 
 const STATUS_STYLES: Record<DeviceStatus, string> = {
-  pending: 'border-warning-edge bg-warning-tint text-warning',
-  approved: 'border-primary-edge bg-primary-tint text-primary-text',
-  preparing: 'border-primary-edge bg-primary-tint text-primary-text',
-  handed_over: 'border-success-edge bg-success-tint text-success',
-  rejected: 'border-danger-edge bg-danger-tint text-danger',
+  pending: 'border-status-warning-border bg-status-warning-bg text-status-warning',
+  approved: 'border-primary-border bg-primary-tint text-primary-text',
+  preparing: 'border-primary-border bg-primary-tint text-primary-text',
+  handed_over: 'border-status-success-border bg-status-success-bg text-status-success',
+  rejected: 'border-status-danger-border bg-status-danger-bg text-status-danger',
 };
 
 const STATUS_DOTS: Record<DeviceStatus, string> = {
-  pending: 'bg-warning',
-  approved: 'bg-primary',
-  preparing: 'bg-primary animate-pulse',
-  handed_over: 'bg-success',
-  rejected: 'bg-danger',
+  pending: 'bg-status-warning-solid',
+  approved: 'bg-status-info-solid',
+  preparing: 'bg-status-info-solid',
+  handed_over: 'bg-status-success-solid',
+  rejected: 'bg-status-danger-solid',
 };
 
 export function RequestCard({ request, user, onChanged }: { request: DeviceRequest; user: CurrentUser;
@@ -87,16 +88,16 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
   }
 
   return (
-    <article aria-label={`Đề nghị ${shortId(request.id)}`} className="dx-card dx-card-hover rounded-lg p-4 sm:p-5 relative">
+    <article aria-label={`Đề nghị ${shortId(request.id)}`} className="dx-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-content">{DEVICE_LABELS[request.device_type]} × {request.quantity}</h3>
-          <p className="text-xs text-muted mt-0.5">
+          <p className="text-xs text-content-muted mt-0.5">
             Mã {shortId(request.id)} · gửi {formatTime(request.created_at)} · đơn vị {request.department}
           </p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold shadow-2xs ${STATUS_STYLES[request.status]}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOTS[request.status]}`} aria-hidden="true" />
+        <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[request.status]}`}>
+          <span className={`h-2 w-2 rounded-full ${STATUS_DOTS[request.status]}`} aria-hidden="true" />
           {STATUS_LABELS[request.status]}
         </span>
       </div>
@@ -104,44 +105,42 @@ export function RequestCard({ request, user, onChanged }: { request: DeviceReque
       <DeviceWorkflowStepper request={request} />
 
       {rejecting && (
-        <div className="mt-3 rounded-md border border-edge bg-surface-warm/40 p-3">
+        <div className="mt-3 rounded-lg border border-edge bg-surface-muted p-3">
           <label htmlFor={`note-${request.id}`} className="text-sm font-medium text-content">Lý do từ chối</label>
           <textarea id={`note-${request.id}`} rows={2} maxLength={2000} value={note} onChange={event => setNote(event.target.value)}
             aria-invalid={!!noteError} aria-describedby={noteError ? `note-error-${request.id}` : undefined}
             placeholder="Nhập lý do từ chối (tối thiểu 5 ký tự)…"
-            className="mt-1.5 w-full rounded-md border border-edge bg-surface px-3 py-2 text-sm text-content focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all shadow-2xs" />
-          {noteError && <p id={`note-error-${request.id}`} className="mt-1 text-xs text-danger">{noteError}</p>}
+            className={fieldClass} />
+          {noteError && <p id={`note-error-${request.id}`} className="mt-1 text-xs text-status-danger">{noteError}</p>}
         </div>
       )}
-      {failure && <p role="alert" className="mt-3 rounded-md border border-danger-edge bg-danger-tint p-2 text-sm text-danger">{failure}</p>}
+      {failure && <p role="alert" className={`mt-3 ${alertClass.danger}`}>{failure}</p>}
       <div className="mt-3.5 flex flex-wrap gap-2">
         {actions.filter(action => !rejecting || action.needsNote).map(action => (
           <button key={action.to} type="button" disabled={busy} onClick={() => choose(action)}
-            className={action.to === 'rejected'
-              ? 'rounded-md border border-danger-edge bg-surface px-3.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger-tint disabled:opacity-60 transition-all shadow-2xs'
-              : 'rounded-md bg-primary px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover active:bg-primary-active disabled:opacity-60 transition-all shadow-xs'}>
+            className={buttonClass(action.to === 'rejected' ? 'dangerOutline' : 'primary')}>
             {rejecting && action.needsNote ? 'Xác nhận từ chối' : action.label}
           </button>
         ))}
         {rejecting && (
           <button type="button" onClick={() => { setRejecting(false); setNoteError(null); }}
-            className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface-warm transition-all shadow-2xs">Hủy</button>
+            className={buttonClass('secondary')}>Hủy</button>
         )}
         {request.status === 'handed_over' && (request.requester_id === user.id || request.decided_by === user.id || user.roles.includes('Agent')) && (
           <button type="button" disabled={busy} onClick={() => void download()}
-            className="rounded-md border border-primary-edge bg-primary-tint px-3.5 py-1.5 text-xs font-semibold text-primary-text hover:bg-surface disabled:opacity-60 transition-all shadow-2xs">
+            className={buttonClass('secondary')}>
             Tải biên bản (PDF)
           </button>
         )}
         <button type="button" disabled={historyBusy} onClick={() => void toggleHistory()} aria-expanded={!!events}
-          className="rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium hover:bg-surface-warm disabled:opacity-60 transition-all shadow-2xs">
+          className={buttonClass('ghost')}>
           {events ? 'Ẩn lịch sử' : historyBusy ? 'Đang tải…' : 'Lịch sử'}
         </button>
       </div>
       {events && (
-        <ul className="mt-3.5 grid gap-1.5 border-t border-edge pt-3 text-xs text-muted" aria-label="Lịch sử xử lý">
+        <ul className="mt-3.5 grid gap-1.5 border-t border-edge pt-3 text-xs text-content-muted" aria-label="Lịch sử xử lý">
           {events.map(event => (
-            <li key={event.id} className="rounded-md border border-edge-subtle bg-surface-warm/40 px-3 py-1.5">
+            <li key={event.id} className="rounded-md border border-edge bg-surface-muted px-3 py-1.5">
               {formatTime(event.created_at)} - {event.from_status ? STATUS_LABELS[event.to_status] : 'Gửi đề nghị'} -{' '}
               {event.actor_type === 'user' ? event.actor_name || 'Người dùng' : 'Hệ thống'}
               {event.note ? ` - ${event.note}` : ''}

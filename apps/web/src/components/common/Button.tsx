@@ -15,26 +15,27 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary:
-    'border border-[var(--color-primary)] bg-primary hover:bg-primary-hover active:bg-primary-active text-white shadow-xs hover:from-[var(--color-primary-hover)] hover:to-[var(--color-primary-active)] focus-visible:ring-[var(--color-primary)]',
+    'border border-[var(--color-primary)] bg-primary hover:bg-primary-hover active:bg-primary-active text-white focus-visible:ring-[var(--color-primary)]',
   secondary:
-    'border border-[var(--color-edge-subtle)] bg-[var(--color-surface)] text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] focus-visible:ring-[var(--color-primary)] shadow-2xs',
+    'border border-[var(--color-edge-strong)] bg-[var(--color-surface)] text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] focus-visible:ring-[var(--color-primary)]',
   success:
-    'border border-[var(--color-success)] bg-[var(--color-success)] text-white shadow-xs hover:bg-[var(--color-success-hover)] focus-visible:ring-[var(--color-success)]',
+    'border border-[var(--color-status-success)] bg-[var(--color-status-success)] text-white hover:bg-[var(--color-status-success-solid)] focus-visible:ring-[var(--color-status-success)]',
   danger:
-    'border border-[var(--color-danger)] bg-[var(--color-danger)] text-white shadow-xs hover:bg-[var(--color-danger-hover)] focus-visible:ring-[var(--color-danger)]',
+    'border border-[var(--color-status-danger)] bg-[var(--color-status-danger)] text-white hover:bg-[var(--color-status-danger-solid)] focus-visible:ring-[var(--color-status-danger)]',
   dangerOutline:
-    'border border-[var(--color-danger-border)] bg-[var(--color-surface)] text-[var(--color-danger)] hover:bg-[var(--color-danger-tint)] focus-visible:ring-[var(--color-danger)]',
+    'border border-[var(--color-status-danger-border)] bg-[var(--color-surface)] text-[var(--color-status-danger)] hover:bg-[var(--color-status-danger-bg)] focus-visible:ring-[var(--color-status-danger)]',
   ghost:
     'border border-transparent bg-transparent text-[var(--color-content-muted)] hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-content)] focus-visible:ring-[var(--color-primary)]',
   outline:
-    'border border-[var(--color-edge)] bg-transparent text-[var(--color-content)] hover:bg-[var(--color-surface-warm)] hover:border-[var(--color-edge-strong)] focus-visible:ring-[var(--color-primary)]',
+    'border border-[var(--color-edge)] bg-transparent text-[var(--color-content)] hover:bg-[var(--color-surface-muted)] hover:border-[var(--color-edge-strong)] focus-visible:ring-[var(--color-primary)]',
 };
 
 const sizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
   // Chỉ dùng min-h: giữ vùng chạm 44px tới breakpoint lg và cho nhãn dài xuống dòng không bị cắt.
-  sm: 'min-h-[44px] px-3 py-1.5 text-[13px] gap-1.5 lg:min-h-8',
+  // Desktop: sm 32px, md 40px, lg 48px.
+  sm: 'min-h-[44px] px-3 py-1.5 text-[0.8125rem] gap-1.5 lg:min-h-8',
   md: 'min-h-[44px] px-3.5 py-2 text-sm font-semibold gap-2 lg:min-h-10',
-  lg: 'min-h-[44px] px-5 py-2.5 text-sm gap-2.5 lg:min-h-11',
+  lg: 'min-h-12 px-5 py-2.5 text-sm gap-2.5',
 };
 
 const spinnerSizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
@@ -42,6 +43,20 @@ const spinnerSizeStyles: Record<NonNullable<ButtonProps['size']>, string> = {
   md: 'h-4 w-4',
   lg: 'h-4.5 w-4.5',
 };
+
+const BASE =
+  'inline-flex items-center justify-center font-semibold rounded-md transition-colors duration-150 motion-reduce:transition-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+
+/**
+ * Lớp của nút, dùng cho <Link> hiển thị như nút: điều hướng phải là liên kết thật (mở tab mới,
+ * sao chép địa chỉ), không phải <button onClick={navigate}>.
+ */
+export function buttonClass(
+  variant: NonNullable<ButtonProps['variant']> = 'primary',
+  size: NonNullable<ButtonProps['size']> = 'md',
+): string {
+  return `${BASE} ${variantStyles[variant]} ${sizeStyles[size]}`;
+}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
@@ -68,9 +83,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={isDisabled}
       aria-busy={isLoading ? true : undefined}
-      className={`inline-flex items-center justify-center font-semibold rounded-md transition-all select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${
-        variantStyles[variant]
-      } ${sizeStyles[size]} ${className}`}
+      className={`${buttonClass(variant, size)} ${className}`}
       {...props}
     >
       {isLoading ? (

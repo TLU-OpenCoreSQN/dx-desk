@@ -14,7 +14,7 @@ function dueLabel(ms: number): string {
  * Màu chỉ dùng cho hai trạng thái cần chú ý: đã quá hạn và sắp quá hạn.
  */
 export function SlaRemaining({ snapshot, risk, size = 'sm' }: { snapshot: SlaSnapshot; risk: SlaRisk; size?: 'sm' | 'md' }) {
-  const main = size === 'md' ? 'text-sm' : 'text-[13px]';
+  const main = size === 'md' ? 'text-sm' : 'text-[0.8125rem]';
   const due = snapshot.hasSla ? `Hạn ${dueLabel(snapshot.effectiveDue)}` : null;
   switch (risk) {
     case 'breached':

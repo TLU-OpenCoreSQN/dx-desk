@@ -29,13 +29,13 @@ export const Layout: React.FC = () => {
       {isKeycloakOffline && (
         <div
           role="alert"
-          className="bg-status-warning-bg border-b border-status-warning-border text-status-warning px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-2 flex-wrap shadow-2xs"
+          className="bg-status-warning-bg border-b border-status-warning-border text-status-warning px-4 py-2 text-xs font-medium text-center flex items-center justify-center gap-2 flex-wrap"
         >
           <AlertTriangle className="w-4 h-4 text-status-warning shrink-0" aria-hidden="true" />
           <span>Dịch vụ đăng nhập hiện không thể kết nối.</span>
           <button
             type="button"
-            className="inline-flex items-center gap-1 font-semibold underline hover:text-content transition-colors ml-1 focus:outline-none focus:ring-2 focus:ring-status-warning rounded-sm px-1"
+            className="inline-flex items-center gap-1 font-semibold underline hover:text-content transition-colors ml-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-warning rounded-sm px-1"
             onClick={() => window.location.reload()}
           >
             <RefreshCw className="w-3 h-3" />
@@ -48,7 +48,7 @@ export const Layout: React.FC = () => {
         <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
         <main
-          className="dx-main flex-1 min-w-0 p-4 sm:p-6 lg:p-8 focus:outline-none"
+          className="dx-main flex-1 min-w-0 p-4 sm:p-6 lg:p-8 focus-visible:outline-none"
           id="main-content"
           tabIndex={-1}
         >

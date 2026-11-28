@@ -225,7 +225,8 @@ describe('W6-11: Sidebar và route dựng từ sổ đăng ký', () => {
   it('route của module đã tắt trả trang 404', async () => {
     signIn(true, ['Employee']);
     routeTo('/device-requests', new Set<ModuleId>(['desk', 'data']));
-    expect(await screen.findByRole('heading', { name: '404' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Không tìm thấy trang yêu cầu' })).toBeInTheDocument();
+    expect(screen.getByText('Lỗi 404')).toBeInTheDocument();
   });
 
   it('route đủ vai trò mới mở; thiếu vai trò thì báo không có quyền', async () => {
@@ -238,6 +239,6 @@ describe('W6-11: Sidebar và route dựng từ sổ đăng ký', () => {
   it('chưa đăng nhập thì route cần đăng nhập yêu cầu đăng nhập', async () => {
     signIn(false, []);
     routeTo('/tickets', null);
-    expect(await screen.findByRole('heading', { name: 'Yêu cầu đăng nhập xác thực' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Yêu cầu đăng nhập' })).toBeInTheDocument();
   });
 });

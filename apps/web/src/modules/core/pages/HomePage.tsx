@@ -1,425 +1,209 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  Laptop,
-  LogIn,
-  PlusCircle,
-  RefreshCw,
-  Shield,
-  Ticket,
-} from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Info, LogIn, type LucideIcon } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
-import { getHealth } from '../../../services/api';
-import type { HealthResponse } from '../../../types/api';
 import { RoleBadge } from '../../../components/common/Badge';
-import { useModuleEnabled } from '../../ModuleContext';
+import { Button } from '../../../components/common/Button';
+import { useModules } from '../../ModuleContext';
+import { navEntries } from '../../registry';
+
+/*
+ * Bàn điều phối theo vai trò. Lối tắt lấy từ chính sổ đăng ký điều hướng (navEntries) nên chỉ
+ * hiện chức năng mà module đang bật VÀ vai trò hiện tại được phép mở: giao diện trung thực với quyền.
+ */
+interface Shortcut {
+  title: string;
+  text: string;
+  group: 'self' | 'operations';
+}
+
+const SHORTCUTS: Record<string, Shortcut> = {
+  '/tickets/new': { title: 'Gửi sự cố mới', text: 'Mô tả vấn đề để IT tiếp nhận.', group: 'self' },
+  '/tickets': { title: 'Phiếu yêu cầu IT', text: 'Theo dõi nội dung và tiến độ phiếu.', group: 'self' },
+  '/device-requests': { title: 'Yêu cầu cấp thiết bị', text: 'Đề xuất thiết bị cho công việc.', group: 'self' },
+  '/work-queue': {
+    title: 'Bảng việc kỹ thuật viên',
+    text: 'Phiếu của bạn và của nhóm, việc gấp theo hạn SLA lên trước.',
+    group: 'operations',
+  },
+  '/approvals': {
+    title: 'Phê duyệt phiếu hỗ trợ',
+    text: 'Duyệt hoặc từ chối yêu cầu đang chờ quyết định.',
+    group: 'operations',
+  },
+  '/bao-cao': { title: 'Báo cáo vận hành', text: 'Khối lượng phiếu, thời gian xử lý và tuân thủ SLA.', group: 'operations' },
+};
+
+const BENEFITS = [
+  'Gửi yêu cầu và theo dõi tiến độ ở cùng một nơi.',
+  'Tra cứu lại lịch sử phiếu đã gửi.',
+  'Không cần tài khoản riêng - dùng chung SSO của tổ chức.',
+];
+
+const STEPS = [
+  { step: '1', title: 'Đăng nhập bằng SSO', desc: 'Xác thực bằng tài khoản do tổ chức cấp.' },
+  { step: '2', title: 'Gửi yêu cầu hỗ trợ', desc: 'Chọn danh mục và mô tả điều bạn cần.' },
+  { step: '3', title: 'Theo dõi tiến độ', desc: 'Xem lại nội dung và lịch sử xử lý.' },
+];
+
+function ShortcutGrid({ items }: { items: { to: string; icon: LucideIcon; shortcut: Shortcut }[] }) {
+  return (
+    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map(({ to, icon: Icon, shortcut }) => (
+        <li key={to} className="min-w-0">
+          <Link
+            to={to}
+            className="group flex h-full items-start gap-3 rounded-lg border border-edge bg-surface p-4 transition-colors duration-150 hover:border-primary hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary-text">
+              <Icon size={18} aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-content group-hover:text-primary">{shortcut.title}</h3>
+                <ArrowRight size={16} aria-hidden="true" className="shrink-0 text-content-subtle group-hover:text-primary" />
+              </div>
+              <p className="mt-1 text-[0.8125rem] leading-relaxed text-content-muted">{shortcut.text}</p>
+            </div>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function HomePage() {
-  const { isAuthenticated, isLoading, username, roles, login, isKeycloakOffline } = useAuth();
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [checking, setChecking] = useState(true);
-  const [attempt, setAttempt] = useState(0);
-  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
-  const deskEnabled = useModuleEnabled('desk');
-  const devicesEnabled = useModuleEnabled('devices');
+  const { isAuthenticated, isLoading, username, roles, profile, login, isKeycloakOffline } = useAuth();
+  const { modules } = useModules();
 
-  useEffect(() => {
-    let active = true;
-    setChecking(true);
-    getHealth()
-      .then((value) => {
-        if (active) setHealth(value);
-      })
-      .catch(() => {
-        if (active) setHealth(null);
-      })
-      .finally(() => {
-        if (active) {
-          setChecking(false);
-          setLastCheckedAt(new Date());
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [attempt]);
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full max-w-4xl space-y-6">
+        <section aria-labelledby="home-hero-title" className="rounded-lg border border-edge bg-surface p-6 sm:p-8">
+          <h1 id="home-hero-title" className="dx-page-title">
+            Hệ thống hỗ trợ IT nội bộ DX-Desk
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-content-muted">
+            Gửi sự cố, theo dõi yêu cầu và đề xuất thiết bị trong một không gian duy nhất dành cho nhân viên.
+          </p>
 
-  // W6-11: lối tắt chỉ hiện khi module tương ứng đang bật.
-  const actions = [
-    {
-      module: deskEnabled,
-      to: '/tickets/new',
-      icon: PlusCircle,
-      title: 'Gửi sự cố mới',
-      text: 'Mô tả vấn đề để IT tiếp nhận.',
-    },
-    {
-      module: deskEnabled,
-      to: '/tickets',
-      icon: Ticket,
-      title: 'Phiếu yêu cầu IT',
-      text: 'Theo dõi nội dung và tiến độ.',
-    },
-    {
-      module: devicesEnabled,
-      to: '/device-requests',
-      icon: Laptop,
-      title: 'Yêu cầu cấp thiết bị',
-      text: 'Đề xuất thiết bị cho công việc.',
-    },
-  ].filter((action) => action.module);
-
-  const benefits = [
-    'Gửi yêu cầu và theo dõi tiến độ ở cùng một nơi.',
-    devicesEnabled ? 'Tra cứu lại lịch sử phiếu và thiết bị đã đề xuất.' : 'Tra cứu lại lịch sử phiếu đã gửi.',
-    'Không cần tài khoản riêng - dùng chung SSO của tổ chức.',
-  ];
-
-  const steps = [
-    {
-      step: '01',
-      title: 'Đăng nhập bằng SSO',
-      desc: 'Xác thực bằng tài khoản do tổ chức cấp.',
-    },
-    {
-      step: '02',
-      title: 'Gửi yêu cầu hỗ trợ',
-      desc: 'Chọn danh mục và mô tả điều bạn cần.',
-    },
-    {
-      step: '03',
-      title: 'Theo dõi tiến độ',
-      desc: 'Xem lại nội dung và lịch sử xử lý.',
-    },
-  ];
-
-  const statusLabel = checking
-    ? 'Đang kiểm tra kết nối…'
-    : health
-    ? 'Dịch vụ đang hoạt động bình thường'
-    : 'Dịch vụ hỗ trợ hiện chưa kết nối';
-
-  const statusHint = checking
-    ? 'Đang liên hệ máy chủ DX-Desk.'
-    : health
-    ? `Máy chủ ${health.service} đã phản hồi.`
-    : 'Chưa nhận được phản hồi từ máy chủ. Bạn vẫn có thể thử kiểm tra lại.';
-
-  const dotClass = checking
-    ? 'bg-status-neutral ring-4 ring-status-neutral/20'
-    : health
-    ? 'bg-status-success ring-4 ring-status-success/20'
-    : 'bg-status-warning ring-4 ring-status-warning/20';
-
-  const lastCheckedLabel = lastCheckedAt
-    ? lastCheckedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    : null;
-
-  return (
-    <div className="w-full space-y-6">
-      {/* Hero */}
-      <section
-        aria-labelledby="home-hero-title"
-        className="relative overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface w-full"
-      >
-
-        <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(20rem,1fr)] lg:items-start lg:gap-8 lg:p-10">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--color-primary-text)] shadow-2xs">
-              <Shield className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>KHÔNG GIAN HỖ TRỢ CỦA BẠN</span>
-            </div>
-
-            <h1
-              id="home-hero-title"
-              className="dx-page-title mt-4"
-            >
-              Hệ thống hỗ trợ IT nội bộ <span className="text-[var(--color-primary-ink)] bg-clip-text">DX-Desk</span>
-            </h1>
-
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-content-muted)] sm:mt-4 sm:text-base">
-              Gửi sự cố, theo dõi yêu cầu và đề xuất thiết bị trong một không gian duy nhất dành
-              cho nhân viên.
-            </p>
-
-            {isAuthenticated ? (
-              <div className="mt-6 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface/90 backdrop-blur-xs p-5 shadow-2xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary-tint)] border border-[var(--color-primary-border)] text-[var(--color-primary-text)] font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
-                    {username ? username.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                  <div>
-                    <p className="text-xs text-[var(--color-content-muted)]">Xin chào,</p>
-                    <p className="truncate text-base font-bold text-[var(--color-content)] sm:text-lg">
-                      <strong className="font-bold text-[var(--color-primary-ink)]">{username}</strong>
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--color-content-subtle)]">
-                    Vai trò
-                  </span>
-                  {roles.length > 0 ? (
-                    roles.map((role) => <RoleBadge key={role} role={role} />)
-                  ) : (
-                    <span className="text-xs text-[var(--color-content-muted)]">Nhân viên</span>
-                  )}
-                </div>
-                <p className="mt-3 border-t border-[var(--color-edge-subtle)] pt-3 text-xs text-[var(--color-content-muted)]">
-                  Chọn một thao tác nhanh bên dưới để bắt đầu.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-6 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface/90 backdrop-blur-xs p-5 shadow-2xs">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-muted)]">
-                  Khi đăng nhập, bạn có thể
-                </p>
-                <ul className="mt-3 space-y-2.5">
-                  {benefits.map((benefit) => (
-                    <li
-                      key={benefit}
-                      className="flex items-start gap-2.5 text-xs leading-relaxed text-[var(--color-content)] sm:text-sm"
-                    >
-                      <CheckCircle2
-                        className="mt-0.5 h-4 w-4 shrink-0 text-status-success"
-                        aria-hidden="true"
-                      />
-                      <span>{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {isKeycloakOffline && (
-                  <div
-                    id="sso-offline-note"
-                    role="status"
-                    className="mt-4 flex items-start gap-2.5 rounded-md border border-status-warning-border bg-status-warning-bg p-3 text-xs text-status-warning"
-                  >
-                    <AlertTriangle
-                      className="mt-0.5 h-4 w-4 shrink-0 text-status-warning"
-                      aria-hidden="true"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-semibold">
-                        Dịch vụ đăng nhập đang tạm thời gián đoạn.
-                      </p>
-                      <p className="mt-0.5 leading-relaxed">
-                        Chưa thể mở trang đăng nhập, nút bên dưới tạm thời bị vô hiệu. Vui lòng
-                        thử lại sau hoặc liên hệ bộ phận IT.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => void login()}
-                  disabled={isLoading || isKeycloakOffline}
-                  aria-describedby={isKeycloakOffline ? 'sso-offline-note' : undefined}
-                  className="mt-5 inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-[6px] px-6 py-2.5 text-sm font-semibold text-white shadow-xs transition-all duration-150 active:scale-[0.98] bg-primary hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border disabled:border-[var(--color-edge-subtle)] disabled:bg-[var(--color-surface-warm)] disabled:text-[var(--color-content-subtle)] disabled:shadow-none motion-reduce:transition-none sm:w-auto"
-                >
-                  <LogIn size={18} aria-hidden="true" />
-                  <span>{isLoading ? 'Đang kiểm tra đăng nhập…' : 'Đăng nhập hệ thống (SSO)'}</span>
-                </button>
-
-                <p className="mt-3 text-xs leading-relaxed text-[var(--color-content-muted)]">
-                  {isKeycloakOffline
-                    ? 'Trong lúc chờ, bạn vẫn có thể xem thông tin giới thiệu trên trang này.'
-                    : 'Sử dụng tài khoản do tổ chức cấp để tiếp tục.'}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Trạng thái dịch vụ (chỉ dùng dữ liệu thật từ getHealth) */}
-          <div className="min-w-0 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-5 shadow-2xs transition-all hover:border-[var(--color-edge)]">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-content-subtle)]">
-                Trạng thái dịch vụ
-              </h2>
-              <button
-                type="button"
-                onClick={() => setAttempt((value) => value + 1)}
-                disabled={checking}
-                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-[4px] px-2 py-1 text-xs font-semibold text-[var(--color-primary-ink)] hover:bg-[var(--color-primary-tint)]/50 transition-colors duration-150 hover:text-[var(--color-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
-              >
-                <RefreshCw size={13} className={checking ? 'animate-spin' : ''} aria-hidden="true" />
-                <span>Kiểm tra lại</span>
-              </button>
-            </div>
-
-            <div role="status" aria-live="polite" className="mt-4">
-              <div className="flex items-start gap-3">
-                <span className="relative flex h-3 w-3 mt-0.5">
-                  {health && !checking && (
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-success opacity-60"></span>
-                  )}
-                  <span
-                    aria-hidden="true"
-                    className={`relative inline-flex h-3 w-3 shrink-0 rounded-full ${dotClass}`}
-                  />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-snug text-[var(--color-content)]">
-                    {statusLabel}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-content-muted)]">{statusHint}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--color-edge-subtle)] pt-3">
-                {health && !checking ? (
-                  <span className="rounded-sm border border-status-success-border bg-status-success-bg px-2 py-0.5 tabular-nums text-[11px] font-semibold text-status-success">
-                    {health.version}
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-[var(--color-content-subtle)]">
-                    {checking ? 'Đang lấy phiên bản…' : 'Chưa lấy được phiên bản'}
-                  </span>
-                )}
-                {lastCheckedLabel && !checking && (
-                  <span className="text-[11px] text-[var(--color-content-subtle)]">
-                    Kiểm tra lúc {lastCheckedLabel}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Dải thẻ chỉ số nổi bật tận dụng không gian rộng */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 w-full">
-        <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[6px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] flex items-center justify-center shrink-0">
-            <Shield className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-[var(--color-content-subtle)] uppercase tracking-wider">Hạ tầng IT</p>
-            <p className="text-sm font-bold text-[var(--color-content)] truncate">Sẵn sàng 24/7</p>
-          </div>
-        </div>
-        <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-status-success-bg text-status-success flex items-center justify-center shrink-0">
-            <Ticket className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-[var(--color-content-subtle)] uppercase tracking-wider">Phiếu sự cố</p>
-            <p className="text-sm font-bold text-[var(--color-content)] truncate">Đồng bộ tức thời</p>
-          </div>
-        </div>
-        <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-status-warning-bg text-status-warning flex items-center justify-center shrink-0">
-            <Laptop className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-[var(--color-content-subtle)] uppercase tracking-wider">Cấp thiết bị</p>
-            <p className="text-sm font-bold text-[var(--color-content)] truncate">Đề xuất chuẩn hóa</p>
-          </div>
-        </div>
-        <div className="bg-surface rounded-[8px] border border-[var(--color-edge-subtle)] p-4 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-status-pending-bg text-status-pending flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-[var(--color-content-subtle)] uppercase tracking-wider">Xác thực SSO</p>
-            <p className="text-sm font-bold text-[var(--color-content)] truncate">An toàn nội bộ</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Thao tác nhanh (đã đăng nhập) hoặc quy trình (chưa đăng nhập) */}
-      {isAuthenticated ? (
-        <section aria-labelledby="quick-actions-title">
-          <div className="mb-4">
-            <h2
-              id="quick-actions-title"
-              className="text-xs font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
-            >
-              Thao tác nhanh
-            </h2>
-            <p className="mt-1 text-xs text-[var(--color-content-subtle)]">
-              Mỗi thẻ dẫn thẳng tới chức năng tương ứng.
-            </p>
-          </div>
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {actions.map(({ to, icon: Icon, title, text }) => (
-              <li key={to} className="min-w-0">
-                <Link
-                  to={to}
-                  className="group flex h-full min-h-[160px] flex-col justify-between rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-5 shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.06)] focus-visible:border-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 motion-reduce:transition-none"
-                >
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-primary-tint)] text-[var(--color-primary-text)] transition-all duration-200 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:scale-105 group-focus-visible:bg-[var(--color-primary)] group-focus-visible:text-white motion-reduce:transition-none shadow-2xs">
-                        <Icon size={22} aria-hidden="true" />
-                      </span>
-                      <h3 className="min-w-0 text-sm font-bold text-[var(--color-content)] transition-colors duration-150 group-hover:text-[var(--color-primary-ink)] motion-reduce:transition-none sm:text-base">
-                        {title}
-                      </h3>
-                    </div>
-                    <p className="mt-3 text-xs leading-relaxed text-[var(--color-content-muted)]">{text}</p>
-                  </div>
-                  <span className="mt-4 inline-flex items-center text-xs font-semibold text-[var(--color-primary-ink)]">
-                    Mở chức năng
-                    <ArrowRight
-                      size={14}
-                      aria-hidden="true"
-                      className="ml-1.5 transition-transform duration-200 group-hover:translate-x-1.5 motion-reduce:transform-none motion-reduce:transition-none"
-                    />
-                  </span>
-                </Link>
+          <ul className="mt-5 space-y-2">
+            {BENEFITS.map((benefit) => (
+              <li key={benefit} className="flex items-start gap-2.5 text-sm text-content">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success" aria-hidden="true" />
+                <span>{benefit}</span>
               </li>
             ))}
           </ul>
 
-          <div className="mt-5 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-4 text-xs leading-relaxed text-[var(--color-content-muted)] shadow-2xs flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md bg-status-danger-bg flex items-center justify-center text-status-danger shrink-0 font-bold">
-              !
-            </div>
-            <div>
-              Sự cố ảnh hưởng nhiều người? Hãy tạo phiếu với mức ưu tiên{' '}
-              <span className="font-bold text-status-danger">Khẩn cấp</span> để được xử lý trước.
-            </div>
-          </div>
-        </section>
-      ) : (
-        <section aria-labelledby="support-steps-title">
-          <div className="mb-4">
-            <h2
-              id="support-steps-title"
-              className="text-xs font-bold uppercase tracking-wider text-[var(--color-content-muted)]"
+          {isKeycloakOffline && (
+            <div
+              id="sso-offline-note"
+              role="status"
+              className="mt-5 flex items-start gap-2.5 rounded-lg border border-status-warning-border bg-status-warning-bg p-3 text-sm text-status-warning"
             >
-              Quy trình hỗ trợ
-            </h2>
-            <p className="mt-1 text-xs text-[var(--color-content-subtle)]">
-              Ba bước ngắn gọn để yêu cầu của bạn được tiếp nhận.
-            </p>
-          </div>
-          <ol className="grid gap-4 sm:grid-cols-3">
-            {steps.map(({ step, title, desc }) => (
-              <li
-                key={step}
-                className="group min-w-0 rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-edge)] hover:shadow-xs"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="rounded-[4px] bg-[var(--color-primary-tint)] px-2.5 py-0.5 tabular-nums text-xs font-bold text-[var(--color-primary-text)] border border-[var(--color-primary-border)]/60">
-                    {step}
-                  </span>
-                  <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]/40 group-hover:bg-[var(--color-primary)] transition-colors" />
-                </div>
-                <h3 className="text-sm font-bold text-[var(--color-content)] sm:text-base">{title}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[var(--color-content-muted)]">{desc}</p>
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="font-semibold">Dịch vụ đăng nhập đang tạm thời gián đoạn.</p>
+                <p className="mt-0.5 leading-relaxed">
+                  Chưa thể mở trang đăng nhập, nút bên dưới tạm thời bị vô hiệu. Vui lòng thử lại sau hoặc liên hệ bộ phận IT.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <Button
+            variant="primary"
+            className="mt-5 w-full sm:w-auto"
+            onClick={() => void login()}
+            disabled={isLoading || isKeycloakOffline}
+            aria-describedby={isKeycloakOffline ? 'sso-offline-note' : undefined}
+            leftIcon={<LogIn size={18} />}
+          >
+            {isLoading ? 'Đang kiểm tra đăng nhập…' : 'Đăng nhập hệ thống (SSO)'}
+          </Button>
+          <p className="mt-3 text-xs leading-relaxed text-content-muted">
+            {isKeycloakOffline
+              ? 'Trong lúc chờ, bạn vẫn có thể xem thông tin giới thiệu trên trang này.'
+              : 'Sử dụng tài khoản do tổ chức cấp để tiếp tục.'}
+          </p>
+        </section>
+
+        <section aria-labelledby="support-steps-title">
+          <h2 id="support-steps-title" className="dx-section-title">
+            Quy trình hỗ trợ
+          </h2>
+          <ol className="mt-3 grid gap-3 sm:grid-cols-3">
+            {STEPS.map(({ step, title, desc }) => (
+              <li key={step} className="min-w-0 rounded-lg border border-edge bg-surface p-4">
+                <span
+                  data-numeric
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-sm bg-primary-tint text-xs font-semibold text-primary-text"
+                >
+                  {step}
+                </span>
+                <h3 className="mt-2 text-sm font-semibold text-content">{title}</h3>
+                <p className="mt-1 text-[0.8125rem] leading-relaxed text-content-muted">{desc}</p>
               </li>
             ))}
           </ol>
         </section>
+      </div>
+    );
+  }
+
+  const entries = navEntries(modules, { isAuthenticated, roles, profile }).filter(
+    (entry) => !entry.external && SHORTCUTS[entry.to],
+  );
+  const items = entries.map((entry) => ({ to: entry.to, icon: entry.icon, shortcut: SHORTCUTS[entry.to] }));
+  const self = items.filter((item) => item.shortcut.group === 'self');
+  const operations = items.filter((item) => item.shortcut.group === 'operations');
+  const canCreate = self.some((item) => item.to === '/tickets/new');
+
+  return (
+    <div className="w-full space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 id="home-hero-title" className="dx-page-title">
+            Xin chào, {username}
+          </h1>
+          <p className="mt-1 text-sm text-content-muted">Chọn một chức năng bên dưới để bắt đầu.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5" aria-label="Vai trò của bạn">
+          {(roles.length > 0 ? roles : ['Employee']).map((role) => (
+            <RoleBadge key={role} role={role} />
+          ))}
+        </div>
+      </header>
+
+      {operations.length > 0 && (
+        <section aria-labelledby="operations-title">
+          <h2 id="operations-title" className="dx-section-title mb-3">
+            Công việc vận hành
+          </h2>
+          <ShortcutGrid items={operations} />
+        </section>
+      )}
+
+      {self.length > 0 && (
+        <section aria-labelledby="quick-actions-title">
+          <h2 id="quick-actions-title" className="dx-section-title mb-3">
+            Thao tác nhanh
+          </h2>
+          <ShortcutGrid items={self} />
+        </section>
+      )}
+
+      {canCreate && (
+        <p className="flex items-start gap-2.5 rounded-lg border border-edge bg-surface p-4 text-[0.8125rem] leading-relaxed text-content-muted">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-status-info" aria-hidden="true" />
+          <span>
+            Sự cố ảnh hưởng nhiều người? Ghi rõ phạm vi ảnh hưởng (bao nhiêu người, dịch vụ nào bị gián đoạn) trong mô
+            tả để IT đánh giá đúng mức ưu tiên.
+          </span>
+        </p>
       )}
     </div>
   );

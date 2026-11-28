@@ -153,7 +153,7 @@ export const Modal: React.FC<ModalProps> = ({
     <div
       role="presentation"
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 transition-opacity overflow-y-auto"
       data-testid="modal-backdrop"
     >
       <div
@@ -163,7 +163,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} rounded-lg border border-edge bg-surface text-content shadow-xl outline-none transition-all my-8 ${className}`}
+        className={`relative w-full ${sizeClasses[size]} rounded-lg border border-edge bg-surface text-content shadow-xl outline-none transition-colors my-8 ${className}`}
       >
         {/* Header */}
         <div className="flex items-start justify-between border-b border-edge-subtle p-4 sm:p-5">

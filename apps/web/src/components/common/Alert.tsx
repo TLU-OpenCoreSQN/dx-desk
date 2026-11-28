@@ -40,12 +40,13 @@ export const Alert: React.FC<AlertProps> = ({
 
   return (
     <div
-      role="alert"
-      className={`border rounded-md p-4 flex items-start gap-3 text-xs sm:text-sm shadow-2xs ${styles.bg} ${className}`}
+      role={type === 'error' || type === 'warning' ? 'alert' : 'status'}
+      className={`border rounded-lg p-4 flex items-start gap-3 text-sm ${styles.bg} ${className}`}
     >
       {styles.icon}
       <div className="flex-1 min-w-0">
-        {title && <h4 className="font-bold mb-1 tracking-tight">{title}</h4>}
+        {/* Không dùng thẻ heading: Alert nằm ở nhiều độ sâu khác nhau, heading cố định sẽ nhảy cấp. */}
+        {title && <p className="font-semibold mb-1">{title}</p>}
         <div className="leading-relaxed break-words">{children}</div>
       </div>
       {onClose && (
@@ -53,9 +54,9 @@ export const Alert: React.FC<AlertProps> = ({
           type="button"
           onClick={onClose}
           aria-label="Đóng thông báo"
-          className="text-content-muted hover:text-content focus:outline-none focus:ring-2 focus:ring-primary rounded-sm p-1 min-w-[28px] min-h-[28px] flex items-center justify-center -mr-1 -mt-1 transition-colors"
+          className="text-content-muted hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md p-1 min-w-[32px] min-h-[32px] flex items-center justify-center -mr-1 -mt-1 transition-colors"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4" aria-hidden="true" />
         </button>
       )}
     </div>

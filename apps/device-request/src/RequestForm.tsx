@@ -3,8 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { createRequest } from './rest';
 import { DEVICE_LABELS, validateRequest, type DeviceRequest, type DeviceType } from './workflow';
-
-const field = 'mt-1 w-full rounded-md border border-edge bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30';
+import { alertClass, buttonClass, fieldClass as field } from './ui';
 
 export function RequestForm({ onCreated }: { onCreated: (request: DeviceRequest) => void }) {
   const [deviceType, setDeviceType] = useState<DeviceType>('laptop');
@@ -50,20 +49,20 @@ export function RequestForm({ onCreated }: { onCreated: (request: DeviceRequest)
         <input id="quantity" type="number" min={1} max={10} inputMode="numeric" value={quantity}
           onChange={event => setQuantity(event.target.value)}
           aria-invalid={!!errors.quantity} aria-describedby={errors.quantity ? 'quantity-error' : undefined} className={field} />
-        {errors.quantity && <p id="quantity-error" className="mt-1 text-xs text-danger">{errors.quantity}</p>}
+        {errors.quantity && <p id="quantity-error" className="mt-1 text-xs text-status-danger">{errors.quantity}</p>}
       </div>
       <div>
         <label htmlFor="reason" className="text-sm font-medium">Lý do</label>
         <textarea id="reason" rows={4} maxLength={2000} value={reason} onChange={event => setReason(event.target.value)}
           placeholder="Ví dụ: màn hình hiện tại bị sọc, cần thay để làm báo cáo."
           aria-invalid={!!errors.reason} aria-describedby={errors.reason ? 'reason-error' : undefined} className={field} />
-        {errors.reason && <p id="reason-error" className="mt-1 text-xs text-danger">{errors.reason}</p>}
+        {errors.reason && <p id="reason-error" className="mt-1 text-xs text-status-danger">{errors.reason}</p>}
       </div>
-      <p className="text-xs text-muted">Đề nghị được gửi tới quản lý trực tiếp của đơn vị bạn; sau khi duyệt, IT chuẩn bị và bàn giao.</p>
-      {failure && <p role="alert" className="rounded-md border border-danger-edge bg-danger-tint p-2 text-sm text-danger">{failure}</p>}
-      {sent && <p role="status" className="rounded-md border border-success-edge bg-success-tint p-2 text-sm text-success">Đã gửi đề nghị, chờ quản lý duyệt.</p>}
+      <p className="text-xs text-content-muted">Đề nghị được gửi tới quản lý trực tiếp của đơn vị bạn; sau khi duyệt, IT chuẩn bị và bàn giao.</p>
+      {failure && <p role="alert" className={alertClass.danger}>{failure}</p>}
+      {sent && <p role="status" className={alertClass.success}>Đã gửi đề nghị, chờ quản lý duyệt.</p>}
       <button type="submit" disabled={busy}
-        className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-60">
+        className={buttonClass('primary', 'md')}>
         {busy ? 'Đang gửi…' : 'Gửi đề nghị'}
       </button>
     </form>

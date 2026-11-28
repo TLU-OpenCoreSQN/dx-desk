@@ -36,15 +36,15 @@ describe('Common UI Primitives - Button', () => {
 
     rerender(<Button variant="secondary">Secondary</Button>);
     btn = screen.getByRole('button', { name: 'Secondary' });
-    expect(btn.className).toContain('border-[var(--color-edge-subtle)]');
+    expect(btn.className).toContain('border-[var(--color-edge-strong)]');
 
     rerender(<Button variant="success">Success</Button>);
     btn = screen.getByRole('button', { name: 'Success' });
-    expect(btn.className).toContain('bg-[var(--color-success)]');
+    expect(btn.className).toContain('bg-[var(--color-status-success)]');
 
     rerender(<Button variant="danger">Danger</Button>);
     btn = screen.getByRole('button', { name: 'Danger' });
-    expect(btn.className).toContain('bg-[var(--color-danger)]');
+    expect(btn.className).toContain('bg-[var(--color-status-danger)]');
 
     rerender(<Button variant="ghost">Ghost</Button>);
     btn = screen.getByRole('button', { name: 'Ghost' });
@@ -68,8 +68,8 @@ describe('Common UI Primitives - Button', () => {
 
     rerender(<Button size="lg">Large</Button>);
     btn = screen.getByRole('button', { name: 'Large' });
-    expect(btn.className).toContain('min-h-[44px]');
-    expect(btn.className).toContain('lg:min-h-11');
+    // lg: 48px ở mọi breakpoint (vượt chuẩn 44px trên di động).
+    expect(btn.className).toContain('min-h-12');
   });
 
   it('handles click events and respects disabled state', async () => {
@@ -308,6 +308,8 @@ describe('Common UI Primitives - Skeleton', () => {
     render(<SkeletonPage />);
     const page = screen.getByRole('status', { name: 'Đang tải trang...' });
     expect(page).toBeInTheDocument();
+    // Một vùng thông báo duy nhất: các thanh bên trong là trang trí, không đọc lặp "Đang tải".
+    expect(screen.getAllByRole('status')).toHaveLength(1);
   });
 });
 

@@ -112,7 +112,7 @@ export const AttachmentPanel: React.FC<{ ticketId: string }> = ({ ticketId }) =>
   return (
     <section
       aria-labelledby="attachments-title"
-      className="overflow-hidden rounded-[8px] border border-[var(--color-edge-subtle)] bg-surface shadow-2xs"
+      className="overflow-hidden rounded-lg border border-[var(--color-edge-subtle)] bg-surface"
     >
       <div className="flex items-center gap-2 border-b border-[var(--color-edge-subtle)] py-1.5 pl-5 pr-2">
         <Paperclip className="h-4 w-4 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
