@@ -11,6 +11,8 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 | `van-hanh.md` | Khởi động, dừng, đặt lại; nạp lại workflow n8n và realm Keycloak; log; sao lưu | Tuần 5 |
 | `huong-dan-su-dung.md` | Thao tác theo vai trò Employee, Agent, Manager | Tuần 7 |
 | [api/](api/contract.md) | Contract và OpenAPI cho các endpoint | Cập nhật tuần 4 |
+| [danh-gia-ui-toan-dien.md](danh-gia-ui-toan-dien.md) | Kiểm toán và đánh giá toàn diện giao diện người dùng (UI/UX) hậu R2 theo từng màn hình và module | Hoàn thành (R3) |
+| [de-xuat-thiet-ke-toi-gian-doanh-nghiep.md](de-xuat-thiet-ke-toi-gian-doanh-nghiep.md) | Luận chứng giữ màu/bố cục R2 và đặc tả thiết kế tối giản chuyên nghiệp cho doanh nghiệp (chỉ đặc tả) | Hoàn thành (R4) |
 
 ## Tài liệu tuần 2
 
