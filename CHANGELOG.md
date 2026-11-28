@@ -13,6 +13,7 @@
 ### Sửa
 - #74: Trợ lý không nhầm câu hỏi hướng dẫn hoặc yêu cầu hoãn tạo phiếu/công việc thành đề xuất ghi dữ liệu.
 - Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
+- #86: `up` đặt lại mật khẩu Mattermost của user demo đã tồn tại khi không khớp `MATTERMOST_DEMO_PASSWORD` (trước đây chỉ user tạo mới nhận mật khẩu của `.env`); `week4-stack` kiểm đăng nhập `agent.1`.
 - #87: preset màu nhấn đạt WCAG 2.1 AA ở cả chế độ sáng và tối: nút chính cam/vàng/xanh lá/nâu đậm hơn để chữ trắng ≥ 4,5:1, mỗi preset có màu chữ nhấn riêng (trước đây chữ trên nền tint vẫn dùng xanh dương mặc định), hover ở chế độ tối đậm hơn thay vì sáng hơn.
 
 ### Thêm
