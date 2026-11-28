@@ -48,7 +48,8 @@ node scripts/dxdesk.mjs n8n-reload
 Nguồn danh mục/nhóm/SLA/module là `config/doanh-nghiep/cau-hinh.json`.
 Validate trước apply; xem diff và thử ở demo trước. Thay SLA áp dụng cho phiếu mới,
 không làm mới hạn của phiếu cũ. Không tự sửa `config/doanh-nghiep/modules.json` được sinh ra.
-Workflow nguồn ở `config/doanh-nghiep/workflows/`, giữ ID ổn định. `n8n-reload` kiểm cấu trúc trước
+Workflow nguồn ở `config/doanh-nghiep/workflows/`, giữ ID ổn định. `up` dừng n8n trước khi import/publish
+để tiến trình không đọc trạng thái chuyển tiếp; sau publish mới khởi động n8n. `n8n-reload` kiểm cấu trúc trước
 khi dừng/nạp/bật workflow. Workflow vắng trong thư mục không mặc định bị xóa trên server.
 Sau reload kiểm routing VPN, outbox và thông báo; `node scripts/stack-test.mjs --restart-n8n`
 thử phục hồi sau restart. Không chạy cùng các bài SLA/stack khác trên cùng project.
