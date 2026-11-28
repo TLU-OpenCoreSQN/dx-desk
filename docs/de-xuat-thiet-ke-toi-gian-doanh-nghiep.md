@@ -95,13 +95,13 @@ Tách chung một hợp đồng token 3 tầng (**Primitive → Semantic → Com
 
 ### 3.2 Quy chuẩn Typography & Cấu trúc Heading
 
-- **Ngưỡng sàn tuyệt đối `12px` (`0.75rem`):** Loại bỏ toàn bộ **83 vị trí** `text-[10px]` và `text-[11px]`. Mọi nhãn phụ, ngày giờ, mã phiếu và badge tối thiểu phải là `12px` (`text-xs`).
+- **Ngưỡng sàn tuyệt đối `12px` (`0.75rem`):** Loại bỏ toàn bộ **77 vị trí** `text-[10px]` và `text-[11px]`. Mọi nhãn phụ, ngày giờ, mã phiếu và badge tối thiểu phải là `12px` (`text-xs`).
 - **Thang chữ thống nhất 4 bậc:**
   - Tiêu đề trang (`<h1>`): `.dx-page-title` — `24px` (`1.5rem`), `line-height: 2rem`, weight `600`, `letter-spacing: -0.012em`, `text-wrap: balance`.
   - Tiêu đề phân khu (`<h2>`): `.dx-section-title` — `16px` (`1rem`), `line-height: 1.5rem`, weight `600`.
   - Nội dung, ô bảng, input (`body`): `14px` (`0.875rem`), `line-height: 1.55`, weight `400` (input trên `<768px` giữ `16px` chống zoom iOS).
   - Siêu dữ liệu & nhãn phụ (`.dx-meta` / `text-xs`): `12px–13px`, weight `400` hoặc `500`.
-- **Kỷ luật trọng lượng chữ & số:** Chỉ dùng `400` (nội dung), `500` (điều hướng, nhãn), `600` (tiêu đề, nút, tiêu đề cột); hạn chế `700` (chỉ dùng cho logo `DX` hoặc tổng số KPI); cấm `font-black` (`900`, như `NotFoundPage.tsx:11`). Bắt buộc `tabular-nums` + `--font-mono` cho `#TK-xxxx`, thời gian SLA và JSON-LD.
+- **Kỷ luật trọng lượng chữ & số:** Chỉ dùng `400` (nội dung), `500` (điều hướng, nhãn), `600` (tiêu đề, nút, tiêu đề cột); hạn chế `700` (chỉ dùng cho logo `DX` hoặc tổng số KPI); cấm `font-black` (`900`, như `NotFoundPage.tsx:14`). Bắt buộc `tabular-nums` + `--font-mono` cho `#TK-xxxx`, thời gian SLA và JSON-LD.
 - **Cây heading liên tục:** Mỗi trang có đúng 1 `<h1>` và đi tuần tự `h1 → h2 → h3`; sửa các component đang tự chèn `<h3>` hoặc `<h4>` (`Alert`, `Toast`, `AiTriageDiff`, `DeviceWorkflowStepper`, `KnowledgeSuggestions`, `TicketKanbanBoard`, màn hình chưa đăng nhập ở `App.tsx`) dùng biến prop ngữ nghĩa hoặc thẻ `<p>`/`<div>` có vai trò phù hợp.
 
 ### 3.3 Bề mặt, Viền mảnh, Bo góc & Chuyển động
@@ -194,6 +194,6 @@ Các bước dưới đây làm khung kế hoạch cho các sprint kỹ thuật 
 | Giai đoạn | Phạm vi công việc | Kết quả kiểm chứng mục tiêu |
 |---|---|---|
 | **Pha 1 — Đồng bộ Token, Font & Xóa di sản CSS** | Cổng `@fontsource/be-vietnam-pro`, `@fontsource/jetbrains-mono` và bộ token `#1d4ed8`/`#f8fafc` sang `apps/device-request`; xóa `surface-warm` (40 chỗ), `#e4e3e0`, `navy`, `.dx-main` blanket shadow, header blur, `animate-ping`/`animate-pulse`, và 137+ bo góc lệch chuẩn. | 0 `surface-warm`, 0 hoạt ảnh vô hạn ngoài loader, `apps/web` và `/thiet-bi/` khớp 100% token. |
-| **Pha 2 — Chuẩn hóa Typography, Accessibility & Component gốc** | Nâng toàn bộ 83 vị trí `<12px` lên tối thiểu `12px`; sửa cây heading `h1 → h2 → h3`; áp dụng `<Button>`, `<Alert>`, `<ErrorMessage>`, `<FormField>`, `<Skeleton>` cho `ManagerAnalyticsPage`, `DataCatalogPage`, `AssistantPage`, `CreateTicketPage`; thêm `scroll-padding-top: 3.5rem` và `focus-visible:ring-2`. | 0 chữ `<12px`, 0 nhảy cấp heading, 100% trang dùng thư viện `common/`. |
+| **Pha 2 — Chuẩn hóa Typography, Accessibility & Component gốc** | Nâng toàn bộ 77 vị trí `<12px` lên tối thiểu `12px`; sửa cây heading `h1 → h2 → h3`; áp dụng `<Button>`, `<Alert>`, `<ErrorMessage>`, `<FormField>`, `<Skeleton>` cho `ManagerAnalyticsPage`, `DataCatalogPage`, `AssistantPage`, `CreateTicketPage`; thêm `scroll-padding-top: 3.5rem` và `focus-visible:ring-2`. | 0 chữ `<12px`, 0 nhảy cấp heading, 100% trang dùng thư viện `common/`. |
 | **Pha 3 — Tái cấu trúc Bảng ITSM, Kanban & Trang chủ** | Chuyển `TicketListPage` và `ManagerApprovalsPage` sang `<table>` 44px chuẩn; bỏ bộ lọc kép ở `TicketKanbanBoard` và thuần Việt hóa; biến `HomePage` thành bàn điều phối theo vai trò (sửa câu hứa `critical` và bỏ 4 thẻ promo); làm sạch các chuỗi nội bộ (`POST /api/device-requests`, `SeaweedFS`, `Module 2`). | Thống nhất luồng quét bảng + inspector; không rò rỉ thông tin kỹ thuật nội bộ. |
 | **Pha 4 — Mở rộng API Lọc/SLA Server & Đồng bộ Tài liệu** | Bổ sung query server (`q`, `status`, `priority`, `sort=sla_due`) cho `GET /api/tickets` và `GET /api/device-requests`; bổ sung test Playwright cho focus/keyboard/44px mobile; cập nhật `PRODUCT.md:74` khớp quyết định Fixed Light Mode của R2. | Tìm kiếm & sắp xếp SLA chính xác trên toàn tập dữ liệu lớn. |
