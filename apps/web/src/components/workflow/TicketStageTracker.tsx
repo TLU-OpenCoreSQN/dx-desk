@@ -30,13 +30,14 @@ export interface StageStepDef {
   order: number;
 }
 
+/** Tên bước dùng đúng nhãn trạng thái trên badge, để một trạng thái chỉ có một tên. */
 export const LINEAR_STAGES: StageStepDef[] = [
-  { key: 'new', label: 'Tiếp nhận', description: 'Ghi nhận yêu cầu', order: 1 },
-  { key: 'triaged', label: 'Phân loại', description: 'Xác định phạm vi', order: 2 },
-  { key: 'assigned', label: 'Phân công', description: 'Gán người phụ trách', order: 3 },
-  { key: 'in_progress', label: 'Đang xử lý', description: 'Khắc phục sự cố', order: 4 },
-  { key: 'resolved', label: 'Giải quyết', description: 'Đã hoàn thành', order: 5 },
-  { key: 'closed', label: 'Đóng phiếu', description: 'Nghiệm thu đóng phiếu', order: 6 },
+  { key: 'new', label: STATUS_LABELS.new, description: 'Ghi nhận yêu cầu', order: 1 },
+  { key: 'triaged', label: STATUS_LABELS.triaged, description: 'Xác định danh mục, ưu tiên', order: 2 },
+  { key: 'assigned', label: STATUS_LABELS.assigned, description: 'Giao kỹ thuật viên', order: 3 },
+  { key: 'in_progress', label: STATUS_LABELS.in_progress, description: 'Khắc phục sự cố', order: 4 },
+  { key: 'resolved', label: STATUS_LABELS.resolved, description: 'Ghi kết quả xử lý', order: 5 },
+  { key: 'closed', label: STATUS_LABELS.closed, description: 'Người tạo phiếu xác nhận', order: 6 },
 ];
 
 function formatTime(isoString?: string | null): string {
@@ -105,31 +106,21 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
   return (
     <section
       aria-label="Tiến trình xử lý phiếu"
-      className={`rounded-lg border border-edge bg-surface p-4 shadow-2xs sm:p-5 ${className}`}
+      className={`@container rounded-lg border border-edge bg-surface p-4 shadow-2xs ${className}`}
     >
       {/* Header section with ticket title and current status */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge-subtle pb-3">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-semibold tracking-wider text-primary">
-            TIẾN TRÌNH XỬ LÝ PHIẾU
-          </span>
-          <span className="font-mono text-xs text-content-subtle tabular-nums">
-            #{ticket.id.slice(0, 8).toUpperCase()}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-content-muted">Trạng thái:</span>
-          <span className="font-semibold text-xs text-content">
-            {STATUS_LABELS[currentStatus] || currentStatus}
-          </span>
-        </div>
+      {/* Trạng thái và mã phiếu đã có ở header; ở đây chỉ còn tên khối. */}
+      <div className="border-b border-edge-subtle pb-3">
+        <h2 className="dx-section-title">
+          Tiến trình xử lý phiếu
+        </h2>
       </div>
 
       {/* Mobile condensed bar (< sm) */}
-      <div className="mt-3 block sm:hidden">
+      <div className="mt-3 block @2xl:hidden">
         <div className="flex items-center justify-between rounded-md border border-edge bg-surface-muted px-3 py-2 text-xs">
           <div className="flex items-center gap-2 font-medium text-content">
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
               {effectiveLinearIndex >= 0 ? effectiveLinearIndex + 1 : '!'}
             </span>
             <span>
@@ -141,23 +132,23 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
           <button
             type="button"
             onClick={() => setMobileExpanded(!mobileExpanded)}
-            className="inline-flex items-center gap-1 font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xs px-1"
+            className="-my-3 inline-flex min-h-11 items-center gap-1 rounded-xs px-2 font-semibold text-[var(--color-primary-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-expanded={mobileExpanded}
           >
             <span>{mobileExpanded ? 'Thu gọn' : 'Xem tiến trình'}</span>
             {mobileExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
+              <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Full 6-stage tracker (visible on sm: and desktop, or when mobileExpanded) */}
-      <div className={`mt-5 ${mobileExpanded ? 'block' : 'hidden sm:block'}`}>
+      {/* Đủ 6 bước khi khối đủ rộng (container ≥ 42rem), hoặc khi người dùng mở rộng */}
+      <div className={`mt-5 ${mobileExpanded ? 'block' : 'hidden @2xl:block'}`}>
         <ol
-          className="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-start sm:gap-0"
+          className="relative flex flex-col justify-between gap-4 @2xl:flex-row @2xl:items-start @2xl:gap-0"
           role="list"
         >
           {LINEAR_STAGES.map((step, index) => {
@@ -178,12 +169,12 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
 
             const timestamp = findStatusTimestamp(step.key, ticket, events);
 
-            let nodeClass = 'border-2 border-edge bg-surface-muted text-content-subtle';
+            let nodeClass = 'border-2 border-edge bg-surface-muted text-content-muted';
             if (isCompleted) {
               nodeClass = 'border-2 border-status-success bg-status-success text-white shadow-2xs';
             } else if (isBranchPoint) {
               nodeClass = isBranchWaiting
-                ? 'border-2 border-status-warning bg-status-warning text-white ring-4 ring-status-warning-bg animate-pulse'
+                ? 'border-2 border-status-warning bg-status-warning text-white ring-4 ring-status-warning-bg'
                 : 'border-2 border-status-pending bg-status-pending text-white ring-4 ring-status-pending-bg';
             } else if (isCurrent) {
               nodeClass = 'border-2 border-primary bg-primary text-white ring-4 ring-primary-tint';
@@ -194,14 +185,14 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
                 key={step.key}
                 role="listitem"
                 aria-current={isCurrent || isBranchPoint ? 'step' : undefined}
-                aria-label={isCompleted ? `Bước ${index + 1}: ${step.label} đã hoàn thành` : undefined}
-                className="relative flex flex-1 flex-row items-center gap-3 sm:flex-col sm:items-center sm:gap-2 sm:text-center"
+                aria-label={isCompleted ? `Bước ${index + 1}: ${step.label}, đã hoàn thành` : undefined}
+                className="relative flex flex-1 flex-row items-center gap-3 @2xl:flex-col @2xl:items-center @2xl:gap-2 @2xl:text-center"
               >
                 {/* Connecting track line for sm+ desktop */}
                 {index > 0 && (
                   <div
                     aria-hidden="true"
-                    className={`hidden sm:block absolute top-4 right-1/2 w-full -translate-y-1/2 h-0.5 transition-colors ${
+                    className={`hidden @2xl:block absolute top-4 right-1/2 w-full -translate-y-1/2 h-0.5 transition-colors ${
                       index <= effectiveLinearIndex && !isBranchCancelled
                         ? 'bg-status-success'
                         : 'border-t-2 border-dashed border-edge'
@@ -228,22 +219,22 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
                 </div>
 
                 {/* Step labels */}
-                <div className="flex flex-col sm:items-center">
+                <div className="flex flex-col @2xl:items-center">
                   <span
                     className={`text-xs font-semibold ${
                       isCurrent || isBranchPoint
-                        ? 'text-primary font-bold'
+                        ? 'text-[var(--color-primary-ink)] font-bold'
                         : isCompleted
                         ? 'text-content'
-                        : 'text-content-subtle'
+                        : 'text-content-muted'
                     }`}
                   >
                     {step.label}
                   </span>
-                  <span className="text-[11px] text-content-muted hidden sm:inline">
+                  <span className="text-xs text-content-muted hidden @2xl:inline">
                     {step.description}
                   </span>
-                  <span className="font-mono text-[10px] text-content-subtle tabular-nums mt-0.5">
+                  <span className="tabular-nums text-xs text-content-muted mt-0.5">
                     {timestamp
                       ? formatTime(timestamp)
                       : isCurrent
@@ -259,31 +250,31 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
         </ol>
       </div>
 
-      {/* Conditional Branch Callout: Waiting User (SLA Paused) */}
-      {isBranchWaiting && (
+      {/* Callout chờ phản hồi chỉ hiện khi kèm thao tác; nếu không, SlaPauseBanner đã nói điều này. */}
+      {isBranchWaiting && (onActionClick || actionsSlot) && (
         <div
           role="status"
           aria-live="polite"
-          className="mt-4 rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 sm:p-4 text-status-warning"
+          className="mt-4 rounded-md border border-status-warning-border bg-status-warning-bg p-3.5 @2xl:p-4 text-status-warning"
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-warning text-white">
                 <Pause className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
-              <h4 className="text-xs font-bold uppercase tracking-wider">
-                ĐANG CHỜ PHẢN HỒI TỪ NGƯỜI DÙNG · SLA TẠM DỪNG
-              </h4>
+              <h3 className="text-xs font-bold uppercase tracking-wider">
+                ĐANG CHỜ NGƯỜI TẠO PHIẾU PHẢN HỒI · SLA TẠM DỪNG
+              </h3>
             </div>
             {pausedMinutes > 0 && (
-              <span className="font-mono text-xs font-semibold tabular-nums">
+              <span className="tabular-nums text-xs font-semibold">
                 Thời gian đã dừng: {pausedMinutes} phút
               </span>
             )}
           </div>
           <p className="mt-2 text-xs leading-relaxed text-content">
-            Kỹ thuật viên đang chờ thông tin phản hồi từ người tạo phiếu để tiếp tục xử lý.
-            Đồng hồ SLA được tạm dừng tính giờ cho đến khi có phản hồi.
+            Kỹ thuật viên cần người tạo phiếu bổ sung thông tin để xử lý tiếp. Thời hạn SLA tạm
+            dừng cho đến khi có phản hồi.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {onActionClick && (
@@ -306,22 +297,20 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
         <div
           role="status"
           aria-live="polite"
-          className="mt-4 rounded-md border border-status-pending-border bg-status-pending-bg p-3.5 sm:p-4 text-status-pending"
+          className="mt-4 rounded-md border border-status-pending-border bg-status-pending-bg p-3.5 @2xl:p-4 text-status-pending"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-pending text-white">
                 <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
-              <h4 className="text-xs font-bold uppercase tracking-wider">
+              <h3 className="text-xs font-bold uppercase tracking-wider">
                 CHỜ PHÊ DUYỆT TỪ QUẢN LÝ DỊCH VỤ
-              </h4>
+              </h3>
             </div>
-            <span className="text-xs font-medium">Nhánh phê duyệt bảo mật</span>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-content">
-            Yêu cầu này cần được Quản lý dịch vụ hoặc Trưởng bộ phận phê duyệt trước khi phân
-            công kỹ thuật viên triển khai thực tế.
+            Yêu cầu này cần được phê duyệt trước khi giao kỹ thuật viên xử lý.
           </p>
           {actionsSlot && <div className="mt-3">{actionsSlot}</div>}
         </div>
@@ -330,20 +319,19 @@ export const TicketStageTracker: React.FC<TicketStageTrackerProps> = ({
       {/* Conditional Branch Callout: Cancelled */}
       {isBranchCancelled && (
         <div
-          role="alert"
-          className="mt-4 rounded-md border border-status-danger-border bg-status-danger-bg p-3.5 sm:p-4 text-status-danger"
+          role="status"
+          className="mt-4 rounded-md border border-status-danger-border bg-status-danger-bg p-3.5 @2xl:p-4 text-status-danger"
         >
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-danger text-white">
               <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
-            <h4 className="text-xs font-bold uppercase tracking-wider">
-              PHIẾU ĐÃ BỊ HỦY BỎ
-            </h4>
+            <h3 className="text-xs font-bold uppercase tracking-wider">
+              PHIẾU ĐÃ HỦY
+            </h3>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-content">
-            Phiếu sự cố này đã kết thúc ở trạng thái hủy. Không thể thực hiện thêm các thao tác xử lý
-            kỹ thuật trên phiếu này.
+            Phiếu này đã hủy và không thể xử lý tiếp. Nếu sự cố vẫn còn, hãy tạo phiếu mới.
           </p>
         </div>
       )}

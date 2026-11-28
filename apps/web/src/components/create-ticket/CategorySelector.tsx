@@ -28,10 +28,10 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   return (
     <fieldset className="min-w-0">
       <legend className="mb-3 flex w-full items-center gap-2 border-b border-edge-subtle pb-2">
-        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-primary-tint text-[10px] font-bold text-primary">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] bg-primary-tint text-[10px] font-bold text-[var(--color-primary-text)]">
           1
         </span>
-        <Tag className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+        <Tag className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
         <span className="text-[11px] font-bold uppercase tracking-wider text-content">
           Phân loại sự cố
         </span>

@@ -35,21 +35,21 @@ describe('TicketStageTracker (Model 1)', () => {
   it('renders all 6 linear happy path stages', () => {
     render(<TicketStageTracker ticket={mockBaseTicket} />);
 
-    expect(screen.getByText('Tiếp nhận')).toBeInTheDocument();
-    expect(screen.getByText('Phân loại')).toBeInTheDocument();
-    expect(screen.getByText('Phân công')).toBeInTheDocument();
+    expect(screen.getByText('Mới tạo')).toBeInTheDocument();
+    expect(screen.getByText('Đã phân loại')).toBeInTheDocument();
+    expect(screen.getByText('Đã phân công')).toBeInTheDocument();
     expect(screen.getAllByText('Đang xử lý').length).toBeGreaterThan(0);
-    expect(screen.getByText('Giải quyết')).toBeInTheDocument();
-    expect(screen.getByText('Đóng phiếu')).toBeInTheDocument();
+    expect(screen.getByText('Đã giải quyết')).toBeInTheDocument();
+    expect(screen.getByText('Đã đóng')).toBeInTheDocument();
   });
 
   it('marks completed and active steps properly', () => {
     render(<TicketStageTracker ticket={mockBaseTicket} />);
 
-    // Steps before in_progress (Tiếp nhận, Phân loại, Phân công) are completed
-    expect(screen.getByLabelText(/Tiếp nhận đã hoàn thành/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Phân loại đã hoàn thành/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Phân công đã hoàn thành/i)).toBeInTheDocument();
+    // Steps before in_progress (Mới tạo, Đã phân loại, Đã phân công) are completed
+    expect(screen.getByLabelText(/Mới tạo, đã hoàn thành/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Đã phân loại, đã hoàn thành/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Đã phân công, đã hoàn thành/i)).toBeInTheDocument();
 
     // in_progress is the active step
     const currentStep = screen.getByRole('listitem', { current: 'step' });
@@ -68,7 +68,7 @@ describe('TicketStageTracker (Model 1)', () => {
     render(<TicketStageTracker ticket={pausedTicket} onActionClick={handleAction} />);
 
     expect(
-      screen.getByText(/ĐANG CHỜ PHẢN HỒI TỪ NGƯỜI DÙNG · SLA TẠM DỪNG/i)
+      screen.getByText(/ĐANG CHỜ NGƯỜI TẠO PHIẾU PHẢN HỒI · SLA TẠM DỪNG/i)
     ).toBeInTheDocument();
     expect(screen.getByText(/Thời gian đã dừng: 30 phút/i)).toBeInTheDocument();
 
@@ -96,7 +96,7 @@ describe('TicketStageTracker (Model 1)', () => {
     };
 
     render(<TicketStageTracker ticket={cancelledTicket} />);
-    expect(screen.getByRole('alert')).toHaveTextContent(/PHIẾU ĐÃ BỊ HỦY BỎ/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/PHIẾU ĐÃ HỦY/i);
   });
 
   it('toggles mobile expansion view', async () => {
@@ -291,7 +291,7 @@ describe('SlaPauseBanner (Model 4)', () => {
     render(<SlaPauseBanner ticket={pausedTicket} />);
 
     const statusBanner = screen.getByRole('status');
-    expect(statusBanner).toHaveTextContent(/ĐỒNG HỒ SLA TẠM DỪNG/i);
+    expect(statusBanner).toHaveTextContent(/SLA tạm dừng · chờ người tạo phiếu phản hồi/i);
     expect(statusBanner).toHaveTextContent(/Thời gian đã dừng: 20 phút/i);
   });
 
@@ -304,9 +304,45 @@ describe('SlaPauseBanner (Model 4)', () => {
 
     render(<SlaPauseBanner ticket={breachedTicket} />);
 
-    const alertBanner = screen.getByRole('alert');
-    expect(alertBanner).toHaveTextContent(/VI PHẠM THỜI HẠN SLA/i);
+    const alertBanner = screen.getByRole('status');
+    expect(alertBanner).toHaveTextContent(/Quá hạn SLA/i);
     expect(alertBanner).toHaveTextContent(/Trễ hạn:/i);
+    expect(alertBanner).not.toHaveTextContent(/leo thang/i);
+    // Quá hạn là trạng thái kéo dài, không phải sự kiện mới: không nhấp nháy,
+    // và tiêu đề là h2 ngay dưới h1 của trang.
+    expect(alertBanner.className).not.toMatch(/animate-pulse/);
+    expect(screen.getByRole('heading', { level: 2, name: /Quá hạn SLA/i })).toBeInTheDocument();
+  });
+
+  it('tells the requester calmly that a breached ticket is late, without SLA jargon', () => {
+    const breachedTicket: Ticket = {
+      ...mockBaseTicket,
+      sla_breached: true,
+      sla_due_at: new Date(Date.now() - 3600000).toISOString(),
+    };
+
+    render(<SlaPauseBanner ticket={breachedTicket} audience="requester" />);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    const banner = screen.getByRole('status');
+    expect(banner).toHaveTextContent('Phiếu đang chậm hơn dự kiến');
+    expect(banner).toHaveTextContent('bạn không cần gửi lại yêu cầu');
+    expect(banner).not.toHaveTextContent(/SLA|leo thang|Trễ hạn/);
+  });
+
+  it('tells the requester the clock is paused while waiting for them', () => {
+    const pausedTicket: Ticket = {
+      ...mockBaseTicket,
+      status: 'waiting_user',
+      waiting_since: new Date(Date.now() - 1200000).toISOString(),
+      sla_paused_ms: 0,
+    };
+
+    render(<SlaPauseBanner ticket={pausedTicket} audience="requester" />);
+
+    const banner = screen.getByRole('status');
+    expect(banner).toHaveTextContent('Đang chờ bạn phản hồi');
+    expect(banner).not.toHaveTextContent(/SLA/);
   });
 
   it('renders success notice when resolved on time', () => {

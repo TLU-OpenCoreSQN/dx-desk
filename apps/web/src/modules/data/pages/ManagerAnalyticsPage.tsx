@@ -24,7 +24,7 @@ export function ManagerAnalyticsPage() {
     <section aria-labelledby="analytics-title" className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 id="analytics-title" className="text-2xl font-bold text-content">Báo cáo vận hành</h1>
+          <h1 id="analytics-title" className="dx-page-title">Báo cáo vận hành</h1>
           <p className="text-sm text-content-muted">Tổng hợp tình trạng phiếu, SLA và hoạt động hỗ trợ.</p>
         </div>
         {allowed && <button type="button" onClick={() => setAttempt(value => value + 1)}

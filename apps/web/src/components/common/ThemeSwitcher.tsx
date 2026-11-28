@@ -108,7 +108,7 @@ export const ThemeSwitcher: React.FC = () => {
         title="Tùy biến giao diện và màu sắc"
         className={`h-9 w-9 rounded-md border flex items-center justify-center transition-all ${
           isOpen
-            ? 'border-primary bg-primary-tint text-primary shadow-xs'
+            ? 'border-primary bg-primary-tint text-[var(--color-primary-ink)] shadow-xs'
             : 'border-edge bg-surface text-content-muted hover:bg-surface-muted hover:text-content shadow-2xs'
         }`}
       >
@@ -148,7 +148,7 @@ export const ThemeSwitcher: React.FC = () => {
                       {preset.description}
                     </div>
                   </div>
-                  {selected && <Check className="w-4 h-4 text-primary shrink-0" />}
+                  {selected && <Check className="w-4 h-4 text-[var(--color-primary-ink)] shrink-0" />}
                 </button>
               );
             })}
@@ -177,7 +177,7 @@ export const ThemeSwitcher: React.FC = () => {
                 >
                   <SwatchSquare color={preset.swatch} bg={preset.swatchBg} />
                   <span className="flex-1 text-xs">{preset.label}</span>
-                  {selected && <Check className="w-4 h-4 text-primary shrink-0" />}
+                  {selected && <Check className="w-4 h-4 text-[var(--color-primary-ink)] shrink-0" />}
                 </button>
               );
             })}
@@ -198,7 +198,7 @@ export const ThemeSwitcher: React.FC = () => {
               <SwatchSquare color={customAccentHex} bg={customAccentBgHex} />
               <Pipette className="w-3.5 h-3.5 text-content-subtle" />
               <span className="flex-1 text-xs">Tùy chỉnh</span>
-              {accent === 'custom' && <Check className="w-4 h-4 text-primary shrink-0" />}
+              {accent === 'custom' && <Check className="w-4 h-4 text-[var(--color-primary-ink)] shrink-0" />}
             </button>
           </div>
 
@@ -217,7 +217,7 @@ export const ThemeSwitcher: React.FC = () => {
                 {mode === 'light' ? (
                   <Moon className="w-4 h-4 text-content-muted" />
                 ) : (
-                  <Sun className="w-4 h-4 text-amber-500" />
+                  <Sun className="w-4 h-4 text-status-warning-solid" />
                 )}
                 <span>Chế độ tối</span>
               </div>
@@ -237,7 +237,7 @@ export const ThemeSwitcher: React.FC = () => {
                 <Grid3x3 className="w-4 h-4 text-content-muted" />
                 <span>Viền ô bảng</span>
               </div>
-              <span className="text-[11px] font-semibold text-primary">
+              <span className="text-[11px] font-semibold text-[var(--color-primary-ink)]">
                 {tableGridLines ? 'Có' : 'Không'}
               </span>
             </button>

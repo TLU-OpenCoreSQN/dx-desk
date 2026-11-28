@@ -71,7 +71,7 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
       className="rounded-[6px] border border-[var(--color-primary-border)] bg-[var(--color-primary-tint)] p-4"
     >
       <h3 id="knowledge-suggestions-title" className="flex items-center gap-1.5 text-xs font-bold text-content">
-        <BookOpen className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+        <BookOpen className="h-3.5 w-3.5 text-[var(--color-primary-ink)]" aria-hidden="true" />
         Thử tự xử lý trước khi gửi phiếu
       </h3>
       <p className="mt-1 text-[11px] text-content-muted">
@@ -83,7 +83,7 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
           tabIndex={-1}
           className="mt-3 flex items-start gap-1.5 text-xs text-content-muted focus:outline-none"
         >
-          <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
+          <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-primary-ink)]" aria-hidden="true" />
           Bạn có thể tiếp tục điền phiếu bên dưới.
         </p>
       ) : recordedFor ? (
@@ -136,7 +136,7 @@ export const KnowledgeSuggestions: React.FC<KnowledgeSuggestionsProps> = ({ cate
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary underline-offset-2 hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary-ink)] underline-offset-2 hover:underline"
                     >
                       {article.title}
                       <ExternalLink className="h-3 w-3" aria-hidden="true" />

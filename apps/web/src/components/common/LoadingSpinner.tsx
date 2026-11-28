@@ -27,7 +27,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       aria-live="polite"
       className={`flex flex-col items-center justify-center p-8 gap-3 text-[var(--color-content-muted)] ${className}`}
     >
-      <Loader2 className={`animate-spin text-[var(--color-primary)] ${sizeClasses}`} />
+      <Loader2 className={`animate-spin text-[var(--color-primary-ink)] ${sizeClasses}`} />
       {label && <span className="text-xs sm:text-sm font-medium text-[var(--color-content-muted)]">{label}</span>}
       <span className="sr-only">{label}</span>
     </div>
