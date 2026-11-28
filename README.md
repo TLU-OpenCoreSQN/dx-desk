@@ -37,7 +37,8 @@ make up                  # dựng Tầng 1, chờ tất cả dịch vụ healthy
 make ps                  # xem trạng thái
 ```
 
-Các lệnh khác: `make down` (dừng, giữ dữ liệu), `make reset` (xóa dữ liệu và dựng lại từ đầu), `make logs SERVICE=keycloak`.
+Các lệnh khác: `make down` (dừng, giữ dữ liệu), `make reset` (xóa dữ liệu và dựng lại từ đầu), `make logs SERVICE=keycloak`,
+`make backup` / `make restore BACKUP=<thư-mục>` (sao lưu và khôi phục, xem [cài đặt](docs/cai-dat.md#sao-lưu-và-khôi-phục-w7-01)).
 Lần đầu ClamAV cần vài phút để tải cơ sở dữ liệu mẫu virus.
 
 Trên Windows PowerShell, có Docker Desktop chạy Linux containers:

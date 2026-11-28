@@ -11,12 +11,14 @@
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 
 ### Sửa
+- W7-01 (#89): chặn backup/restore chạy đồng thời, không xóa bản sao trùng tên; tạm dừng writer để CSDL và tệp nhất quán; kiểm kế hoạch khôi phục và archive trước khi xóa dữ liệu, dừng khi SQL role lỗi.
 - #74: Trợ lý không nhầm câu hỏi hướng dẫn hoặc yêu cầu hoãn tạo phiếu/công việc thành đề xuất ghi dữ liệu.
 - Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
 - #86: `up` đặt lại mật khẩu Mattermost của user demo đã tồn tại khi không khớp `MATTERMOST_DEMO_PASSWORD` (trước đây chỉ user tạo mới nhận mật khẩu của `.env`); `week4-stack` kiểm đăng nhập `agent.1`.
 - #87: preset màu nhấn đạt WCAG 2.1 AA ở cả chế độ sáng và tối: nút chính cam/vàng/xanh lá/nâu đậm hơn để chữ trắng ≥ 4,5:1, mỗi preset có màu chữ nhấn riêng (trước đây chữ trên nền tint vẫn dùng xanh dương mặc định), hover ở chế độ tối đậm hơn thay vì sáng hơn.
 
 ### Thêm
+- W7-01: `node scripts/dxdesk.mjs backup` / `restore <thư-mục> --xac-nhan` (`make backup`, `make restore`) sao lưu CSDL DX-Desk, Keycloak, n8n, Mattermost, Wiki.js, Metabase cùng vai trò PostgreSQL và volume SeaweedFS; manifest SHA-256, kiểm dung lượng trước khi ghi, giữ `BACKUP_KEEP` bản (mặc định 7) trong `BACKUP_DIR`, nhật ký `backup.log`. Runbook, lịch cron/Task Scheduler và giới hạn khôi phục trong `docs/cai-dat.md`; kiểm thử `tests/backup.test.mjs`.
 - #74: Trợ lý AI lưu hội thoại riêng theo người dùng trong PostgreSQL; tạo, đổi tên, xóa và tiếp tục trò chuyện sau khi tải lại trang. Duy trì ngữ cảnh qua nhiều lượt bằng bộ nhớ tóm tắt, phân trang lịch sử, dừng phản hồi đang sinh và hiển thị Markdown. Đề xuất tạo phiếu/công việc vẫn yêu cầu xác nhận và được lưu cùng hội thoại.
 - W6-15: `scripts/import-nhan-vien.mjs` (lệnh `node scripts/dxdesk.mjs import-nhan-vien`, `make import-nhan-vien`) nhập nhân viên từ CSV vào Keycloak — mặc định chạy thử, `--thuc-hien` tạo người dùng với mật khẩu tạm ngẫu nhiên bắt đổi lần đầu, gán realm role, đưa Agent/Manager vào nhóm qua `POST /api/system/roster`; chạy lại không tạo trùng, báo lỗi theo dòng. Tệp mẫu `config/doanh-nghiep/nhan-vien.mau.csv`, 50 nhân viên giả lập `nhan-vien.gia-lap-50.csv`, kiểm thử `tests/import-nhan-vien.test.mjs`.
 
