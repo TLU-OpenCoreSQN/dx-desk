@@ -1,96 +1,74 @@
 // SPDX-FileCopyrightText: 2026 TLU-OpenCoreSQN
 // SPDX-License-Identifier: Apache-2.0
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import { ThemeSwitcher } from '../components/common/ThemeSwitcher';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import * as auth from '../contexts/AuthContext';
+import * as api from '../services/api';
+import { ModuleProvider } from '../modules/ModuleContext';
+import { Header } from '../components/layout/Header';
 
-describe('theme preferences', () => {
-  beforeEach(() => localStorage.clear());
-  afterEach(() => {
+describe('fixed enterprise light corporate-blue baseline', () => {
+  beforeEach(() => {
     localStorage.clear();
-    document.documentElement.removeAttribute('data-accent');
-    document.documentElement.removeAttribute('style');
-    document.documentElement.removeAttribute('data-theme');
-    document.documentElement.removeAttribute('data-grid-lines');
-    document.documentElement.classList.remove('dark');
+    vi.spyOn(auth, 'useAuth').mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      isKeycloakOffline: false,
+      roles: ['Employee'],
+      username: 'nhan.vien',
+      profile: { id: 'u-1', username: 'nhan.vien', roles: ['Employee'] },
+      token: null,
+      login: vi.fn(),
+      logout: vi.fn(),
+      refreshToken: vi.fn(),
+      hasRole: () => true,
+    } as unknown as ReturnType<typeof auth.useAuth>);
+    vi.spyOn(api, 'getHealth').mockResolvedValue({
+      status: 'ok',
+      version: '0.5.0',
+      time: '2026-11-28T00:00:00Z',
+    } as unknown as Awaited<ReturnType<typeof api.getHealth>>);
   });
 
-  it.each(['null', '[]', 'false', '"dark"', '{broken'])('recovers from invalid stored preferences: %s', (value) => {
-    localStorage.setItem('dx-desk-theme', value);
-    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    expect(screen.getByRole('button', { name: 'Tùy biến giao diện và màu sắc' })).toBeInTheDocument();
-    expect(document.documentElement).toHaveAttribute('data-theme', 'modern');
-    expect(document.documentElement).toHaveAttribute('data-accent', 'corporate-blue');
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+    document.documentElement.className = '';
   });
 
-  it('validates stored values and derives the tint from a valid custom color', () => {
-    localStorage.setItem('dx-desk-theme', JSON.stringify({ mode: 'broken', theme: {}, accent: 'custom', customAccentHex: '#123456', customAccentBgHex: 'red', tableGridLines: 'false' }));
-    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
+  it('renders Header without theme or layout customization controls and sets no root switching attributes', async () => {
+    render(
+      <MemoryRouter>
+        <ModuleProvider enabled={null}>
+          <Header onToggleMobileNav={() => {}} />
+        </ModuleProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Hoạt động/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tùy biến giao diện/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /Tùy biến giao diện/i })).not.toBeInTheDocument();
     expect(document.documentElement).not.toHaveClass('dark');
-    expect(document.documentElement).toHaveAttribute('data-theme', 'modern');
-    expect(document.documentElement).toHaveAttribute('data-grid-lines', 'true');
-    expect(document.documentElement.style.getPropertyValue('--color-primary-tint')).toBe('rgb(227,231,235)');
+    expect(Array.from(document.documentElement.attributes).some((attr) => attr.name.startsWith('data-'))).toBe(false);
+    expect(localStorage.length).toBe(0);
   });
 
-  it('migrates legacy stored preferences to v2-corporate while preserving mode', () => {
-    localStorage.setItem('dx-desk-theme', JSON.stringify({ mode: 'dark', accent: '#cb912f', theme: 'classic' }));
-    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    expect(document.documentElement).toHaveClass('dark');
-    expect(document.documentElement).toHaveAttribute('data-accent', 'corporate-blue');
-    const stored = JSON.parse(localStorage.getItem('dx-desk-theme')!);
-    expect(stored.version).toBe('v2-corporate');
-    expect(stored.mode).toBe('dark');
-    expect(stored.accent).toBe('corporate-blue');
-  });
+  it('locks index.css to light corporate-blue tokens and fixed corporate shell without switching selectors', () => {
+    const css = readFileSync(resolve(__dirname, '../index.css'), 'utf8');
 
-  it('moves focus into theme controls and restores the trigger on Escape', async () => {
-    const user = userEvent.setup();
-    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    const trigger = screen.getByRole('button', { name: 'Tùy biến giao diện và màu sắc' });
-    await user.click(trigger);
-    expect(screen.getByRole('dialog', { name: 'Tùy biến giao diện' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Đơn giản/ })).toHaveFocus();
-    await user.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
-  });
+    expect(css).toContain('color-scheme: light;');
+    expect(css).toContain('--color-background: #f8fafc;');
+    expect(css).toContain('--color-surface: #ffffff;');
+    expect(css).toContain('--color-content: #0f172a;');
+    expect(css).toContain('--color-primary: #1d4ed8;');
+    expect(css).toContain('.dx-app-header {');
+    expect(css).toContain('.dx-main {');
 
-  it('applies and persists a selected accent', async () => {
-    const view = render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    fireEvent.click(screen.getByRole('button', { name: 'Tùy biến giao diện và màu sắc' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Vàng' }));
-    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-accent', 'yellow'));
-    expect(JSON.parse(localStorage.getItem('dx-desk-theme')!).accent).toBe('yellow');
-    view.unmount();
-    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-accent', 'yellow'));
-    expect(JSON.parse(localStorage.getItem('dx-desk-theme')!).accent).toBe('yellow');
-  });
-
-  it('switches and restores each interface style', async () => {
-    const view = render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    fireEvent.click(screen.getByRole('button', { name: 'Tùy biến giao diện và màu sắc' }));
-    for (const [label, key] of [['Đơn giản', 'clear'], ['Hiện đại', 'modern'], ['Cổ điển', 'classic']]) {
-      fireEvent.click(screen.getByRole('button', { name: new RegExp(label) }));
-      await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', key));
-      expect(JSON.parse(localStorage.getItem('dx-desk-theme')!).theme).toBe(key);
-    }
-    view.unmount();
-    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-theme', 'classic'));
-  });
-
-  it('restores a custom color and removes its inline overrides after switching presets', async () => {
-    localStorage.setItem('dx-desk-theme', JSON.stringify({ accent: 'custom', customAccentHex: '#123456', customAccentBgHex: '#e0e0e0' }));
-    render(<ThemeProvider><ThemeSwitcher /></ThemeProvider>);
-    await waitFor(() => expect(document.documentElement.style.getPropertyValue('--color-primary')).toBe('#123456'));
-    fireEvent.click(screen.getByRole('button', { name: 'Tùy biến giao diện và màu sắc' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xanh lá' }));
-    await waitFor(() => expect(document.documentElement).toHaveAttribute('data-accent', 'green'));
-    expect(document.documentElement.style.getPropertyValue('--color-primary')).toBe('');
-    expect(document.documentElement.style.getPropertyValue('--color-primary-hover')).toBe('');
+    expect(css).not.toContain('.dark');
+    expect(css).not.toMatch(/\[data-(?!numeric\b)/);
   });
 });

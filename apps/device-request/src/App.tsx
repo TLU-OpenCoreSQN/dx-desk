@@ -5,7 +5,6 @@ import { currentUser, initKeycloak, logout } from './keycloak';
 import { listRequests, REQUEST_PAGE_SIZE, type RequestQueue } from './rest';
 import { RequestForm } from './RequestForm';
 import { RequestCard } from './RequestCard';
-import { ThemeToggle } from './ThemeToggle';
 import type { CurrentUser, DeviceRequest } from './workflow';
 
 const ROLE_LABELS: Record<string, string> = { Employee: 'Nhân viên', Agent: 'IT', Manager: 'Quản lý' };
@@ -82,7 +81,6 @@ export function Workspace({ user }: { user: CurrentUser }) {
                 )}
               </span>
             </div>
-            <ThemeToggle />
             <a
               href="/"
               className="inline-flex items-center gap-1.5 rounded-md border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-content hover:bg-surface-warm transition-colors shadow-2xs"

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import * as auth from '../contexts/AuthContext';
-import { ThemeProvider } from '../contexts/ThemeContext';
 import { ToastProvider } from '../contexts/ToastContext';
 import { AppRoutes } from '../App';
 import { Sidebar } from '../components/layout/Sidebar';
@@ -214,13 +213,11 @@ describe('W6-11: Sidebar và route dựng từ sổ đăng ký', () => {
   function routeTo(path: string, enabled: Set<ModuleId> | null) {
     render(
       <MemoryRouter initialEntries={[path]}>
-        <ThemeProvider>
-          <ToastProvider>
-            <ModuleProvider enabled={enabled}>
-              <AppRoutes />
-            </ModuleProvider>
-          </ToastProvider>
-        </ThemeProvider>
+        <ToastProvider>
+          <ModuleProvider enabled={enabled}>
+            <AppRoutes />
+          </ModuleProvider>
+        </ToastProvider>
       </MemoryRouter>,
     );
   }

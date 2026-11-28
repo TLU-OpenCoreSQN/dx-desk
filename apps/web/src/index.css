@@ -168,74 +168,6 @@
   --color-status-neutral-solid: #64748b;
 }
 
-/* === LAYER 2: SEMANTIC TOKENS (DARK THEME OVERRIDES) === */
-/* Tương phản ghi kèm là so với --color-surface tối (#111827). */
-:root.dark {
-  color-scheme: dark;
-
-  --color-background: #0b0f17;
-  --color-surface: #111827;
-  --color-surface-muted: #0f172a;
-  --color-surface-hover: #1e293b;
-  --color-surface-card: #111827;
-  --color-surface-sidebar: #0f172a;
-
-  --color-content: #f1f5f9;         /* 16,3:1 */
-  --color-content-muted: #a3afc0;   /* 8,3:1 */
-  --color-content-subtle: #8794a8;  /* 5,7:1 */
-
-  --color-edge: #1e293b;
-  --color-edge-subtle: #1e293b;
-  --color-edge-strong: #334155;
-  --color-edge-control: #64748b;    /* 3,6:1 */
-
-  /* Nút chính giữ chữ trắng ≥ 4,5:1; liên kết dùng primary-ink sáng. */
-  --color-primary: #2563eb;         /* chữ trắng 5,2:1 */
-  --color-primary-hover: #1d4ed8;
-  --color-primary-active: #1e40af;
-  --color-primary-tint: rgba(37, 99, 235, 0.18);
-  --color-primary-border: rgba(96, 165, 250, 0.45);
-  --color-primary-text: #93c5fd;    /* 9,5:1 */
-  --color-primary-ink: var(--color-primary-text);
-  --color-ring: #60a5fa;            /* 6,9:1 */
-
-  --color-state-hover: rgba(148, 163, 184, 0.08);
-  --color-state-selected: rgba(37, 99, 235, 0.18);
-  --color-state-selected-edge: rgba(96, 165, 250, 0.55);
-  --color-state-disabled-bg: #1e293b;
-  --color-state-disabled-text: #64748b;
-
-  --color-status-success: #6ee7b7;
-  --color-status-success-bg: rgba(5, 150, 105, 0.16);
-  --color-status-success-border: rgba(52, 211, 153, 0.40);
-  --color-status-success-solid: #34d399;
-
-  --color-status-warning: #fcd34d;
-  --color-status-warning-bg: rgba(217, 119, 6, 0.16);
-  --color-status-warning-border: rgba(251, 191, 36, 0.40);
-  --color-status-warning-solid: #fbbf24;
-
-  --color-status-danger: #fca5a5;
-  --color-status-danger-bg: rgba(220, 38, 38, 0.16);
-  --color-status-danger-border: rgba(248, 113, 113, 0.45);
-  --color-status-danger-solid: #f87171;
-
-  --color-status-info: #93c5fd;
-  --color-status-info-bg: rgba(37, 99, 235, 0.16);
-  --color-status-info-border: rgba(96, 165, 250, 0.40);
-  --color-status-info-solid: #60a5fa;
-
-  --color-status-pending: #c4b5fd;
-  --color-status-pending-bg: rgba(124, 58, 237, 0.16);
-  --color-status-pending-border: rgba(167, 139, 250, 0.40);
-  --color-status-pending-solid: #a78bfa;
-
-  --color-status-neutral: #cbd5e1;
-  --color-status-neutral-bg: rgba(51, 65, 85, 0.45);
-  --color-status-neutral-border: rgba(100, 116, 139, 0.50);
-  --color-status-neutral-solid: #94a3b8;
-}
-
 /* === LAYER 3: COMPONENT TOKENS === */
 :root {
   /* Badges */
@@ -313,140 +245,23 @@
   --color-primary-subtle: color-mix(in srgb, var(--color-primary-tint), white 50%);
 }
 
-:root.dark {
-  --color-muted: var(--color-content-muted);
-  --color-success-hover: #10b981;
-  --color-success-edge: var(--color-status-success-border);
-  --color-warning-hover: #f59e0b;
-  --color-warning-edge: var(--color-status-warning-border);
-  --color-danger-hover: #ef4444;
-  --color-danger-edge: var(--color-status-danger-border);
-  --color-info-hover: #3b82f6;
-  --color-info-border: var(--color-status-info-border);
-  --color-primary-edge: var(--color-primary-border);
-  --color-primary-subtle: color-mix(in srgb, var(--color-primary-tint), transparent 30%);
-}
-
-/* Accent presets - data-accent on <html> */
-:root[data-accent='corporate-blue'],
-:root[data-accent='default'] {
-  --color-primary: #1d4ed8;
-  --color-primary-hover: #1e40af;
-  --color-primary-tint: #eff6ff;
-  --color-primary-border: #bfdbfe;
-  --color-primary-text: #1e40af;
-}
-/* Chế độ sáng, mỗi preset đạt WCAG 2.1 AA (#87):
-   - primary: nền nút chính, chữ trắng trên nền này ≥ 4,5:1;
-   - primary-ink/primary-text: màu chữ nhấn, ≥ 4,5:1 trên nền trắng, nền ứng dụng #f8fafc và nền tint của preset.
-   Số đo (nút · chữ trên trắng/nền/tint): gray 4,8 · 7,6/7,2/6,9; brown 5,8 · 7,9/7,6/6,9;
-   orange 5,2 · 7,3/7,0/6,3; yellow 5,0 · 7,1/6,8/6,9; green 5,5 · 7,7/7,3/7,3; blue 5,2 · 6,7/6,4/6,2;
-   purple 5,7 · 7,1/6,8/6,5; pink 4,6 · 6,0/5,8/5,5; red 4,8 · 6,5/6,2/5,9. */
-:root[data-accent='gray']    { --color-primary: #64748b; --color-primary-hover: #475569; --color-primary-tint: #f1f5f9; --color-primary-text: #475569; --color-primary-ink: #475569; }
-:root[data-accent='brown']   { --color-primary: #8a5a44; --color-primary-hover: #6f4836; --color-primary-tint: #f4eeee; --color-primary-text: #6f4836; --color-primary-ink: #6f4836; }
-:root[data-accent='orange']  { --color-primary: #c2410c; --color-primary-hover: #9a3412; --color-primary-tint: #fbecdd; --color-primary-text: #9a3412; --color-primary-ink: #9a3412; }
-:root[data-accent='yellow']  { --color-primary: #b45309; --color-primary-hover: #92400e; --color-primary-tint: #fefce8; --color-primary-text: #92400e; --color-primary-ink: #92400e; }
-:root[data-accent='green']   { --color-primary: #047857; --color-primary-hover: #065f46; --color-primary-tint: #ecfdf5; --color-primary-text: #065f46; --color-primary-ink: #065f46; }
-:root[data-accent='blue']    { --color-primary: #2563eb; --color-primary-hover: #1d4ed8; --color-primary-tint: #eff6ff; --color-primary-text: #1d4ed8; --color-primary-ink: #1d4ed8; }
-:root[data-accent='purple']  { --color-primary: #7c3aed; --color-primary-hover: #6d28d9; --color-primary-tint: #f5f3ff; --color-primary-text: #6d28d9; --color-primary-ink: #6d28d9; }
-:root[data-accent='pink']    { --color-primary: #db2777; --color-primary-hover: #be185d; --color-primary-tint: #fdf2f8; --color-primary-text: #be185d; --color-primary-ink: #be185d; }
-:root[data-accent='red']     { --color-primary: #dc2626; --color-primary-hover: #b91c1c; --color-primary-tint: #fef2f2; --color-primary-text: #b91c1c; --color-primary-ink: #b91c1c; }
-
-/* Chế độ tối: các preset ở trên chỉ có nền nhạt cho chế độ sáng và cùng độ ưu tiên với :root.dark,
-   nên ở đây dẫn xuất lại nền/viền/chữ nhấn từ màu chủ đạo (độ ưu tiên cao hơn). */
-:root.dark[data-accent] {
-  --color-primary-tint: color-mix(in srgb, var(--color-primary) 18%, transparent);
-  --color-primary-border: color-mix(in srgb, var(--color-primary) 40%, transparent);
-  --color-primary-text: color-mix(in srgb, var(--color-primary), white 45%);
-  /* Preset sáng ở trên đặt primary-ink cùng độ ưu tiên với :root.dark và đứng sau, nên đặt lại ở đây. */
-  --color-primary-ink: var(--color-primary-text);
-  /* Hover đậm hơn (không sáng hơn) để chữ trắng trên nút vẫn ≥ 4,5:1; trộn trắng 15% chỉ còn 3,6–4,3:1. */
-  --color-primary-hover: color-mix(in srgb, var(--color-primary), black 15%);
-}
-/* Màu doanh nghiệp ở chế độ tối: nút đậm hơn khi hover để chữ trắng vẫn đạt AA. */
-:root.dark[data-accent='corporate-blue'],
-:root.dark[data-accent='default'] {
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-text: #93c5fd;
-}
-
-/* UI Presets */
-[data-theme='clear'] {
-  --radius: 2px;
-  --radius-md: 2px;
-  --radius-lg: 4px;
-}
-[data-theme='classic'] {
-  --radius: 4px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
-  --color-surface-sidebar: #f2f1ee;
-  --color-surface-warm: #eeede9;
-}
-[data-theme='modern'] {
-  --radius: 8px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-}
-
-[data-theme='clear'] .dx-app-header {
-  background: var(--color-surface);
-  box-shadow: none;
-  backdrop-filter: none;
-}
-[data-theme='clear'] .dx-sidebar,
-[data-theme='clear'] .dx-main {
-  background: var(--color-surface);
-}
-[data-theme='clear'] .dx-main :is(section, form, article, header) {
-  box-shadow: none;
-}
-[data-theme='clear'] .dx-ticket-list-header {
-  background: var(--color-surface-warm);
-}
-
-[data-theme='modern'] .dx-app-header {
+/* Fixed Enterprise Shell Styling (Swiss Corporate Light) */
+.dx-app-header {
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   box-shadow: 0 1px 0 var(--color-edge);
   backdrop-filter: blur(12px);
 }
-[data-theme='modern'] .dx-main {
+.dx-main {
   background: var(--color-background);
 }
-[data-theme='modern'] .dx-main :is(section, form, article) {
+.dx-main :is(section, form, article) {
   box-shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 2px 8px rgb(15 23 42 / 4%);
 }
 
-[data-theme='classic'] .dx-app-header {
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
-  border-bottom-color: var(--color-primary-border);
-  box-shadow: none;
-  backdrop-filter: none;
-}
-[data-theme='classic'] .dx-sidebar {
-  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface-sidebar));
-  border-right-color: var(--color-primary-border);
-}
-[data-theme='classic'] .dx-main {
-  background: var(--color-surface-sidebar);
-}
-[data-theme='classic'] .dx-ticket-list-header {
-  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface));
-  border-color: var(--color-primary-border);
-}
-[data-theme='classic'] .dx-ticket-list > li:nth-child(even) {
-  background: color-mix(in srgb, var(--color-primary) 3%, var(--color-surface));
-}
-[data-theme='classic'] .dx-main :is(section, form, article) {
-  border-color: var(--color-edge);
-  box-shadow: none;
-}
-
-/* Table grid lines */
-[data-grid-lines='true'] table,
-[data-grid-lines='true'] [role='table'],
-[data-grid-lines='true'] [role='grid'] {
+/* Table border collapse */
+table,
+[role='table'],
+[role='grid'] {
   border-collapse: collapse;
 }
 

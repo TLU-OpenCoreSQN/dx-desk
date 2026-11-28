@@ -172,6 +172,28 @@ describe('IT', () => {
     expect(await within(waiting).findByRole('alert')).toHaveTextContent(/Không thể xử lý yêu cầu/);
     expect(within(waiting).queryByText('Màn hình × 1')).toBeNull();
   });
+
+  it('renders DX-Desk aligned header with brand mark, role tag, navigation link, and no theme toggle', async () => {
+    render(<Workspace user={employee} />);
+    await screen.findByText('Bạn chưa gửi đề nghị nào.');
+
+    expect(screen.getByText('DX')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Xin cấp thiết bị' })).toBeInTheDocument();
+    expect(screen.getByText('Module 2')).toBeInTheDocument();
+
+    const identity = screen.getByTestId('identity');
+    expect(identity).toHaveTextContent('employee.a');
+    expect(identity).toHaveTextContent('Nhân viên');
+    expect(identity).toHaveTextContent('đơn vị phong-hanh-chinh');
+
+    expect(screen.queryByRole('button', { name: 'Chuyển chế độ giao diện sáng/tối' })).not.toBeInTheDocument();
+
+    const backLink = screen.getByRole('link', { name: '← Về DX-Desk' });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink).toHaveAttribute('href', '/');
+
+    expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeInTheDocument();
+  });
 });
 
 describe('handover document (W5-03)', () => {

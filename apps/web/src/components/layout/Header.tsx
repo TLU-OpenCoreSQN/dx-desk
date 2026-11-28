@@ -8,7 +8,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useModules } from '../../modules/ModuleContext';
 import { breadcrumbsFor } from '../../modules/registry';
 import { RoleBadge } from '../common/Badge';
-import { ThemeSwitcher } from '../common/ThemeSwitcher';
 import { getHealth } from '../../services/api';
 import { HealthResponse } from '../../types/api';
 
@@ -112,11 +111,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileNav, isMobileNavOp
           </nav>
         </div>
 
-        {/* Right: Theme Switcher, Service Status & User controls - unified h-9 */}
+        {/* Right: Service Status & User controls - unified h-9 */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          {/* Theme Switcher */}
-          <ThemeSwitcher />
-
           {/* Health status badge */}
           <div
             className={`hidden 2xl:flex items-center gap-2 text-xs px-3 h-9 rounded-md border transition-all ${

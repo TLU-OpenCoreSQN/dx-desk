@@ -4,7 +4,6 @@
 import React, { lazy } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Layout } from './components/layout/Layout';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
@@ -108,15 +107,13 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ThemeProvider>
-          <ToastProvider>
-            <ModuleProvider>
-              <RouteErrorBoundary>
-                <AppRoutes />
-              </RouteErrorBoundary>
-            </ModuleProvider>
-          </ToastProvider>
-        </ThemeProvider>
+        <ToastProvider>
+          <ModuleProvider>
+            <RouteErrorBoundary>
+              <AppRoutes />
+            </RouteErrorBoundary>
+          </ModuleProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );
