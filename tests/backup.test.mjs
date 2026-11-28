@@ -3,11 +3,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  backupName, databasePlan, formatBytes, MANIFEST, requiredBytes, retentionPlan, validateManifest, verifyBackup,
+  backupMain, backupName, databasePlan, formatBytes, MANIFEST, requiredBytes, restoreMain, retentionPlan,
+  validateManifest, validateRestorePlan, verifyBackup,
 } from '../scripts/backup.mjs';
 
 const ENV = { POSTGRES_USER: 'dxdesk', POSTGRES_DB: 'dxdesk', KEYCLOAK_DB: 'keycloak', N8N_DB: 'n8n' };
@@ -68,4 +70,128 @@ test('verifyBackup phát hiện tệp bị sửa sau khi sao lưu', async () => 
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+const fullPlan = () => ({ ...manifest([
+  ...databasePlan(ENV, new Set(['postgres'])).map(db => ({ ...db, kind: 'database', name: db.database + '.dump', sha256: sha(db.database + '.dump') })),
+  { kind: 'roles', service: 'postgres', user: 'dxdesk', name: 'roles.sql', sha256: sha('roles.sql') },
+  { kind: 'seaweedfs', service: 'seaweedfs', name: 'data.tar.gz', sha256: sha('data.tar.gz') },
+]), versions: { postgres: '17.11' }, profiles: '' });
+
+function fakeContext(events, { failArchive = false, hold } = {}) {
+  return {
+    running: () => new Set(['postgres', 'seaweedfs', 'api', 'assistant', 'keycloak']),
+    psql: (...args) => { events.push(['psql', ...args]); return '1024'; },
+    run: args => { events.push(['run', ...args]); return args.includes('du') ? '1 /data' : ''; },
+    stream: async (args, options) => {
+      events.push(['stream', ...args]);
+      if (hold) await hold;
+      if (failArchive) throw new Error('archive failed');
+      if (options.output) await writeFile(options.output, 'archive');
+    },
+  };
+}
+
+test('restore plan bắt buộc đủ CSDL, role, SeaweedFS và khớp project; không nhận dịch vụ lạ', () => {
+  const valid = fullPlan();
+  assert.equal(validateRestorePlan(valid, ENV).length, 3);
+  for (const missing of valid.files) {
+    assert.throws(() => validateRestorePlan({ ...valid, files: valid.files.filter(file => file !== missing) }, ENV));
+  }
+  assert.throws(() => validateRestorePlan(valid, { ...ENV, POSTGRES_DB: 'another-project' }), /không khớp/);
+  assert.throws(() => validateRestorePlan({ ...valid, files: [...valid.files, { ...mainDb, service: 'other-db' }] }, ENV), /không thuộc/);
+  assert.throws(() => databasePlan({ ...ENV, COMPOSE_PROFILES: 'full' }, new Set(['postgres', 'seaweedfs'])), /chưa chạy/);
+});
+
+test('backup trùng tên không xóa bản sao hoàn chỉnh đã tồn tại', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dxdesk-collision-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const date = new Date('2026-11-28T01:00:00Z');
+  const existing = join(dir, backupName(date));
+  await mkdir(existing);
+  await writeFile(join(existing, MANIFEST), 'keep-this-backup');
+  const events = [];
+  await assert.rejects(backupMain({ ...ENV, BACKUP_DIR: dir, COMPOSE_PROJECT_NAME: randomUUID() }, [], { context: fakeContext(events), date }), /EEXIST/);
+  assert.equal(await readFile(join(existing, MANIFEST), 'utf8'), 'keep-this-backup');
+  assert.equal(events.some(event => event[0] === 'run' && event[1] === 'stop'), false);
+});
+
+test('backup ngừng writer trước dump, bật lại mọi writer kể cả lỗi và chỉ dọn bản dở của chính nó', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dxdesk-resume-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const events = [];
+  const date = new Date('2026-11-28T02:00:00Z');
+  await assert.rejects(backupMain({ ...ENV, BACKUP_DIR: dir, COMPOSE_PROJECT_NAME: randomUUID() }, [],
+    { context: fakeContext(events, { failArchive: true }), date }), /archive failed/);
+  const stop = events.findIndex(event => event[0] === 'run' && event[1] === 'stop');
+  const dump = events.findIndex(event => event[0] === 'stream');
+  assert.ok(stop >= 0 && stop < dump);
+  assert.deepEqual(events.at(-1), ['run', 'up', '-d', '--no-deps', '--wait', 'api', 'keycloak', 'assistant']);
+  await assert.rejects(stat(join(dir, backupName(date))), { code: 'ENOENT' });
+});
+
+test('khóa project chặn hai lượt backup đồng thời và được trả sau khi lỗi', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dxdesk-lock-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  let unblock, entered;
+  const hold = new Promise(resolve => { unblock = resolve; });
+  const waiting = new Promise(resolve => { entered = resolve; });
+  const events = [];
+  const ctx = fakeContext(events, { failArchive: true });
+  const original = ctx.stream;
+  ctx.stream = async (...args) => { entered(); await hold; return original(...args); };
+  const env = { ...ENV, BACKUP_DIR: dir, COMPOSE_PROJECT_NAME: randomUUID() };
+  const first = backupMain(env, [], { context: ctx });
+  const failed = assert.rejects(first, /archive failed/);
+  await waiting;
+  await assert.rejects(backupMain(env, [], { context: ctx }), /đang có thao tác/);
+  unblock();
+  await failed;
+  await assert.rejects(backupMain(env, [], { context: fakeContext([], { failArchive: true }) }), /archive failed/);
+});
+
+test('restore thiếu thành phần hoặc archive hỏng dừng trước mọi stop/DROP', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dxdesk-preflight-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const valid = fullPlan();
+  for (const file of valid.files) await writeFile(join(dir, file.name), file.name);
+  const env = { ...ENV, POSTGRES_VERSION: '17.11', COMPOSE_PROJECT_NAME: randomUUID() };
+  for (const data of [ { ...valid, files: valid.files.filter(file => file.kind !== 'seaweedfs') }, valid ]) {
+    await writeFile(join(dir, MANIFEST), JSON.stringify(data));
+    const events = [];
+    await assert.rejects(restoreMain(env, [dir, '--xac-nhan'], { context: fakeContext(events, { failArchive: true }) }));
+    assert.equal(events.some(event => event[0] === 'psql' || event[0] === 'run'), false);
+  }
+});
+
+test('restore chờ server TCP chính sau init và bắt buộc dừng khi role SQL lỗi', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dxdesk-init-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const valid = fullPlan();
+  const roles = valid.files.find(file => file.kind === 'roles');
+  const sql = 'CREATE ROLE dxdesk;\nALTER ROLE dxdesk WITH LOGIN;\n';
+  roles.sha256 = sha(sql);
+  for (const file of valid.files) await writeFile(join(dir, file.name), file.kind === 'roles' ? sql : file.name);
+  await writeFile(join(dir, MANIFEST), JSON.stringify(valid));
+  const events = [];
+  const ctx = fakeContext(events);
+  const run = ctx.run;
+  let readiness = 0;
+  ctx.run = args => {
+    if (args.includes('pg_isready') && ++readiness === 1) throw new Error('temporary Unix server is shutting down');
+    return run(args);
+  };
+  const stream = ctx.stream;
+  ctx.stream = async (args, options) => {
+    if (args.includes('psql')) {
+      assert.ok(readiness >= 2, 'must wait for the primary server');
+      assert.ok(args.includes('ON_ERROR_STOP=1'));
+      assert.match(options.inputText, /EXCEPTION WHEN duplicate_object THEN NULL/);
+      throw new Error('role SQL failed');
+    }
+    return stream(args, options);
+  };
+  await assert.rejects(restoreMain({ ...ENV, POSTGRES_VERSION: '17.11', COMPOSE_PROJECT_NAME: randomUUID() },
+    [dir, '--xac-nhan'], { context: ctx, readinessDelayMs: 1 }), /role SQL failed/);
+  assert.equal(events.some(event => event[0] === 'psql'), false, 'no DROP after a role SQL failure');
 });
