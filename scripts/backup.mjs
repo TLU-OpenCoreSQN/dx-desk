@@ -316,6 +316,19 @@ async function restoreUnlocked(env, args, options) {
   ctx.run(['stop']);
   ctx.run(['up', '-d', '--wait', ...services]);
 
+  // Image PostgreSQL có server Unix tạm trong lúc init; pg_isready mặc định có thể báo khỏe
+  // trước khi server này tắt. Chờ TCP của server chính để không restore vào quá trình init.
+  for (const service of services) {
+    const db = databases.find(item => item.service === service);
+    for (let attempt = 0; ; attempt++) {
+      try { ctx.run(['exec', '-T', service, 'pg_isready', '-h', '127.0.0.1', '-U', db.user, '-d', db.database]); break; }
+      catch {
+        if (attempt >= 89) throw new Error(`CSDL ${service} chưa khởi tạo xong; chưa xóa dữ liệu.`);
+        await new Promise(done => setTimeout(done, options.readinessDelayMs ?? 1000));
+      }
+    }
+  }
+
   const roles = manifest.files.find(file => file.kind === 'roles');
   if (roles) {
     // Chỉ bỏ qua role đã có; mọi lỗi SQL khác đều dừng trước khi xóa CSDL.

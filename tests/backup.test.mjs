@@ -163,3 +163,35 @@ test('restore thiếu thành phần hoặc archive hỏng dừng trước mọi 
     assert.equal(events.some(event => event[0] === 'psql' || event[0] === 'run'), false);
   }
 });
+
+test('restore chờ server TCP chính sau init và bắt buộc dừng khi role SQL lỗi', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dxdesk-init-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const valid = fullPlan();
+  const roles = valid.files.find(file => file.kind === 'roles');
+  const sql = 'CREATE ROLE dxdesk;\nALTER ROLE dxdesk WITH LOGIN;\n';
+  roles.sha256 = sha(sql);
+  for (const file of valid.files) await writeFile(join(dir, file.name), file.kind === 'roles' ? sql : file.name);
+  await writeFile(join(dir, MANIFEST), JSON.stringify(valid));
+  const events = [];
+  const ctx = fakeContext(events);
+  const run = ctx.run;
+  let readiness = 0;
+  ctx.run = args => {
+    if (args.includes('pg_isready') && ++readiness === 1) throw new Error('temporary Unix server is shutting down');
+    return run(args);
+  };
+  const stream = ctx.stream;
+  ctx.stream = async (args, options) => {
+    if (args.includes('psql')) {
+      assert.ok(readiness >= 2, 'must wait for the primary server');
+      assert.ok(args.includes('ON_ERROR_STOP=1'));
+      assert.match(options.inputText, /EXCEPTION WHEN duplicate_object THEN NULL/);
+      throw new Error('role SQL failed');
+    }
+    return stream(args, options);
+  };
+  await assert.rejects(restoreMain({ ...ENV, POSTGRES_VERSION: '17.11', COMPOSE_PROJECT_NAME: randomUUID() },
+    [dir, '--xac-nhan'], { context: ctx, readinessDelayMs: 1 }), /role SQL failed/);
+  assert.equal(events.some(event => event[0] === 'psql'), false, 'no DROP after a role SQL failure');
+});
