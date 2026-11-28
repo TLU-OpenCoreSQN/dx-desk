@@ -11,6 +11,7 @@
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 
 ### Sửa
+- #98: migration 029 bổ sung hint/placeholder cho trường danh mục khi cài mới/nâng cấp, giữ giá trị doanh nghiệp đã tùy chỉnh; kiểm config apply lần đầu/lần hai không thay dữ liệu mẫu.
 - #78: lưu kết quả chat bằng chữ ký dịch vụ nội bộ gắn với chủ sở hữu/lượt chat, tiếp tục áp dụng RLS; access token hết hạn giữa câu trả lời không còn làm mất kết quả và khóa hội thoại.
 - #81: màn hình trợ lý tự thử lại việc tải lượt đang xử lý sau lỗi mạng với khoảng chờ tăng dần; mở lại ô gửi khi lượt hoàn tất và hủy request/timer khi rời trang.
 - #80: hội thoại dài tiếp tục trả lời khi tóm tắt lỗi/rỗng bằng cửa sổ ngữ cảnh gần nhất; giữ lịch sử và checkpoint cũ để thử phục hồi ở lượt sau, giới hạn bản tóm tắt quá dài thay vì khóa hội thoại.
