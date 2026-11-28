@@ -13,6 +13,7 @@
 ### Sửa
 - #74: Trợ lý không nhầm câu hỏi hướng dẫn hoặc yêu cầu hoãn tạo phiếu/công việc thành đề xuất ghi dữ liệu.
 - Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
+- #87: preset màu nhấn đạt WCAG 2.1 AA ở cả chế độ sáng và tối: nút chính cam/vàng/xanh lá/nâu đậm hơn để chữ trắng ≥ 4,5:1, mỗi preset có màu chữ nhấn riêng (trước đây chữ trên nền tint vẫn dùng xanh dương mặc định), hover ở chế độ tối đậm hơn thay vì sáng hơn.
 
 ### Thêm
 - #74: Trợ lý AI lưu hội thoại riêng theo người dùng trong PostgreSQL; tạo, đổi tên, xóa và tiếp tục trò chuyện sau khi tải lại trang. Duy trì ngữ cảnh qua nhiều lượt bằng bộ nhớ tóm tắt, phân trang lịch sử, dừng phản hồi đang sinh và hiển thị Markdown. Đề xuất tạo phiếu/công việc vẫn yêu cầu xác nhận và được lưu cùng hội thoại.
