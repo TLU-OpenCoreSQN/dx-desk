@@ -23,13 +23,15 @@ async function token(username){
 async function api(path,identity,body,method=body===undefined?'GET':'POST'){
  const response=await fetch(base+'/api'+path,{method,headers:{Authorization:'Bearer '+identity,...(body===undefined?{}:{'Content-Type':'application/json'})},
  ...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(15000)});
- return {status:response.status,data:await response.json()};
+ const text=await response.text();
+ assert.match(response.headers.get('content-type')||'',/application\/json/,method+' /api'+path+' HTTP '+response.status+' must return JSON');
+ return {status:response.status,data:JSON.parse(text)};
 }
 async function until(op,description,ms=60000){const end=Date.now()+ms;while(Date.now()<end){const value=await op();if(value)return value;await new Promise(r=>setTimeout(r,500));}throw new Error('Timeout '+description);}
 function compose(...args){
  const result=spawnSync('docker',['compose','--env-file',resolve(root,'.env'),'-f',resolve(root,'infra/compose/docker-compose.yml'),...args],
- {cwd:root,env:{...process.env,...env},encoding:'utf8',windowsHide:true,timeout:60000});
- assert.equal(result.status,0,'Compose action failed: '+args[0]);return result.stdout;
+ {cwd:root,env:{...process.env,...env},encoding:'utf8',windowsHide:true,timeout:180000});
+ assert.equal(result.status,0,'Compose action failed: '+args[0]+(result.error?' ('+result.error.code+')':''));return result.stdout;
 }
 const payload={category_id:'10000000-0000-4000-8000-000000000001',title:'[SYNTHETIC W4 acceptance] VPN '+Date.now(),description:'Dữ liệu nghiệm thu giả lập. Không phải số liệu vận hành.',
  fields:{client_version:'OpenVPN 4.2',error_message:'Connection timeout'}};
@@ -89,7 +91,9 @@ try{
   compose('stop','n8n');stopped=true;
   const waiting=await api('/tickets',employee,{...payload,title:'[SYNTHETIC W4 recovery] '+Date.now()});assert.equal(waiting.status,201);
   await new Promise(r=>setTimeout(r,3000));assert.equal((await api('/tickets/'+waiting.data.id,employee)).data.status,'new');
-  compose('up','-d','--wait','n8n');stopped=false;
+  // Restart the stopped service only. Re-running import/publish dependencies here
+  // changes the workflow fixture and can exceed the acceptance timeout.
+  compose('up','-d','--no-deps','--wait','n8n');stopped=false;
   await until(async()=>{const row=(await api('/tickets/'+waiting.data.id,employee)).data;return row.status==='assigned';},'n8n event recovery');
   const events=(await api('/tickets/'+waiting.data.id+'/events',employee)).data.data;
   assert.equal(events.filter(event=>event.event_type==='assignment_changed').length,1);
@@ -137,7 +141,7 @@ try{
  report.passed=true;
 }catch(error){console.error(error.message);report.error=error.message;process.exitCode=1;}
 finally{
- if(stopped)try{compose('up','-d','--wait','n8n');}catch{console.error('Acceptance project n8n needs restarting.');}
+ if(stopped)try{compose('up','-d','--no-deps','--wait','n8n');}catch{console.error('Acceptance project n8n needs restarting.');}
  await mkdir(resolve(root,'.local/reports'),{recursive:true});
  await writeFile(resolve(root,'.local/reports/week4-stack.json'),JSON.stringify(report,null,2)+'\n');
 }

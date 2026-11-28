@@ -26,10 +26,21 @@ async function check(name, operation) {
   try { await operation(); report.checks.push({name,passed:true}); console.log('PASS '+name); }
   catch(error) { report.checks.push({name,passed:false,error:error.message}); throw error; }
 }
-async function admin(path, method='GET', body) {
+async function refreshAdminToken() {
+  const response=await fetch(`${kc}/realms/master/protocol/openid-connect/token`,{method:'POST',
+    body:new URLSearchParams({client_id:'admin-cli',grant_type:'password',username:env.KEYCLOAK_ADMIN,password:env.KEYCLOAK_ADMIN_PASSWORD}),
+    signal:AbortSignal.timeout(30000)});
+  assert.equal(response.status,200,'Keycloak admin login');
+  adminToken=(await response.json()).access_token;
+}
+async function admin(path, method='GET', body, retry=true) {
   const response = await fetch(`${kc}/admin/realms/${realm}${path}`, {method,
     headers:{Authorization:`Bearer ${adminToken}`,...(body?{'Content-Type':'application/json'}:{})},
     ...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
+  if(response.status===401 && retry) {
+    await response.body?.cancel(); await refreshAdminToken();
+    return admin(path,method,body,false);
+  }
   assert.ok(response.ok, `Keycloak admin ${method} ${path} -> ${response.status}`);
   return response.status===204 ? null : response;
 }
@@ -50,10 +61,7 @@ async function beginLogin(page, user=username, pass=password) {
 }
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII=','base64');
 try {
-  const tokenResponse=await fetch(`${kc}/realms/master/protocol/openid-connect/token`,{method:'POST',
-    body:new URLSearchParams({client_id:'admin-cli',grant_type:'password',username:env.KEYCLOAK_ADMIN,password:env.KEYCLOAK_ADMIN_PASSWORD}),
-    signal:AbortSignal.timeout(30000)});
-  assert.equal(tokenResponse.status,200); adminToken=(await tokenResponse.json()).access_token;
+  await refreshAdminToken();
   const response=await admin('/users','POST',{username,firstName:'Acceptance',lastName:'OTP',email:`${username}@dxdesk.local`,
     emailVerified:true,enabled:true,requiredActions:['CONFIGURE_TOTP'],credentials:[{type:'password',value:password,temporary:false}]});
   userId=response.headers.get('location').split('/').pop();
@@ -190,6 +198,9 @@ try {
 } catch(error) { console.error(error.message); process.exitCode=1; }
 finally {
   await browser?.close();
-  if(userId) try { await admin(`/users/${userId}`,'DELETE'); } catch { console.error('Cleanup required for acceptance user '+username); process.exitCode=1; }
+  if(userId) try {
+    await refreshAdminToken(); await admin(`/users/${userId}`,'DELETE'); report.cleaned_up=true;
+  } catch(error) { report.cleaned_up=false; report.cleanup_error=error.message; report.passed=false;
+    console.error('Cleanup required for acceptance user '+username+': '+error.message); process.exitCode=1; }
   await writeFile(resolve(reports,'week3-browser.json'),JSON.stringify(report,null,2)+'\n');
 }

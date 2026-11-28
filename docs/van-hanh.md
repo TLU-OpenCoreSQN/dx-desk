@@ -137,6 +137,8 @@ node tools/testing/regression.mjs --allow-demo-writes --only=verify,requester-re
 
 Runner ghi SHA/tree, OS/Node/Docker, profile, thời gian và cả bài fail vào
 `.local/reports/regression-<thoi-gian>/report.json`; log lọc các bí mật đã biết trong `.env`.
+Kiểm `cleaned_up` của bài OTP/CSV: hoàn thành các bước nghiệp vụ nhưng chưa dọn fixture vẫn là bài fail.
+Kiểm restart n8n chỉ bật lại service đã dừng bằng `--no-deps`; nạp workflow dùng lệnh riêng ở trên.
 Vẫn review artifact trước khi chia sẻ. Chạy `npm ci --prefix tools/testing` và cài Playwright Chromium trước.
 Các unit/integration/migration chạy riêng theo [CONTRIBUTING](../CONTRIBUTING.md).
 Một host dev đã có volume không được gọi là máy sạch. Kiểm clone/cài mới ở VM/runner mới
