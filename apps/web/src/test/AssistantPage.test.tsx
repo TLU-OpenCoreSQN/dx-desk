@@ -283,3 +283,48 @@ it('aborts a pending history poll and cancels retry timers after leaving the pag
     expect(api.getAssistantSession).toHaveBeenCalledTimes(2);
   } finally { view?.unmount(); vi.useRealTimers(); }
 });
+
+it('shows Thinking instead of Wiki steps or source chips while waiting and can stop the request', async () => {
+  let requestSignal: AbortSignal | undefined;
+  vi.mocked(api.streamAssistant).mockImplementation(async (question, signal, emit, conversation) => {
+    requestSignal = signal;
+    const pending: api.AssistantTurn = { id: conversation!.request_id, question, answer: '', status: 'pending',
+      created_at: '2026-11-28T10:00:00Z', metadata: { steps: ['Đang tìm bài Wiki liên quan'], sources: [{ title: 'Wiki VPN', url: 'https://example.test/vpn' }] } };
+    histories[original] = [pending];
+    emit({ type: 'step', label: 'Đang tìm bài Wiki liên quan' });
+    emit({ type: 'sources', items: pending.metadata.sources });
+    await new Promise<void>((_resolve, reject) => signal.addEventListener('abort', () => {
+      histories[original] = [{ ...pending, status: 'interrupted' }];
+      reject(new DOMException('Stopped', 'AbortError'));
+    }, { once: true }));
+  });
+  mount(original);
+  await screen.findByRole('button', { name: 'VPN cá nhân' });
+  await send('Tôi cần kiểm tra kết nối.');
+  expect(await screen.findByRole('status', { name: 'Thinking' })).toBeInTheDocument();
+  expect(screen.queryByText('Đang tìm bài Wiki liên quan')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Wiki VPN' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Dừng trả lời' }));
+  await waitFor(() => expect(screen.queryByRole('status', { name: 'Thinking' })).not.toBeInTheDocument());
+  expect(requestSignal!.aborted).toBe(true);
+});
+
+it('can stop during initial conversation creation without losing the prompt or starting AI', async () => {
+  let creationSignal: AbortSignal | undefined;
+  vi.mocked(api.createAssistantSession).mockImplementation(async signal => {
+    creationSignal = signal;
+    return new Promise<api.AssistantSession>((_resolve, reject) => signal!.addEventListener('abort', () => {
+      reject(new DOMException('Stopped', 'AbortError'));
+    }, { once: true }));
+  });
+  mount();
+  await screen.findByRole('button', { name: 'VPN cá nhân' });
+  await send('Prompt đang chuẩn bị gửi.');
+  expect(await screen.findByRole('button', { name: 'Dừng trả lời' })).toBeInTheDocument();
+  expect(screen.getByText('Thinking…')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Dừng trả lời' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Gửi câu hỏi' })).toBeEnabled());
+  expect(creationSignal!.aborted).toBe(true);
+  expect(api.streamAssistant).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Câu hỏi hỗ trợ IT')).toHaveValue('Prompt đang chuẩn bị gửi.');
+});

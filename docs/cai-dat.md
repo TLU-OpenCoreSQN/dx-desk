@@ -617,6 +617,19 @@ chạy `node --test apps/assistant/*.test.mjs` và `node tools/testing/assistant
 nằm riêng ở `config/doanh-nghiep/assistant-evaluation.json`; runner giãn các lượt gọi để tránh
 gửi dồn nhiều yêu cầu. Chạy lại service assistant sau khi đổi cấu hình.
 
+**Giọng nói:** trong Trợ lý AI, bấm **Nhập giọng nói**, cho phép micro và nói tiếng Việt.
+Prompt được đưa vào ô nhập, chỉ gửi khi bạn bấm gửi. **Tạm dừng micro** giữ phần đã nhận để
+chỉnh sửa; **Tiếp tục nói** nối thêm vào nội dung hiện tại; **Kết thúc** đóng nhận giọng nói.
+Bấm **Nghe câu trả lời** dưới phản hồi để đọc, có nút tạm dừng/tiếp tục/dừng riêng. Micro
+được dừng khi đọc phản hồi hoặc gửi prompt để tránh thu tiếng đọc. Đổi hội thoại/rời trang
+cũng dừng giọng nói. Khi đang chờ, màn hình hiện **Thinking**; nút dừng hoạt động cả lúc
+chuẩn bị tạo hội thoại. Phản hồi đã nhận và lịch sử được giữ theo cơ chế hội thoại.
+
+Nhận giọng nói dùng [Web Speech API của trình duyệt](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API/Using_the_Web_Speech_API),
+có thể gửi âm thanh tới dịch vụ của trình duyệt. Chỉ bắt đầu sau thao tác bấm micro và cấp
+quyền; không lưu audio trong DX-Desk. Cần trình duyệt hỗ trợ và HTTPS/localhost. Nếu không
+hỗ trợ hoặc micro bị từ chối, nhập chữ vẫn hoạt động. Đọc phản hồi dùng giọng có trên thiết bị;
+nếu thiếu giọng tiếng Việt thì trình duyệt chọn giọng mặc định. Không cần thêm khóa dịch vụ giọng nói.
 Nút **Dừng trả lời** giữ phần đã nhận và cho phép gửi tiếp. Một hội thoại xử lý một
 lượt tại một thời điểm. Sau sự cố tiến trình, lượt đang dở được mở lại sau lease 5 phút.
 Một tin nhắn nhận tối đa 8.000 ký tự. Enter gửi tin và Shift+Enter xuống dòng.
