@@ -22,6 +22,7 @@
 - #87: preset màu nhấn đạt WCAG 2.1 AA ở cả chế độ sáng và tối: nút chính cam/vàng/xanh lá/nâu đậm hơn để chữ trắng ≥ 4,5:1, mỗi preset có màu chữ nhấn riêng (trước đây chữ trên nền tint vẫn dùng xanh dương mặc định), hover ở chế độ tối đậm hơn thay vì sáng hơn.
 
 ### Thêm
+- W7-03/04 (#91, #92): hướng dẫn theo vai trò với ảnh demo, vận hành và kiến trúc; runner hồi quy tuần tự ghi SHA/host/kết quả và lọc bí mật; CI cài mới `full`/`demo-light`, kiểm mở lại phiếu và Wiki; nghiệm thu nhập CSV trên Keycloak bằng người dùng dùng một lần. Chưa gắn thẻ v1.0.0.
 - #88: người tạo phiếu có thể báo “Chưa khắc phục được” trong 7 ngày kể từ lần giải quyết gần nhất, kèm lý do 5–2000 ký tự; giữ kỹ thuật viên và SLA, ghi timeline/outbox, kiểm quy tắc ở API lẫn PostgreSQL qua migration 028.
 - #97: lớp định hướng Trợ lý AI theo 6 chủ đề IT với cấu hình/ví dụ và bộ đánh giá độc lập; hỏi tiếp theo ngữ cảnh, phản hồi ngoài phạm vi có kiểm soát.
 - #97: nhập giọng nói tiếng Việt và đọc phản hồi có tạm dừng/tiếp tục, giữ prompt khi đổi chế độ; trạng thái chờ hiện Thinking và có thể dừng từ bước chuẩn bị gửi.
