@@ -336,15 +336,21 @@
   --color-primary-border: #bfdbfe;
   --color-primary-text: #1e40af;
 }
-:root[data-accent='gray']    { --color-primary: #64748b; --color-primary-hover: #475569; --color-primary-tint: #f1f5f9; }
-:root[data-accent='brown']   { --color-primary: #9f6b53; --color-primary-hover: #835540; --color-primary-tint: #f4eeee; }
-:root[data-accent='orange']  { --color-primary: #d9730d; --color-primary-hover: #b85e05; --color-primary-tint: #fbecdd; }
-:root[data-accent='yellow']  { --color-primary: #d97706; --color-primary-hover: #b45309; --color-primary-tint: #fefce8; }
-:root[data-accent='green']   { --color-primary: #059669; --color-primary-hover: #047857; --color-primary-tint: #ecfdf5; }
-:root[data-accent='blue']    { --color-primary: #2563eb; --color-primary-hover: #1d4ed8; --color-primary-tint: #eff6ff; }
-:root[data-accent='purple']  { --color-primary: #7c3aed; --color-primary-hover: #6d28d9; --color-primary-tint: #f5f3ff; }
-:root[data-accent='pink']    { --color-primary: #db2777; --color-primary-hover: #be185d; --color-primary-tint: #fdf2f8; }
-:root[data-accent='red']     { --color-primary: #dc2626; --color-primary-hover: #b91c1c; --color-primary-tint: #fef2f2; }
+/* Chế độ sáng, mỗi preset đạt WCAG 2.1 AA (#87):
+   - primary: nền nút chính, chữ trắng trên nền này ≥ 4,5:1;
+   - primary-ink/primary-text: màu chữ nhấn, ≥ 4,5:1 trên nền trắng, nền ứng dụng #f8fafc và nền tint của preset.
+   Số đo (nút · chữ trên trắng/nền/tint): gray 4,8 · 7,6/7,2/6,9; brown 5,8 · 7,9/7,6/6,9;
+   orange 5,2 · 7,3/7,0/6,3; yellow 5,0 · 7,1/6,8/6,9; green 5,5 · 7,7/7,3/7,3; blue 5,2 · 6,7/6,4/6,2;
+   purple 5,7 · 7,1/6,8/6,5; pink 4,6 · 6,0/5,8/5,5; red 4,8 · 6,5/6,2/5,9. */
+:root[data-accent='gray']    { --color-primary: #64748b; --color-primary-hover: #475569; --color-primary-tint: #f1f5f9; --color-primary-text: #475569; --color-primary-ink: #475569; }
+:root[data-accent='brown']   { --color-primary: #8a5a44; --color-primary-hover: #6f4836; --color-primary-tint: #f4eeee; --color-primary-text: #6f4836; --color-primary-ink: #6f4836; }
+:root[data-accent='orange']  { --color-primary: #c2410c; --color-primary-hover: #9a3412; --color-primary-tint: #fbecdd; --color-primary-text: #9a3412; --color-primary-ink: #9a3412; }
+:root[data-accent='yellow']  { --color-primary: #b45309; --color-primary-hover: #92400e; --color-primary-tint: #fefce8; --color-primary-text: #92400e; --color-primary-ink: #92400e; }
+:root[data-accent='green']   { --color-primary: #047857; --color-primary-hover: #065f46; --color-primary-tint: #ecfdf5; --color-primary-text: #065f46; --color-primary-ink: #065f46; }
+:root[data-accent='blue']    { --color-primary: #2563eb; --color-primary-hover: #1d4ed8; --color-primary-tint: #eff6ff; --color-primary-text: #1d4ed8; --color-primary-ink: #1d4ed8; }
+:root[data-accent='purple']  { --color-primary: #7c3aed; --color-primary-hover: #6d28d9; --color-primary-tint: #f5f3ff; --color-primary-text: #6d28d9; --color-primary-ink: #6d28d9; }
+:root[data-accent='pink']    { --color-primary: #db2777; --color-primary-hover: #be185d; --color-primary-tint: #fdf2f8; --color-primary-text: #be185d; --color-primary-ink: #be185d; }
+:root[data-accent='red']     { --color-primary: #dc2626; --color-primary-hover: #b91c1c; --color-primary-tint: #fef2f2; --color-primary-text: #b91c1c; --color-primary-ink: #b91c1c; }
 
 /* Chế độ tối: các preset ở trên chỉ có nền nhạt cho chế độ sáng và cùng độ ưu tiên với :root.dark,
    nên ở đây dẫn xuất lại nền/viền/chữ nhấn từ màu chủ đạo (độ ưu tiên cao hơn). */
@@ -352,7 +358,10 @@
   --color-primary-tint: color-mix(in srgb, var(--color-primary) 18%, transparent);
   --color-primary-border: color-mix(in srgb, var(--color-primary) 40%, transparent);
   --color-primary-text: color-mix(in srgb, var(--color-primary), white 45%);
-  --color-primary-hover: color-mix(in srgb, var(--color-primary), white 15%);
+  /* Preset sáng ở trên đặt primary-ink cùng độ ưu tiên với :root.dark và đứng sau, nên đặt lại ở đây. */
+  --color-primary-ink: var(--color-primary-text);
+  /* Hover đậm hơn (không sáng hơn) để chữ trắng trên nút vẫn ≥ 4,5:1; trộn trắng 15% chỉ còn 3,6–4,3:1. */
+  --color-primary-hover: color-mix(in srgb, var(--color-primary), black 15%);
 }
 /* Màu doanh nghiệp ở chế độ tối: nút đậm hơn khi hover để chữ trắng vẫn đạt AA. */
 :root.dark[data-accent='corporate-blue'],
