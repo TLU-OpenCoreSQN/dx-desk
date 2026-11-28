@@ -9,7 +9,7 @@ const env = parseEnv(await readFile(process.env.DXDESK_TEST_ENV || '.env', 'utf8
 const base = 'http://localhost:' + env.APISIX_PORT;
 const marker = 'SEN-XANH-' + Date.now();
 const conversationTitle = 'Hỗ trợ VPN trên Windows 11 · ' + marker;
-const question = 'Ghi nhớ mã của tôi là ' + marker + ' và tôi dùng Windows 11.';
+const question = 'Tôi cần hỗ trợ VPN trên Windows 11. Ghi nhớ mã của tôi là ' + marker + '.';
 const browser = await chromium.launch();
 const report = { passed: false, checks: [] };
 const pass = (name) => {
@@ -26,6 +26,8 @@ try {
   await page.locator('#password').fill(env.DEMO_USER_PASSWORD || 'DxDesk@2026');
   await page.locator('#kc-login').click();
   await page.getByRole('link', { name: 'Trợ lý AI', exact: true }).click();
+  report.browser_voice = await page.evaluate(() => ({ secure_context: window.isSecureContext,
+    recognition: Boolean(window.SpeechRecognition || window.webkitSpeechRecognition), synthesis: Boolean(window.speechSynthesis) }));
 
   async function send(text) {
     const before = await page.locator('.assistant-response').count();
@@ -34,8 +36,13 @@ try {
       (item) => item.url().endsWith('/api/assistant/chat') && item.request().method() === 'POST',
     );
     await page.getByRole('button', { name: 'Gửi câu hỏi', exact: true }).click();
+    if (!report.checks.length) {
+      await page.getByRole('status', { name: 'Thinking', exact: true }).waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Dừng trả lời', exact: true }).isVisible(), true);
+      assert.equal(await page.getByText('Đang tìm bài Wiki…', { exact: true }).isVisible(), false);
+    }
     assert.equal((await response).status(), 200);
-    await page.getByText('Trợ lý đang xử lý…', { exact: true }).waitFor({ state: 'hidden' });
+    await page.getByRole('button', { name: 'Dừng trả lời', exact: true }).waitFor({ state: 'hidden' });
     assert.equal(await page.getByRole('alert').count(), 0);
     const answer = page.locator('.assistant-response').nth(before);
     await answer.waitFor();
@@ -65,7 +72,7 @@ try {
 
   await page.getByRole('button', { name: 'Cuộc trò chuyện mới', exact: true }).click();
   await page.getByRole('heading', { name: 'Bạn cần hỗ trợ việc gì?', exact: true }).waitFor();
-  const isolation = 'Nếu tôi chưa cung cấp mã nhận diện ở cuộc trò chuyện này, hãy trả lời CHƯA CÓ.';
+  const isolation = 'Tôi cần hỗ trợ VPN. Nếu tôi chưa cung cấp mã nhận diện ở cuộc trò chuyện này, hãy trả lời CHƯA CÓ.';
   const fresh = await send(isolation);
   assert.ok(!fresh.includes(marker));
   assert.match(fresh, /CHƯA CÓ/i);

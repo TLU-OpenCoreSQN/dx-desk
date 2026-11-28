@@ -5,11 +5,11 @@ Thư mục này chứa tài liệu kỹ thuật dài hơn [README](../README.md)
 | Tệp | Trả lời câu hỏi | Trạng thái |
 |---|---|---|
 | [adr/](adr/README.md) | Vì sao hệ thống được thiết kế như vậy, thử nghiệm nào đã làm và kết quả ra sao | Đang viết |
-| `kien-truc.md` | Ba tầng DX-OS, ánh xạ H-P-D-I, Zero-Trust (Keycloak, APISIX, RLS), luồng một ticket | Tuần 5–7 |
+| [kien-truc.md](kien-truc.md) | Ba tầng DX-OS, ánh xạ H-P-D-I, Zero-Trust, luồng phiếu và AI | Bản source W7; chờ review độc lập |
 | [du-lieu.md](du-lieu.md) | Schema/RLS tuần 2; JSON-LD/DCAT ở mốc sau | Bản tuần 2; migration 003–011 ghi trong CHANGELOG |
 | [cai-dat.md](cai-dat.md) | Cài đặt/kiểm thử, Windows/Linux, xử lý sự cố | Cập nhật tuần 4 |
-| `van-hanh.md` | Khởi động, dừng, đặt lại; nạp lại workflow n8n và realm Keycloak; log; sao lưu | Tuần 5 |
-| `huong-dan-su-dung.md` | Thao tác theo vai trò Employee, Agent, Manager | Tuần 7 |
+| [van-hanh.md](van-hanh.md) | Khởi động/dừng, cấu hình, workflow/realm, log, backup/restore và nghiệm thu | Bản source W7; chờ review độc lập |
+| [huong-dan-su-dung.md](huong-dan-su-dung.md) | Thao tác Employee/Agent/Manager, thiết bị, hội thoại và giọng nói AI | Bản source W7; chờ người khác thực hiện walkthrough |
 | [api/](api/contract.md) | Contract và OpenAPI cho các endpoint | Cập nhật tuần 4 |
 
 ## Tài liệu tuần 2

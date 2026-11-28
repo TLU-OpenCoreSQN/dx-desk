@@ -3,6 +3,13 @@ SPDX-PackageName = "dx-desk"
 SPDX-PackageSupplier = "TLU-OpenCoreSQN"
 SPDX-PackageDownloadLocation = "https://github.com/TLU-OpenCoreSQN/dx-desk"
 
+# W7-03: ảnh chụp giao diện DX-Desk, chỉ dùng phiếu và tài khoản demo giả lập.
+[[annotations]]
+path = ["docs/images/guide-*.png"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 TLU-OpenCoreSQN"
+SPDX-License-Identifier = "Apache-2.0"
+
 # Tệp không viết được chú thích giấy phép (JSON, Markdown, tệp cấu hình git, tệp giữ chỗ).
 [[annotations]]
 path = [

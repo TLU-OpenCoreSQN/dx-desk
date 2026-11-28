@@ -57,7 +57,7 @@ try {
   assert.match(await source.getAttribute('href'), /\/en\/ho-tro\/vpn$/);
   const answer = employee.locator('.assistant-response').first();
   await answer.waitFor();
-  await employee.getByText('Trợ lý đang xử lý…').waitFor({ state: 'detached' });
+  await employee.getByRole('button', { name: 'Dừng trả lời', exact: true }).waitFor({ state: 'hidden' });
   assert.match((await stream).headers()['content-type'], /^application\/x-ndjson/);
   assert.ok((await answer.textContent())?.trim().length > 20);
   assert.equal(await employee.getByRole('alert').count(), 0);

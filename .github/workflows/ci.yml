@@ -187,6 +187,43 @@ jobs:
         if: always()
         run: docker compose --env-file .env -f infra/compose/docker-compose.yml down -v
 
+  clean-install:
+    name: cài mới mặc định (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [full, demo-light]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cài mới, ghi SHA/host/thời gian và kiểm hồ sơ
+        run: node tools/testing/clean-install.mjs ${{ matrix.profile }}
+      - name: Cài trình duyệt nghiệm thu
+        run: |
+          npm ci --prefix tools/testing
+          cd tools/testing
+          npx playwright install --with-deps chromium
+      - name: Mở lại phiếu qua PKCE và kiểm tri thức Wiki trên dữ liệu mới
+        run: |
+          node tools/testing/requester-reopen.mjs
+          node tools/testing/week5-wiki.mjs
+      - name: Nhật ký khi lỗi
+        if: failure()
+        run: docker compose --env-file .env -f infra/compose/docker-compose.yml logs --tail=80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clean-install-${{ matrix.profile }}
+          path: .local/reports/
+          if-no-files-found: ignore
+      - name: Dọn riêng project CI
+        if: always()
+        run: docker compose --env-file .env -f infra/compose/docker-compose.yml down -v
+
   week5-metabase:
     name: Metabase và KPI demo tuần 5
     runs-on: ubuntu-latest

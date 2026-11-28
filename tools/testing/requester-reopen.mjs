@@ -45,7 +45,7 @@ async function login(username) {
 const pass = name => { report.checks.push({ name, passed: true }); console.log('PASS ' + name); };
 async function picture(page, name) {
   if (!screenshots) return;
-  await page.screenshot({ path: resolve(images, name + '.png'), fullPage: true,
+  await page.screenshot({ path: resolve(images, name + '.png'), fullPage: true, maskColor: '#e2e8f0',
     mask: [page.getByRole('complementary', { name: 'Lịch sử hội thoại' })] });
 }
 try {
@@ -100,7 +100,10 @@ try {
     await manager.getByRole('heading', { name: access.data.title, exact: true, level: 1 }).waitFor();
     await picture(manager, 'guide-manager-approval');
     await page.goto(base + '/tro-ly');
+    const newChatLoaded = page.waitForResponse(r => /\/api\/assistant-sessions\/[a-z0-9-]+$/.test(new URL(r.url()).pathname) && r.request().method() === 'GET');
     await page.getByRole('button', { name: 'Cuộc trò chuyện mới', exact: true }).click();
+    assert.equal((await newChatLoaded).status(), 200);
+    await page.getByRole('heading', { name: 'Bạn cần hỗ trợ việc gì?', exact: true }).waitFor();
     await page.getByLabel('Câu hỏi hỗ trợ IT', { exact: true }).waitFor();
     await picture(page, 'guide-assistant-voice');
     pass('Guide screenshots show only the synthetic fixtures; conversation history is masked');
