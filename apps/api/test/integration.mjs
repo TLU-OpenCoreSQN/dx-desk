@@ -1488,6 +1488,46 @@ test('assistant conversations keep private history, serialize generation and del
   assert.equal((await sessionRequest('/' + id)).status, 404);
 });
 
+test('expired user tokens cannot lose results: internal finalization needs owner-bound proof and RLS', async t => {
+  const previous = process.env.ASSISTANT_ACTION_KEY;
+  process.env.ASSISTANT_ACTION_KEY = 'assistant-expiry-integration-secret-at-least-32';
+  t.after(() => { if (previous === undefined) delete process.env.ASSISTANT_ACTION_KEY; else process.env.ASSISTANT_ACTION_KEY = previous; });
+  const id = (await sessionRequest('', 'POST', {})).body.id;
+  const turnId = randomUUID();
+  await sessionRequest('/' + id + '/turns/start', 'POST', { request_id: turnId, question: 'VPN lỗi sau khi token hết hạn.' }, 'a', 'start:' + id);
+  const result = { answer: 'Câu trả lời đã hoàn tất.', status: 'complete', metadata: { steps: [], sources: [] } };
+  const scope = 'finish:' + id + ':' + turnId;
+  const proof = owner => createHmac('sha256', process.env.ASSISTANT_ACTION_KEY).update(JSON.stringify([owner, scope, result])).digest('hex');
+  const expired = await token('a', {}, { exp: Math.floor(Date.now() / 1000) - 60 });
+  const publicFinish = await fetch(apiUrl + '/api/assistant-sessions/' + id + '/turns/' + turnId + '/finish', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + expired, 'Content-Type': 'application/json', 'X-DXDesk-Assistant-Proof': proof(users.a.sub) },
+    body: JSON.stringify(result),
+  });
+  assert.equal(publicFinish.status, 401, 'user endpoints must keep enforcing expiration');
+  await publicFinish.body.cancel();
+  const internal = async (owner, signature, data = result) => {
+    const response = await fetch(apiUrl + '/internal/assistant-sessions/' + id + '/turns/' + turnId + '/finish', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...(signature && { 'X-DXDesk-Assistant-Proof': signature }) },
+      body: JSON.stringify({ owner_id: owner, result: data }),
+    });
+    await response.body.cancel();
+    return response.status;
+  };
+  assert.equal(await internal(users.a.sub), 403);
+  assert.equal(await internal(users.b.sub, proof(users.a.sub)), 403);
+  assert.equal(await internal(users.b.sub, proof(users.b.sub)), 404, 'RLS hides another owner’s conversation');
+  assert.equal(await internal(users.a.sub, proof(users.a.sub), { ...result, answer: 'tampered' }), 403);
+  assert.equal(await internal(users.a.sub, proof(users.a.sub)), 200);
+  assert.equal(await internal(users.a.sub, proof(users.a.sub)), 200, 'idempotent completion');
+  const detail = await sessionRequest('/' + id);
+  assert.equal(detail.body.turns[0].status, 'complete');
+  assert.equal(detail.body.turns[0].answer, result.answer);
+  const next = await sessionRequest('/' + id + '/turns/start', 'POST', { request_id: randomUUID(), question: 'Hỏi tiếp ngay sau đó.' }, 'a', 'start:' + id);
+  assert.equal(next.status, 200, 'no pending lock or lease wait remains');
+  await sessionRequest('/' + id, 'DELETE');
+  assert.equal(await internal(users.a.sub, proof(users.a.sub)), 404);
+});
+
 test('conversation proposals survive reload, require confirmation and cannot execute after deletion', async (t) => {
   const previous = process.env.ASSISTANT_ACTION_KEY;
   const secret = 'assistant-proposal-integration-secret-at-least-32';

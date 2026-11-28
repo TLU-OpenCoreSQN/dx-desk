@@ -605,6 +605,8 @@ lịch sử vượt khoảng 48.000 ký tự, các lượt cũ được tóm t�
 giữ các lượt gần nhất trong prompt. Lịch sử đầy đủ vẫn có thể tải qua **Tải tin nhắn cũ**.
 Nếu tóm tắt lỗi hoặc rỗng, trợ lý vẫn trả lời bằng các lượt gần nhất và bộ nhớ đã lưu;
 lượt sau thử tóm tắt lại lịch sử gốc. Bản tóm tắt dài quá được giới hạn 12.000 ký tự.
+Kết quả được lưu qua kênh dịch vụ nội bộ có chữ ký, vẫn theo quyền chủ sở hữu; token
+người dùng hết hạn giữa câu trả lời không làm mất phần trả lời hoặc khóa hội thoại.
 Nút **Dừng trả lời** giữ phần đã nhận và cho phép gửi tiếp. Một hội thoại xử lý một
 lượt tại một thời điểm. Sau sự cố tiến trình, lượt đang dở được mở lại sau lease 5 phút.
 Một tin nhắn nhận tối đa 8.000 ký tự. Enter gửi tin và Shift+Enter xuống dòng.

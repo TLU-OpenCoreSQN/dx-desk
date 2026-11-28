@@ -157,6 +157,7 @@ export function assistantServer(dependencies, proposals = proposalStore()) {
 export function assistantDependencies(env = process.env) {
   const config = wikiKnowledge(env);
   const gateway = env.ASSISTANT_GATEWAY_URL || 'http://apisix:9080';
+  const internalApi = env.ASSISTANT_API_URL || 'http://api:3000';
   const endpoints = {
     ticket_statistics: 'ticket_statistics', similar_tickets: 'similar_tickets', create_ticket: 'create_ticket', create_task: 'create_task',
   };
@@ -177,13 +178,28 @@ export function assistantDependencies(env = process.env) {
     }
     return response.json();
   }
+  async function finishInternal(id, turnId, result, caller) {
+    if (!env.ASSISTANT_ACTION_KEY || env.ASSISTANT_ACTION_KEY.length < 32) throw new Error('Missing ASSISTANT_ACTION_KEY');
+    const proof = createHmac('sha256', env.ASSISTANT_ACTION_KEY)
+      .update(JSON.stringify([caller.id, 'finish:' + id + ':' + turnId, result])).digest('hex');
+    const response = await fetch(new URL('/internal/assistant-sessions/' + id + '/turns/' + turnId + '/finish', internalApi), {
+      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(15000),
+      headers: { 'Content-Type': 'application/json', 'X-DXDesk-Assistant-Proof': proof },
+      body: JSON.stringify({ owner_id: caller.id, result }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw errorWith(response.status, error?.message || 'Không thể lưu kết quả hội thoại.');
+    }
+    return response.json();
+  }
   return {
     beginTurn: (id, body, caller, token) => sessions(id + '/turns/start', token, body, caller.id, 'start:' + id),
-    async finishTurn(id, turnId, body, caller, token) {
-      try { return await sessions(id + '/turns/' + turnId + '/finish', token, body, caller.id, 'finish:' + id + ':' + turnId); }
+    async finishTurn(id, turnId, body, caller) {
+      try { return await finishInternal(id, turnId, body, caller); }
       catch (error) {
         if (error.status && error.status < 500) throw error;
-        return sessions(id + '/turns/' + turnId + '/finish', token, body, caller.id, 'finish:' + id + ':' + turnId);
+        return finishInternal(id, turnId, body, caller);
       }
     },
     pendingProposal: (id, token) => sessions('proposals/' + id, token),

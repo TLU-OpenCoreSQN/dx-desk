@@ -22,7 +22,7 @@ import {
 } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import { AuthRequest, JwtGuard } from './auth';
+import { AuthRequest, JwtGuard, type UserClaims } from './auth';
 import { Database } from './database';
 
 export function requireAssistantProof(
@@ -284,46 +284,83 @@ export class AssistantSessionsController {
     },
   ) {
     requireAssistantProof(request.claims.sub, 'finish:' + id + ':' + turnId, body, proof);
-    if (
-      typeof body.answer !== 'string' ||
-      body.answer.length > 16000 ||
-      !['complete', 'error', 'interrupted'].includes(String(body.status)) ||
-      !body.metadata ||
-      typeof body.metadata !== 'object' ||
-      Array.isArray(body.metadata) ||
-      JSON.stringify(body.metadata).length > 32000 ||
-      (body.summary !== undefined && (typeof body.summary !== 'string' || body.summary.length > 12000)) ||
-      (body.summarized_through !== undefined && !/^\d{1,18}$/.test(String(body.summarized_through)))
-    ) {
-      throw new BadRequestException('Phản hồi trợ lý không hợp lệ.');
+    return persistAssistantTurn(this.db, request.claims, id, turnId, body);
+  }
+}
+
+interface AssistantTurnResult {
+  answer?: unknown;
+  status?: unknown;
+  metadata?: unknown;
+  summary?: unknown;
+  summarized_through?: unknown;
+}
+
+function persistAssistantTurn(db: Database, claims: UserClaims, id: string, turnId: string, body: AssistantTurnResult) {
+  if (
+    typeof body.answer !== 'string' ||
+    body.answer.length > 16000 ||
+    !['complete', 'error', 'interrupted'].includes(String(body.status)) ||
+    !body.metadata ||
+    typeof body.metadata !== 'object' ||
+    Array.isArray(body.metadata) ||
+    JSON.stringify(body.metadata).length > 32000 ||
+    (body.summary !== undefined && (typeof body.summary !== 'string' || body.summary.length > 12000)) ||
+    (body.summarized_through !== undefined && !/^\d{1,18}$/.test(String(body.summarized_through)))
+  ) {
+    throw new BadRequestException('Phản hồi trợ lý không hợp lệ.');
+  }
+  return db.asUser(claims, async (client) => {
+    await lockSession(client, id);
+    const turn = (
+      await client.query('SELECT * FROM private.assistant_turns WHERE id=$1 AND session_id=$2', [
+        turnId,
+        id,
+      ])
+    ).rows[0];
+    if (!turn) throw new NotFoundException();
+    if (turn.status !== 'pending') {
+      if (turn.status === body.status && turn.answer === body.answer) return { status: turn.status };
+      throw new ConflictException('Lượt trả lời đã kết thúc.');
     }
-    return this.db.asUser(request.claims, async (client) => {
-      await lockSession(client, id);
-      const turn = (
-        await client.query('SELECT * FROM private.assistant_turns WHERE id=$1 AND session_id=$2', [
-          turnId,
-          id,
-        ])
-      ).rows[0];
-      if (!turn) throw new NotFoundException();
-      if (turn.status !== 'pending') {
-        if (turn.status === body.status && turn.answer === body.answer) return { status: turn.status };
-        throw new ConflictException('Lượt trả lời đã kết thúc.');
-      }
+    await client.query(
+      `UPDATE private.assistant_turns SET answer=$2,status=$3,metadata=$4::jsonb,finished_at=now()
+      WHERE id=$1`,
+      [turnId, body.answer, body.status, JSON.stringify(body.metadata)],
+    );
+    if (body.summary !== undefined && body.summarized_through !== undefined) {
       await client.query(
-        `UPDATE private.assistant_turns SET answer=$2,status=$3,metadata=$4::jsonb,finished_at=now()
-        WHERE id=$1`,
-        [turnId, body.answer, body.status, JSON.stringify(body.metadata)],
+        `UPDATE private.assistant_sessions SET context_summary=$2,summarized_through=$3
+        WHERE id=$1 AND summarized_through<=$3 AND $3::bigint<$4::bigint`,
+        [id, body.summary, String(body.summarized_through), turn.ordinal],
       );
-      if (body.summary !== undefined && body.summarized_through !== undefined) {
-        await client.query(
-          `UPDATE private.assistant_sessions SET context_summary=$2,summarized_through=$3
-          WHERE id=$1 AND summarized_through<=$3 AND $3::bigint<$4::bigint`,
-          [id, body.summary, String(body.summarized_through), turn.ordinal],
-        );
-      }
-      await client.query('UPDATE private.assistant_sessions SET updated_at=now() WHERE id=$1', [id]);
-      return { status: body.status };
-    });
+    }
+    await client.query('UPDATE private.assistant_sessions SET updated_at=now() WHERE id=$1', [id]);
+    return { status: body.status };
+  });
+}
+
+// Only finalizes an already authorized turn. Service HMAC binds the owner, session, turn and
+// exact result; user RLS remains active. This path is internal and never renews a user JWT.
+@Controller('internal/assistant-sessions')
+export class InternalAssistantSessionsController {
+  constructor(private readonly db: Database) {}
+
+  @Post(':id/turns/:turnId/finish')
+  @HttpCode(200)
+  finish(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('turnId', ParseUUIDPipe) turnId: string,
+    @Headers('x-dxdesk-assistant-proof') proof: string | undefined,
+    @Body() body: { owner_id?: unknown; result?: AssistantTurnResult },
+  ) {
+    const owner = body?.owner_id;
+    if (!body || typeof owner !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(owner) ||
+        Object.keys(body).length !== 2 || !body.result || typeof body.result !== 'object' || Array.isArray(body.result)) {
+      throw new BadRequestException('Kết quả hội thoại nội bộ không hợp lệ.');
+    }
+    requireAssistantProof(owner, 'finish:' + id + ':' + turnId, body.result, proof);
+    return persistAssistantTurn(this.db, { sub: owner, role: 'authenticated', realm_access: { roles: ['Employee'] } }, id, turnId, body.result);
   }
 }
