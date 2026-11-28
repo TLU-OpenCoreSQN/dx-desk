@@ -455,7 +455,7 @@ Không tự xóa volume Keycloak để cập nhật cấu hình.
 | CSDL DX-Desk (phiếu, lịch sử, outbox, đề nghị thiết bị, hội thoại trợ lý), Keycloak (người dùng, OTP, client), n8n (workflow, lịch sử chạy) | `pg_dump -Fc --create` trong container `postgres` |
 | Vai trò PostgreSQL của cụm chính (`api_login`, `authenticator`, `ticket_automation`…) kèm hash mật khẩu | `pg_dumpall --roles-only` |
 | Mattermost, Wiki.js, Metabase (khi hồ sơ đang chạy các dịch vụ này) | `pg_dump` trong container CSDL riêng của từng ứng dụng |
-| Tệp đính kèm và biên bản PDF trong SeaweedFS | nén volume `seaweedfs-data`; SeaweedFS dừng vài giây trong lúc nén |
+| Tệp đính kèm và biên bản PDF trong SeaweedFS | nén volume `seaweedfs-data`; tạm dừng các dịch vụ ghi trong cùng cửa sổ sao lưu để CSDL khớp với tệp |
 
 Không có trong bản sao, và giới hạn khi khôi phục:
 
@@ -479,6 +479,9 @@ node scripts/dxdesk.mjs backup     # hoặc: make backup
 - **Số bản giữ:** giữ `BACKUP_KEEP` bản hoàn chỉnh mới nhất (mặc định 7) và xóa bản cũ hơn.
 - **Kiểm tra dung lượng:** trước khi chạy, lệnh so dung lượng trống với kích thước dữ liệu, cộng thêm 20% và 256 MiB. Không đủ thì dừng, không ghi gì.
 - **Nhật ký:** kết quả từng lần (thành công hay lỗi) ghi thêm vào `BACKUP_DIR/backup.log`. Lỗi giữa chừng thì xóa thư mục dở dang.
+- **Cửa sổ bảo trì:** API, PostgREST, Keycloak, n8n, Wiki.js, Mattermost, Metabase và các tiến trình AI đang chạy được tạm dừng trước khi dump CSDL. Trong thời gian sao lưu không đăng nhập, tạo phiếu hoặc tải tệp; bố trí lịch lúc ít người sử dụng. Các dịch vụ trước đó đang chạy được bật lại kể cả khi dump lỗi.
+- **Chống trùng:** khóa theo project Compose ngăn hai lệnh sao lưu/khôi phục chạy đồng thời. Trùng tên bản sao trong cùng giây sẽ báo lỗi và giữ bản đã có. Nếu tiến trình bị tắt cưỡng bức, kiểm tra không còn lệnh đang chạy rồi mới gỡ thư mục khóa được nêu trong lỗi.
+- **Khôi phục:** kiểm đủ các CSDL theo hồ sơ, role và SeaweedFS; tên CSDL phải khớp `.env`. Kiểm checksum và đọc thử mọi dump/bản nén trước khi dừng hoặc xóa dữ liệu. Lỗi SQL khi khôi phục role phải dừng, không tiếp tục xóa CSDL.
 
 Bản sao chứa toàn bộ dữ liệu người dùng và hash mật khẩu CSDL, nên phải đặt ở nơi chỉ người vận hành đọc được.
 

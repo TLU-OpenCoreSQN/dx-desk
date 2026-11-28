@@ -11,6 +11,7 @@
 - Dịch vụ `ollama`, volume `ollama-data`, biến `OLLAMA_VERSION`/`OLLAMA_PORT`/`ASSISTANT_OLLAMA_URL` và `scripts/benchmark.mjs` (chỉ đo Ollama).
 
 ### Sửa
+- W7-01 (#89): chặn backup/restore chạy đồng thời, không xóa bản sao trùng tên; tạm dừng writer để CSDL và tệp nhất quán; kiểm kế hoạch khôi phục và archive trước khi xóa dữ liệu, dừng khi SQL role lỗi.
 - #74: Trợ lý không nhầm câu hỏi hướng dẫn hoặc yêu cầu hoãn tạo phiếu/công việc thành đề xuất ghi dữ liệu.
 - Danh sách phiếu: header bảng sticky không còn đè lên phiếu mới nhất.
 - #86: `up` đặt lại mật khẩu Mattermost của user demo đã tồn tại khi không khớp `MATTERMOST_DEMO_PASSWORD` (trước đây chỉ user tạo mới nhận mật khẩu của `.env`); `week4-stack` kiểm đăng nhập `agent.1`.

@@ -9,7 +9,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { appendFile, mkdir, readdir, readFile, rm, stat, statfs, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rm, rmdir, stat, statfs, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +31,10 @@ export function databasePlan(env, running) {
     { service: 'metabase-db', user: 'metabase', database: 'metabase' },
   ];
   if (!running.has('postgres')) throw new Error('PostgreSQL chưa chạy. Chạy `node scripts/dxdesk.mjs up` trước.');
+  const profiles = String(env.COMPOSE_PROFILES ?? '').split(',');
+  const required = profiles.includes('full') ? ['wiki-db', 'mattermost-db', 'metabase-db']
+    : profiles.includes('demo-light') ? ['wiki-db', 'mattermost-db'] : [];
+  for (const service of required) if (!running.has(service)) throw new Error(`Dịch vụ ${service} chưa chạy; không tạo bản sao thiếu dữ liệu.`);
   for (const item of all) if (!item.user || !item.database) throw new Error(`Thiếu biến .env cho CSDL của ${item.service}.`);
   return all.filter(item => running.has(item.service));
 }
@@ -70,6 +74,26 @@ export function validateManifest(manifest) {
   return manifest;
 }
 
+/** Đối chiếu toàn bộ kế hoạch trước khi dừng dịch vụ hoặc xóa bất kỳ CSDL nào. */
+export function validateRestorePlan(manifest, env) {
+  validateManifest(manifest);
+  const databases = manifest.files.filter(file => file.kind === 'database');
+  const knownServices = new Set(['postgres', 'wiki-db', 'mattermost-db', 'metabase-db']);
+  if (databases.some(db => !knownServices.has(db.service))) throw new Error('Bản sao có dịch vụ CSDL không thuộc DX-Desk.');
+  const expected = databasePlan({ ...env, COMPOSE_PROFILES: manifest.profiles ?? '' }, new Set(databases.map(db => db.service)));
+  const key = db => JSON.stringify([db.service, db.user, db.database]);
+  if (databases.length !== expected.length || new Set(databases.map(key)).size !== expected.length ||
+      expected.some(db => !databases.some(item => key(item) === key(db)))) {
+    throw new Error('Danh sách CSDL không đầy đủ hoặc không khớp .env của project khôi phục.');
+  }
+  for (const kind of ['roles', 'seaweedfs']) {
+    const entries = manifest.files.filter(file => file.kind === kind);
+    if (entries.length !== 1 || entries[0].service !== (kind === 'roles' ? 'postgres' : 'seaweedfs') ||
+        (kind === 'roles' && entries[0].user !== env.POSTGRES_USER)) throw new Error(`Bản sao thiếu hoặc sai thành phần ${kind}.`);
+  }
+  return databases;
+}
+
 export function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   const units = ['KiB', 'MiB', 'GiB', 'TiB'];
@@ -98,22 +122,22 @@ function context(env) {
     return result.stdout ?? '';
   };
   /** Chạy lệnh và nối stdout vào tệp, hoặc lấy stdin từ tệp; dữ liệu không đi qua bộ nhớ của Node. */
-  const stream = (args, { output, input }) => new Promise((resolvePromise, reject) => {
+  const stream = async (args, { output, input, inputText }) => {
     const child = spawn('docker', [...base, ...args], { cwd: ROOT, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let stderr = '';
     child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-2000); });
-    const work = [];
+    const closed = new Promise((resolvePromise, reject) => {
+      child.once('error', reject);
+      child.once('close', code => code === 0 ? resolvePromise()
+        : reject(new Error(`docker compose ${args.slice(0, 4).join(' ')} thất bại (${code}): ${stderr.trim().slice(-400)}`)));
+    });
+    const work = [closed];
     if (output) work.push(pipeline(child.stdout, createWriteStream(output)));
     else child.stdout.resume();
     if (input) work.push(pipeline(createReadStream(input), child.stdin));
-    else child.stdin.end();
-    child.on('error', reject);
-    child.on('close', async code => {
-      try { await Promise.all(work); } catch (error) { reject(error); return; }
-      if (code === 0) resolvePromise();
-      else reject(new Error(`docker compose ${args.slice(0, 4).join(' ')} thất bại (${code}): ${stderr.trim().slice(-400)}`));
-    });
-  });
+    else { child.stdin.on('error', () => {}); child.stdin.end(inputText); }
+    try { await Promise.all(work); } catch (error) { child.kill(); throw error; }
+  };
   const psql = (service, user, database, sql) =>
     run(['exec', '-T', service, 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-At', '-U', user, '-d', database, '-c', sql]).trim();
   const running = () => new Set(run(['ps', '--services', '--status', 'running']).split(/\r?\n/).filter(Boolean));
@@ -125,6 +149,12 @@ function backupDir(env) {
   return isAbsolute(dir) ? dir : resolve(ROOT, dir);
 }
 
+function childBackupPath(root, name) {
+  const path = resolve(root, name);
+  if (!NAME.test(name) || dirname(path) !== resolve(root)) throw new Error('Thư mục bản sao nằm ngoài BACKUP_DIR.');
+  return path;
+}
+
 function gitSha() {
   const result = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8', windowsHide: true });
   return result.status === 0 ? result.stdout.trim() : null;
@@ -134,16 +164,35 @@ async function log(dir, line) {
   await appendFile(resolve(dir, 'backup.log'), `${new Date().toISOString()} ${line}\n`);
 }
 
-export async function backupMain(env, args = []) {
+async function operationLock(env) {
+  const project = env.COMPOSE_PROJECT_NAME || process.env.COMPOSE_PROJECT_NAME || basename(ROOT).toLowerCase();
+  const parent = resolve(ROOT, '.local', 'backup-locks');
+  await mkdir(parent, { recursive: true });
+  const path = resolve(parent, createHash('sha256').update(project).digest('hex').slice(0, 20));
+  try { await mkdir(path); } catch (error) {
+    if (error.code === 'EEXIST') throw new Error(`Project đang có thao tác sao lưu/khôi phục; kiểm tra tiến trình trước khi gỡ khóa ${path}.`);
+    throw error;
+  }
+  return () => rmdir(path);
+}
+
+export async function backupMain(env, args = [], options = {}) {
+  const release = await operationLock(env);
+  try { return await backupUnlocked(env, args, options); } finally { await release(); }
+}
+
+async function backupUnlocked(env, args, options) {
   if (args.length) throw new Error('backup không nhận tham số; đặt BACKUP_DIR, BACKUP_KEEP trong .env.');
   const keep = Number(env.BACKUP_KEEP ?? 7);
   retentionPlan([], keep);
-  const ctx = context(env);
+  const ctx = options.context ?? context(env);
   const root = backupDir(env);
   await mkdir(root, { recursive: true, mode: 0o700 });
   const started = Date.now();
-  const name = backupName();
-  const target = resolve(root, name);
+  const name = backupName(options.date);
+  const target = childBackupPath(root, name);
+  let created = false;
+  let paused = [];
   try {
     const running = ctx.running();
     const databases = databasePlan(env, running);
@@ -161,6 +210,11 @@ export async function backupMain(env, args = []) {
     }
 
     await mkdir(target, { mode: 0o700 });
+    created = true;
+    // Chặn mọi writer trong cùng cửa sổ: không để DB tham chiếu tệp vừa bị xóa khỏi SeaweedFS.
+    paused = ['api', 'postgrest', 'keycloak', 'n8n', 'assistant', 'wiki-index', 'wikijs', 'mattermost', 'metabase']
+      .filter(service => running.has(service));
+    if (paused.length) ctx.run(['stop', ...paused]);
     const files = [];
     const add = async (entry, path) => {
       const info = await stat(path);
@@ -204,7 +258,7 @@ export async function backupMain(env, args = []) {
       .filter(entry => entry.isDirectory())
       .map(async entry => ({ name: entry.name, complete: await stat(resolve(root, entry.name, MANIFEST)).then(() => true, () => false) })));
     const removed = retentionPlan(entries, keep);
-    for (const old of removed) await rm(resolve(root, old), { recursive: true, force: true });
+    for (const old of removed) await rm(childBackupPath(root, old), { recursive: true, force: true });
 
     const total = files.reduce((sum, file) => sum + file.bytes, 0);
     const seconds = Math.round((Date.now() - started) / 1000);
@@ -213,9 +267,11 @@ export async function backupMain(env, args = []) {
     if (removed.length) console.log(`Đã xóa ${removed.length} bản cũ, giữ ${keep} bản mới nhất.`);
     return { name, target, manifest, removed };
   } catch (error) {
-    await rm(target, { recursive: true, force: true });
+    if (created) await rm(target, { recursive: true, force: true });
     await log(root, `LỖI ${name} ${error.message.replace(/\s+/g, ' ')}`).catch(() => {});
     throw error;
+  } finally {
+    if (paused.length) ctx.run(['up', '-d', '--no-deps', '--wait', ...paused]);
   }
 }
 
@@ -228,7 +284,12 @@ export async function verifyBackup(dir) {
   return manifest;
 }
 
-export async function restoreMain(env, args = []) {
+export async function restoreMain(env, args = [], options = {}) {
+  const release = await operationLock(env);
+  try { return await restoreUnlocked(env, args, options); } finally { await release(); }
+}
+
+async function restoreUnlocked(env, args, options) {
   const source = args.find(arg => !arg.startsWith('--'));
   if (!source || !args.includes('--xac-nhan')) {
     throw new Error('Cách dùng: node scripts/dxdesk.mjs restore <thư-mục-bản-sao> --xac-nhan\n'
@@ -240,8 +301,13 @@ export async function restoreMain(env, args = []) {
   if (manifest.versions?.postgres?.split('.')[0] !== env.POSTGRES_VERSION?.split('.')[0]) {
     throw new Error(`Bản sao từ PostgreSQL ${manifest.versions?.postgres}, stack hiện là ${env.POSTGRES_VERSION}; khôi phục bằng cùng bản chính.`);
   }
-  const ctx = context(env);
-  const databases = manifest.files.filter(file => file.kind === 'database');
+  const databases = validateRestorePlan(manifest, env);
+  const ctx = options.context ?? context(env);
+  // Đọc được tất cả archive trước khi stop/DROP; checksum không đủ chứng minh dump hợp lệ.
+  for (const db of databases) await ctx.stream(['run', '--rm', '--no-deps', '-T', '--entrypoint', 'pg_restore', db.service, '--list'],
+    { input: resolve(dir, db.name) });
+  const weed = manifest.files.find(file => file.kind === 'seaweedfs');
+  await ctx.stream(['run', '--rm', '--no-deps', '-T', '--entrypoint', 'tar', 'seaweedfs', 'tzf', '-'], { input: resolve(dir, weed.name) });
   const services = [...new Set(databases.map(db => db.service))];
   const project = env.COMPOSE_PROJECT_NAME || process.env.COMPOSE_PROJECT_NAME || basename(ROOT).toLowerCase();
   console.log(`Khôi phục vào project Compose "${project}": ${databases.map(db => db.service + '/' + db.database).join(', ')}, SeaweedFS.`);
@@ -252,9 +318,10 @@ export async function restoreMain(env, args = []) {
 
   const roles = manifest.files.find(file => file.kind === 'roles');
   if (roles) {
-    // Vai trò có sẵn trên cụm mới (do init/migration tạo) báo "already exists" và được bỏ qua;
-    // các lệnh ALTER ROLE theo sau vẫn đưa thuộc tính và mật khẩu về như lúc sao lưu.
-    await ctx.stream(['exec', '-T', 'postgres', 'psql', '-X', '-q', '-U', env.POSTGRES_USER, '-d', 'postgres'], { input: resolve(dir, roles.name) });
+    // Chỉ bỏ qua role đã có; mọi lỗi SQL khác đều dừng trước khi xóa CSDL.
+    const roleSql = (await readFile(resolve(dir, roles.name), 'utf8')).replace(/^CREATE ROLE (.+);$/gm,
+      (_line, role) => `DO $dxdesk$ BEGIN CREATE ROLE ${role}; EXCEPTION WHEN duplicate_object THEN NULL; END; $dxdesk$;`);
+    await ctx.stream(['exec', '-T', 'postgres', 'psql', '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-U', env.POSTGRES_USER, '-d', 'postgres'], { inputText: roleSql });
   }
   for (const db of databases) {
     ctx.psql(db.service, db.user, 'postgres', `DROP DATABASE IF EXISTS ${sqlIdent(db.database)} WITH (FORCE)`);
@@ -263,7 +330,6 @@ export async function restoreMain(env, args = []) {
     console.log(`  ${db.service}/${db.database}: đã khôi phục.`);
   }
 
-  const weed = manifest.files.find(file => file.kind === 'seaweedfs');
   if (weed) {
     ctx.run(['stop', 'seaweedfs']);
     await ctx.stream(['run', '--rm', '--no-deps', '-T', '--entrypoint', 'sh', 'seaweedfs', '-c',
