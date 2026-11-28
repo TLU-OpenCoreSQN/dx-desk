@@ -89,6 +89,16 @@ try {
   assert.equal(query('SELECT count(*) FROM migration_meta.applied'), String(expectedFiles));
   assert.equal(query("SELECT has_column_privilege('authenticated','public.tickets','sla_paused_ms','UPDATE')"), 'f');
   report.checks.push('Week-2 upgrade preserves historical rows and applies restricted SLA privileges');
+  const helpSql = await readFile(resolve(root, 'db/migrations/029_category_field_help.sql'), 'utf8');
+  const enriched = query(`BEGIN;
+    UPDATE public.categories SET requirement_fields=jsonb_set(requirement_fields,'{0,placeholder}','"CUSTOM ENTERPRISE VALUE"') WHERE code='vpn';
+    ${helpSql}
+    SELECT requirement_fields->0->>'placeholder' FROM public.categories WHERE code='vpn';
+    SELECT length(requirement_fields->1->>'hint')>0 FROM public.categories WHERE code='vpn';
+    ROLLBACK;`);
+  assert.match(enriched, /CUSTOM ENTERPRISE VALUE/);
+  assert.match(enriched, /\nt\n/);
+  report.checks.push('Form-help migration supplies defaults while preserving enterprise placeholders');
   report.passed = true;
   for (const check of report.checks) console.log(`PASS ${check}`);
 } catch (error) { report.error = error.message; console.error(error); process.exitCode = 1; }
