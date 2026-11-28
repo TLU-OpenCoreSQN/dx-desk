@@ -5,7 +5,7 @@
 ROOT    := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 COMPOSE := docker compose --env-file $(ROOT).env -f $(ROOT)infra/compose/docker-compose.yml
 
-.PHONY: help up down reset ps logs config release migrate seed import-nhan-vien test test-stack n8n-reload
+.PHONY: help up down reset ps logs config release migrate seed import-nhan-vien backup restore test test-stack n8n-reload
 
 help:
 	@echo "make up       - dựng Tầng 1 và web/API (cần .env)"
@@ -16,6 +16,8 @@ help:
 	@echo "make release VERSION=x.y.z - tạo gói .tar.gz bằng git archive"
 	@echo "make migrate  - áp dụng migration mới, giữ dữ liệu"
 	@echo "make seed     - sinh dữ liệu demo (dry-run; dùng SEED_ARGS để thêm tham số)"
+	@echo "make backup   - sao lưu CSDL và tệp đính kèm vào BACKUP_DIR (giữ BACKUP_KEEP bản)"
+	@echo "make restore BACKUP=thư-mục - XÓA dữ liệu hiện tại và khôi phục từ bản sao"
 	@echo "make import-nhan-vien CSV=tệp.csv - nhập nhân viên vào Keycloak (chạy thử; NV_ARGS=--thuc-hien ... để ghi)"
 	@echo "make test     - build và kiểm thử API/web"
 	@echo "make test-stack - kiểm chứng Keycloak/APISIX/API/PostgREST/n8n thật"
@@ -61,6 +63,12 @@ reset: $(ROOT).env
 	$(COMPOSE) down -v --remove-orphans
 	rm -f $(ROOT)infra/seaweedfs/s3.json $(ROOT)infra/postgrest/jwks.json
 	$(MAKE) -f $(ROOT)Makefile up
+
+backup: $(ROOT).env
+	node "$(ROOT)scripts/dxdesk.mjs" backup
+
+restore: $(ROOT).env
+	node "$(ROOT)scripts/dxdesk.mjs" restore "$(BACKUP)" --xac-nhan
 
 ps: $(ROOT).env
 	$(COMPOSE) ps

@@ -446,6 +446,94 @@ khi realm chưa tồn tại: với realm cũ, thêm mapper audience `dxdesk-api`
 `dxdesk-web` qua Admin Console hoặc import vào database demo mới có chủ đích.
 Không tự xóa volume Keycloak để cập nhật cấu hình.
 
+## Sao lưu và khôi phục (W7-01)
+
+### Phạm vi
+
+| Có trong bản sao | Cách lấy |
+|---|---|
+| CSDL DX-Desk (phiếu, lịch sử, outbox, đề nghị thiết bị, hội thoại trợ lý), Keycloak (người dùng, OTP, client), n8n (workflow, lịch sử chạy) | `pg_dump -Fc --create` trong container `postgres` |
+| Vai trò PostgreSQL của cụm chính (`api_login`, `authenticator`, `ticket_automation`…) kèm hash mật khẩu | `pg_dumpall --roles-only` |
+| Mattermost, Wiki.js, Metabase (khi hồ sơ đang chạy các dịch vụ này) | `pg_dump` trong container CSDL riêng của từng ứng dụng |
+| Tệp đính kèm và biên bản PDF trong SeaweedFS | nén volume `seaweedfs-data`; SeaweedFS dừng vài giây trong lúc nén |
+
+Không có trong bản sao, và giới hạn khi khôi phục:
+
+- **`.env` và mọi secret** (khóa ký URL tải tệp, khóa mã hóa n8n, token bot Mattermost, mật khẩu CSDL).
+  Giữ một bản `.env` riêng ở nơi an toàn, tách khỏi thư mục bản sao. Khôi phục phải dùng **cùng `.env`** với
+  lúc sao lưu. Nếu dùng `.env` khác: mật khẩu vai trò CSDL bị đưa về giá trị cũ, n8n không giải mã được
+  credential, URL tải tệp cũ mất hiệu lực.
+- Chỉ mục Qdrant của trợ lý: dựng lại từ Wiki.js khi `up` (`wiki-index`).
+- Chữ ký virus ClamAV: tải lại khi container khởi động.
+- Tệp tải lên trong Mattermost (volume `mattermost-data`): DX-Desk chỉ gửi thông báo chữ, không gửi tệp.
+- Bản sao nằm cùng máy với stack: mất máy là mất cả bản sao. Phải chép thư mục bản sao sang máy khác
+  (xem lịch bên dưới).
+
+### Sao lưu
+
+```sh
+node scripts/dxdesk.mjs backup     # hoặc: make backup
+```
+
+- **Nơi lưu:** mỗi lần chạy tạo một thư mục `dxdesk-<thời điểm UTC>` trong `BACKUP_DIR` (mặc định `.local/backups`, đã nằm trong `.gitignore`). Thư mục có `manifest.json` ghi SHA-256 từng tệp, commit và phiên bản PostgreSQL/SeaweedFS.
+- **Số bản giữ:** giữ `BACKUP_KEEP` bản hoàn chỉnh mới nhất (mặc định 7) và xóa bản cũ hơn.
+- **Kiểm tra dung lượng:** trước khi chạy, lệnh so dung lượng trống với kích thước dữ liệu, cộng thêm 20% và 256 MiB. Không đủ thì dừng, không ghi gì.
+- **Nhật ký:** kết quả từng lần (thành công hay lỗi) ghi thêm vào `BACKUP_DIR/backup.log`. Lỗi giữa chừng thì xóa thư mục dở dang.
+
+Bản sao chứa toàn bộ dữ liệu người dùng và hash mật khẩu CSDL, nên phải đặt ở nơi chỉ người vận hành đọc được.
+
+Lịch hằng ngày trên VPS Ubuntu (ADR 0010), chạy lúc 02:15 rồi chép sang máy khác:
+
+```sh
+crontab -e
+15 2 * * * cd /opt/dx-desk && /usr/bin/node scripts/dxdesk.mjs backup >> .local/backups/cron.log 2>&1 && rsync -a --delete .local/backups/ sao-luu@<máy-khác>:/srv/dxdesk-backups/
+```
+
+Trên Windows (máy dev), chạy trong PowerShell:
+
+```powershell
+schtasks /Create /SC DAILY /ST 02:15 /TN "DX-Desk backup" /TR "cmd /c cd /d D:\duong-dan\dx-desk && node scripts\dxdesk.mjs backup >> .local\backups\cron.log 2>&1"
+```
+
+Mỗi tuần, đọc dòng cuối của `backup.log` và thử khôi phục một bản theo mục dưới đây.
+
+### Khôi phục
+
+Lệnh khôi phục **xóa và thay** toàn bộ CSDL cùng tệp đính kèm của project Compose hiện hành:
+
+```sh
+node scripts/dxdesk.mjs restore .local/backups/dxdesk-20261128T074943Z --xac-nhan
+node scripts/dxdesk.mjs up
+# hoặc: make restore BACKUP=.local/backups/dxdesk-20261128T074943Z && make up
+```
+
+Các bước lệnh thực hiện:
+
+1. Kiểm tra SHA-256 của mọi tệp theo manifest, và kiểm tra bản chính (major version) PostgreSQL khớp với stack. Tệp hỏng thì dừng, chưa xóa gì.
+2. Dừng mọi dịch vụ, chỉ bật lại các container CSDL.
+3. Tạo lại vai trò, rồi với từng CSDL: `DROP DATABASE … WITH (FORCE)` và `pg_restore --create --exit-on-error`.
+4. Thay nội dung volume SeaweedFS bằng bản nén.
+5. Chạy `up` để bật lại các dịch vụ còn lại. `up` không đổi `.env` khi các secret đã có sẵn.
+
+Diễn tập trên môi trường tách biệt, không đụng dữ liệu đang chạy. Dừng stack chính bằng `down` để nhả cổng; lệnh này giữ volume. Sau đó khôi phục vào một project Compose khác:
+
+```sh
+node scripts/dxdesk.mjs down
+COMPOSE_PROJECT_NAME=dxdesk-restore node scripts/dxdesk.mjs restore <thư-mục> --xac-nhan
+COMPOSE_PROJECT_NAME=dxdesk-restore node scripts/dxdesk.mjs up
+COMPOSE_PROJECT_NAME=dxdesk-restore node scripts/dxdesk.mjs verify
+docker compose -p dxdesk-restore --env-file .env -f infra/compose/docker-compose.yml down -v   # chỉ xóa project diễn tập
+node scripts/dxdesk.mjs up
+```
+
+Kết quả diễn tập ngày 28/11/2026 (commit `a96cc05` cộng thay đổi W7-01, hồ sơ `full`):
+
+- Bản sao: 3,3 MiB, mất 40–45 giây.
+- Khôi phục: 74 giây.
+- Đối chiếu với stack gốc: 11 bảng ở 6 CSDL khớp số dòng (68 phiếu, 373 sự kiện, 20 tệp, 57 người dùng Keycloak, 367 bài Mattermost…).
+- 3 tệp đính kèm tải qua API có SHA-256 trùng với bản gốc.
+- `agent.1` đăng nhập được, `verify` qua 15/15.
+
 ## Xử lý sự cố
 
 - **Volume cũ lệch với `.env` hoặc realm hiện hành.** Realm chỉ được import khi tạo mới; volume
