@@ -101,7 +101,9 @@ node scripts/dxdesk.mjs backup
 ```
 
 Xếp lịch **một phiên bảo trì**: backup tạm dừng các dịch vụ ghi đang chạy để DB và tệp cùng trạng thái,
-rồi bật lại trong `finally`. Đợi lệnh kết thúc và kiểm `ps`/`verify` trước khi mở lại cho người dùng.
+rồi bật lại trong `finally`. Nếu gateway vốn chạy, APISIX được restart sau writers để bỏ IP upstream cũ.
+Chỉ báo hoàn tất khi phục hồi dịch vụ xong. Nếu báo lỗi phục hồi, archive hoàn chỉnh được giữ;
+kiểm dịch vụ/gateway và `verify` trước khi mở lại cho người dùng. Gateway vốn tắt không tự bật.
 Sao lưu gồm roles, các CSDL của hồ sơ, SeaweedFS và manifest SHA-256; `.env` **không nằm trong bản sao**.
 Giữ `.env`, khóa mã hóa n8n và bí mật liên quan riêng trong nơi bảo mật. Thiếu khóa cũ có thể khiến
 credentials không giải mã được dù dữ liệu DB đã phục hồi. Qdrant có thể dựng lại từ Wiki nguồn.
