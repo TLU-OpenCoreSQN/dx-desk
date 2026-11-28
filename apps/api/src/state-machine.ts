@@ -67,7 +67,7 @@ export const ROLE_EDGES: Record<string, EdgeRule> = Object.fromEntries(
     ['pending_approval', 'assigned', { roles: ['Agent', 'Manager'], requesterAllowed: false }],
     ['pending_approval', 'new', { roles: ['Manager'], requesterAllowed: false }],
     ['resolved', 'closed', { roles: [], requesterAllowed: true }],
-    ['resolved', 'in_progress', { roles: ['Agent', 'Manager'], requesterAllowed: false }],
+    ['resolved', 'in_progress', { roles: ['Agent', 'Manager'], requesterAllowed: true }],
   ] as [TicketStatus, TicketStatus, EdgeRule][]).map(([from, to, rule]) => [edgeKey(from, to), rule]),
 );
 
@@ -78,6 +78,7 @@ export interface TransitionContext {
   isRequester: boolean;
   /** resolution_note (đã trim nhờ DTO) khi chuyển sang 'resolved'; bắt buộc 5..2000 ký tự. */
   resolutionNote?: string | null;
+  note?: string | null;
 }
 
 export type TransitionViolation =
@@ -86,7 +87,8 @@ export type TransitionViolation =
   | { ok: false; kind: 'already'; status: 409; message: string }
   | { ok: false; kind: 'no_edge'; status: 422; message: string }
   | { ok: false; kind: 'role'; status: 403; message: string }
-  | { ok: false; kind: 'resolution_note'; status: 422; message: string };
+  | { ok: false; kind: 'resolution_note'; status: 422; message: string }
+  | { ok: false; kind: 'reopen_note'; status: 422; message: string };
 export type TransitionResult = { ok: true } | TransitionViolation;
 
 export const RESOLUTION_NOTE_MIN = 5;
@@ -138,6 +140,11 @@ export function validateTransition(
       ok: false, kind: 'role', status: 403,
       message: 'Vai trò của bạn không được phép chuyển yêu cầu sang trạng thái này.',
     };
+  }
+  if (from === 'resolved' && to === 'in_progress' && ctx.isRequester && !actorRoles.some(role => role === 'Agent' || role === 'Manager')) {
+    const note = (ctx.note ?? '').trim();
+    if (note.length < 5 || note.length > 2000) return { ok: false, kind: 'reopen_note', status: 422,
+      message: 'Cần lý do chưa khắc phục từ 5 đến 2000 ký tự.' };
   }
   if (to === 'resolved') {
     const note = (ctx.resolutionNote ?? '').trim();

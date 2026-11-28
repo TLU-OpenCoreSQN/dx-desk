@@ -47,6 +47,8 @@ export function workflowExceptionForCode(code?: string): { status: number; messa
   if (code === 'PT409') return { status: 409, message: 'Yêu cầu đã được nhận hoặc trạng thái không còn phù hợp.' };
   if (code === '45004') return { status: 422, message: 'Cần lý do từ chối từ 5 đến 2000 ký tự.' };
   if (code === '45005') return { status: 422, message: 'Chưa có nhóm xử lý hoạt động cho danh mục này.' };
+  if (code === '45006') return { status: 422, message: 'Cần lý do chưa khắc phục từ 5 đến 2000 ký tự.' };
+  if (code === '45007') return { status: 422, message: 'Người tạo chỉ được gửi lại trong 7 ngày kể từ khi phiếu được giải quyết.' };
   if (code === 'PT400') {
     return { status: 400, message: 'Giá trị trường biểu mẫu không hợp lệ với danh mục đã chọn.' };
   }
@@ -214,6 +216,7 @@ export class DeskController {
         roles,
         isRequester: ticket.requester_id === request.claims.sub,
         resolutionNote: body.resolution_note,
+        note: body.note,
       });
       if (!result.ok) throw transitionException(result);
       await client.query("SELECT set_config('app.status_note', $1, true)", [body.note ?? '']);

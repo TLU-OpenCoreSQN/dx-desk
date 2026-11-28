@@ -21,6 +21,7 @@
 - #87: preset màu nhấn đạt WCAG 2.1 AA ở cả chế độ sáng và tối: nút chính cam/vàng/xanh lá/nâu đậm hơn để chữ trắng ≥ 4,5:1, mỗi preset có màu chữ nhấn riêng (trước đây chữ trên nền tint vẫn dùng xanh dương mặc định), hover ở chế độ tối đậm hơn thay vì sáng hơn.
 
 ### Thêm
+- #88: người tạo phiếu có thể báo “Chưa khắc phục được” trong 7 ngày kể từ lần giải quyết gần nhất, kèm lý do 5–2000 ký tự; giữ kỹ thuật viên và SLA, ghi timeline/outbox, kiểm quy tắc ở API lẫn PostgreSQL qua migration 028.
 - #97: lớp định hướng Trợ lý AI theo 6 chủ đề IT với cấu hình/ví dụ và bộ đánh giá độc lập; hỏi tiếp theo ngữ cảnh, phản hồi ngoài phạm vi có kiểm soát.
 - #97: nhập giọng nói tiếng Việt và đọc phản hồi có tạm dừng/tiếp tục, giữ prompt khi đổi chế độ; trạng thái chờ hiện Thinking và có thể dừng từ bước chuẩn bị gửi.
 - W7-01: `node scripts/dxdesk.mjs backup` / `restore <thư-mục> --xac-nhan` (`make backup`, `make restore`) sao lưu CSDL DX-Desk, Keycloak, n8n, Mattermost, Wiki.js, Metabase cùng vai trò PostgreSQL và volume SeaweedFS; manifest SHA-256, kiểm dung lượng trước khi ghi, giữ `BACKUP_KEEP` bản (mặc định 7) trong `BACKUP_DIR`, nhật ký `backup.log`. Runbook, lịch cron/Task Scheduler và giới hạn khôi phục trong `docs/cai-dat.md`; kiểm thử `tests/backup.test.mjs`.

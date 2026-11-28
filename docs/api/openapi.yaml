@@ -567,6 +567,7 @@ paths:
   /tickets/{id}/status:
     patch:
       operationId: updateTicketStatus
+      description: Người tạo có thể gửi resolved về in_progress trong 7 ngày từ lần giải quyết gần nhất với note 5–2000 ký tự; giữ kỹ thuật viên và SLA. PostgreSQL kiểm cùng quy tắc với API. Phiếu closed không mở lại.
       parameters:
         - { $ref: "#/components/parameters/Id" }
       requestBody:
@@ -1180,6 +1181,7 @@ components:
           }
         assigned_to: { type: string, format: uuid, nullable: true }
         resolution_note: { type: string, nullable: true, minLength: 5, maxLength: 2000 }
+        resolved_at: { type: string, format: date-time, nullable: true, readOnly: true, description: Thời điểm giải quyết gần nhất từ audit khi đang resolved }
         request_fields:
           type: object
           additionalProperties: { type: string }
