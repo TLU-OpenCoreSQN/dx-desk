@@ -4,7 +4,7 @@
 // quy tắc Poka-yoke khi tạo ticket và công thức SLA thuần TS.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import {
   TRANSITIONS, ROLE_EDGES, TICKET_STATUSES, TERMINAL_STATUSES,
   edgeKey, legalEdges, validateTransition,
@@ -20,7 +20,7 @@ import { ValidationPipe } from '@nestjs/common';
 const STAFF = ['Agent', 'Manager'];
 const REQUESTER_ONLY_EDGE_KEYS = [
   'new->cancelled', 'triaged->cancelled', 'assigned->cancelled',
-  'waiting_user->in_progress', 'waiting_user->cancelled', 'resolved->closed',
+  'waiting_user->in_progress', 'waiting_user->cancelled', 'resolved->closed', 'resolved->in_progress',
 ];
 
 test('TRANSITIONS covers the 8-state contract graph exactly', () => {
@@ -59,12 +59,24 @@ function sqlEdges() {
   const start = sql.indexOf('INSERT INTO private.ticket_transitions');
   assert.notEqual(start, -1, 'migration 003 phải có khối INSERT INTO private.ticket_transitions');
   const block = sql.slice(start).split(/;\s*$/m)[0];
-  return [...block.matchAll(/\('([a-z_]+)', '([a-z_]+)', (?:ARRAY\[([^\]]*)\]|'\{\}'), (true|false)\)/g)]
+  const edges = [...block.matchAll(/\('([a-z_]+)', '([a-z_]+)', (?:ARRAY\[([^\]]*)\]|'\{\}'), (true|false)\)/g)]
     .map(([, from, to, roles, requester]) => ({
       from, to,
       roles: roles ? [...roles.matchAll(/'([A-Za-z]+)'/g)].map(match => match[1]) : [],
       requesterAllowed: requester === 'true',
     }));
+  // Later migrations may change requester permission without rewriting applied migration 003.
+  // Applied DB rows are also checked by the PostgreSQL integration suite.
+  const folder = new URL('../../../db/migrations/', import.meta.url);
+  for (const file of readdirSync(folder).filter(name => name.endsWith('.sql')).sort()) {
+    const update = readFileSync(new URL(file, folder), 'utf8');
+    for (const [, allowed, from, to] of update.matchAll(/UPDATE private\.ticket_transitions SET requester_allowed=(true|false)\s+WHERE from_status='([a-z_]+)' AND to_status='([a-z_]+)'/g)) {
+      const edge = edges.find(item => item.from === from && item.to === to);
+      assert.ok(edge, `migration cannot update an unknown edge ${from}->${to}`);
+      edge.requesterAllowed = allowed === 'true';
+    }
+  }
+  return edges;
 }
 
 test('W3-09: bảng cạnh private.ticket_transitions trùng khớp máy trạng thái API 1:1', () => {
@@ -135,7 +147,7 @@ test('representative illegal transitions return 422 (outside machine) or 409 (te
 });
 
 test('role enforcement per edge: Employee limited, Agent per contract, Manager = Agent + reject', () => {
-  const employee = { roles: ['Employee'], isRequester: true };
+  const employee = { roles: ['Employee'], isRequester: true, note: 'Sự cố vẫn chưa khắc phục.' };
   const stranger = { roles: ['Employee'], isRequester: false };
   const agent = { roles: ['Agent'], isRequester: false };
   const manager = { roles: ['Manager'], isRequester: false };
@@ -144,12 +156,12 @@ test('role enforcement per edge: Employee limited, Agent per contract, Manager =
   // Employee chỉ đi cạnh của mình (trên ticket của chính mình).
   for (const [from, to] of [
     ['new', 'cancelled'], ['waiting_user', 'in_progress'], ['waiting_user', 'cancelled'],
-    ['resolved', 'closed'], ['triaged', 'cancelled'], ['assigned', 'cancelled'],
+    ['resolved', 'closed'], ['resolved', 'in_progress'], ['triaged', 'cancelled'], ['assigned', 'cancelled'],
   ]) assert.equal(validateTransition(from, to, employee).ok, true, `Employee ${from}->${to}`);
   for (const [from, to] of [
     ['new', 'triaged'], ['triaged', 'assigned'], ['assigned', 'in_progress'],
     ['in_progress', 'waiting_user'], ['in_progress', 'resolved'], ['in_progress', 'pending_approval'],
-    ['pending_approval', 'assigned'], ['pending_approval', 'new'], ['resolved', 'in_progress'],
+    ['pending_approval', 'assigned'], ['pending_approval', 'new'],
   ]) {
     const result = validateTransition(from, to, { ...employee });
     assert.equal(result.ok, false, `Employee ${from}->${to} must fail`);
@@ -202,6 +214,19 @@ test('resolved->closed is requester-confirm only; staff non-requester cannot clo
   }
   // Staff mà lại là requester của ticket thì xác nhận đóng được.
   assert.equal(validateTransition('resolved', 'closed', { roles: ['Agent'], isRequester: true }).ok, true);
+});
+
+test('requester reopen requires a bounded reason and never grants another employee permission', () => {
+  for (const note of [undefined, null, '', '    ', 'abcd', 'x'.repeat(2001)]) {
+    const result = validateTransition('resolved', 'in_progress', { roles: ['Employee'], isRequester: true, note });
+    assert.equal(result.ok, false);
+    assert.equal(result.kind, 'reopen_note');
+  }
+  assert.equal(validateTransition('resolved', 'in_progress', { roles: ['Employee'], isRequester: true, note: 'Vẫn không hoạt động.' }).ok, true);
+  assert.equal(validateTransition('resolved', 'in_progress', { roles: ['Employee'], isRequester: false, note: 'Vẫn không hoạt động.' }).status, 403);
+  assert.equal(validateTransition('resolved', 'in_progress', { roles: ['Agent'], isRequester: false }).ok, true);
+  assert.equal(workflowExceptionForCode('45006').status, 422);
+  assert.match(workflowExceptionForCode('45007').message, /7 ngày/);
 });
 
 test('transition to resolved requires resolution_note of 5..2000 characters (422 otherwise)', () => {

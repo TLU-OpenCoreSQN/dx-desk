@@ -488,12 +488,70 @@ test('W3: state machine, poka-yoke and SLA bookkeeping over real PostgreSQL', as
 });
 
 async function seedState(status, owner = 'a') {
-  return (await admin.query(`INSERT INTO public.tickets(requester_id,category_id,title,description,status,resolution_note,waiting_since)
+  const ticket = (await admin.query(`INSERT INTO public.tickets(requester_id,category_id,title,description,status,resolution_note,waiting_since,assigned_to,assigned_team_id)
     VALUES($1,$2,'Isolated workflow matrix','State prepared by migration owner for transition acceptance',$3,
       CASE WHEN $3='resolved' THEN 'Historical result' END,
-      CASE WHEN $3='waiting_user' THEN now()-interval '1 second' END) RETURNING *`,
-    [users[owner].sub, category, status])).rows[0];
+      CASE WHEN $3='waiting_user' THEN now()-interval '1 second' END,
+      CASE WHEN $3='resolved' THEN $4::uuid END,CASE WHEN $3='resolved' THEN $5::uuid END) RETURNING *`,
+    [users[owner].sub, category, status, users.agent.sub, networkTeam])).rows[0];
+  if (status === 'resolved') await admin.query(`INSERT INTO public.ticket_events(ticket_id,actor_id,event_type,payload)
+    VALUES($1,$2,'status_changed','{"from":"in_progress","to":"resolved","resolution_note":"Historical result"}')`, [ticket.id, users.agent.sub]);
+  return ticket;
 }
+
+test('requester can reopen with a reason over API and REST, retaining assignee/SLA and recording audit/outbox', async () => {
+  const ticket = await seedState('resolved');
+  const original = (await call(apiUrl, '/api/tickets/' + ticket.id)).body;
+  assert.ok(original.resolved_at);
+  assert.equal(original.assigned_to, users.agent.sub);
+  for (const note of [undefined, '', '   ', 'abcd']) {
+    const result = await patch(apiUrl, '/api/tickets/' + ticket.id + '/status', 'a', { to: 'in_progress', ...(note !== undefined && { note }) });
+    assert.ok([400, 422].includes(result.status), JSON.stringify(result.body));
+  }
+  assert.equal((await patch(apiUrl, '/api/tickets/' + ticket.id + '/status', 'b', { to: 'in_progress', note: 'Not my ticket' })).status, 404);
+  const missingRest = await patch(restUrl, '/tickets?id=eq.' + ticket.id, 'a', { status: 'in_progress' });
+  assert.equal(missingRest.status, 400);
+  assert.equal(missingRest.body.code, '45006');
+  const reason = 'VPN vẫn ngắt sau khi làm theo hướng dẫn.';
+  const result = await patch(apiUrl, '/api/tickets/' + ticket.id + '/status', 'a', { to: 'in_progress', note: reason, expected_version: original.ticket_version });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  for (const key of ['assigned_to', 'assigned_team_id', 'sla_due_at', 'sla_paused_ms']) assert.equal(result.body[key], original[key], key + ' must remain unchanged');
+  assert.equal(result.body.resolution_note, null);
+  const audit = (await admin.query("SELECT id,payload FROM public.ticket_events WHERE ticket_id=$1 AND payload->>'to'='in_progress'", [ticket.id])).rows[0];
+  assert.equal(audit.payload.note, reason);
+  assert.equal((await admin.query('SELECT count(*)::int n FROM private.outbox WHERE event_id=$1', [audit.id])).rows[0].n, 1);
+  const direct = await seedState('resolved');
+  // Fetch headers are ByteString; Vietnamese notes are sent in the JSON API body.
+  const restReason = 'VPN still disconnects after following the instructions';
+  assert.equal((await patch(restUrl, '/tickets?id=eq.' + direct.id, 'a', { status: 'in_progress' }, { 'X-Status-Note': restReason })).status, 200);
+  assert.equal((await admin.query('SELECT status FROM public.tickets WHERE id=$1', [direct.id])).rows[0].status, 'in_progress');
+  assert.equal((await admin.query("SELECT payload->>'note' AS note FROM public.ticket_events WHERE ticket_id=$1 AND payload->>'to'='in_progress'", [direct.id])).rows[0].note, restReason);
+});
+
+test('seven-day boundary is inclusive; later reopen, audit-time bypass and closed-ticket reopen are rejected', async () => {
+  const boundary = await seedState('resolved');
+  const client = await admin.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("UPDATE public.ticket_events SET created_at=now()-interval '7 days' WHERE ticket_id=$1 AND payload->>'to'='resolved'", [boundary.id]);
+    await client.query('SET LOCAL ROLE authenticated');
+    await client.query("SELECT set_config('request.jwt.claims',$1,true),set_config('app.status_note',$2,true)", [JSON.stringify(claims('a')), 'Still not resolved at the boundary']);
+    assert.equal((await client.query("UPDATE public.tickets SET status='in_progress' WHERE id=$1 RETURNING status", [boundary.id])).rows[0].status, 'in_progress');
+    await client.query('COMMIT');
+  } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+  const expired = await seedState('resolved');
+  await admin.query("UPDATE public.ticket_events SET created_at=now()-interval '8 days' WHERE ticket_id=$1 AND payload->>'to'='resolved'", [expired.id]);
+  // A no-op status update changes updated_at, but cannot reset the resolution/audit deadline.
+  assert.equal((await patch(restUrl, '/tickets?id=eq.' + expired.id, 'a', { status: 'resolved' })).status, 200);
+  const api = await patch(apiUrl, '/api/tickets/' + expired.id + '/status', 'a', { to: 'in_progress', note: 'Issue still persists' });
+  assert.equal(api.status, 422);
+  assert.match(api.body.message, /7 ngày/);
+  const rest = await patch(restUrl, '/tickets?id=eq.' + expired.id, 'a', { status: 'in_progress' }, { 'X-Status-Note': 'Issue still persists' });
+  assert.equal(rest.status, 400); assert.equal(rest.body.code, '45007');
+  assert.equal((await admin.query('SELECT status FROM public.tickets WHERE id=$1', [expired.id])).rows[0].status, 'resolved');
+  const closed = await seedState('closed');
+  assert.equal((await patch(apiUrl, '/api/tickets/' + closed.id + '/status', 'a', { to: 'in_progress', note: 'Still not resolved' })).status, 409);
+});
 
 test('all 17 DB edges enforce role and requester permissions through API and direct REST', async () => {
   const edges = (await admin.query('SELECT * FROM private.ticket_transitions ORDER BY from_status,to_status')).rows;
@@ -502,9 +560,11 @@ test('all 17 DB edges enforce role and requester permissions through API and dir
     const allowed = edge.allowed_roles.some(r => users[actor].roles.includes(r)) || edge.requester_allowed && owned;
     for (const rest of [false,true]) {
       const ticket = await seedState(edge.from_status, owned ? actor : 'b');
+      const auditBefore = (await admin.query('SELECT count(*)::int n FROM public.ticket_events WHERE ticket_id=$1', [ticket.id])).rows[0].n;
       const body = rest ? { status: edge.to_status } : { to: edge.to_status };
       if (edge.to_status === 'resolved') body.resolution_note = 'New resolution for this transition';
       if (!rest && edge.from_status === 'pending_approval' && edge.to_status === 'new') body.note='Rejection reason for role matrix';
+      if (!rest && edge.from_status === 'resolved' && edge.to_status === 'in_progress') body.note='The reported issue persists';
       const result = await patch(rest ? restUrl : apiUrl,
         rest ? `/tickets?id=eq.${ticket.id}` : `/api/tickets/${ticket.id}/status`, actor, body,
         rest ? {'X-Status-Note':'Rejection reason for role matrix'} : {});
@@ -514,7 +574,7 @@ test('all 17 DB edges enforce role and requester permissions through API and dir
       const actual = (await admin.query('SELECT status FROM public.tickets WHERE id=$1', [ticket.id])).rows[0];
       assert.equal(actual.status, allowed ? edge.to_status : edge.from_status);
       assert.equal((await admin.query('SELECT count(*)::int AS n FROM public.ticket_events WHERE ticket_id=$1', [ticket.id])).rows[0].n,
-        allowed ? (edge.to_status==='assigned' ? 3 : 2) : 1, 'denied writes cannot add audit events');
+        auditBefore + (allowed ? (edge.to_status==='assigned' ? 2 : 1) : 0), 'denied writes cannot add audit events');
     }
   }
 });

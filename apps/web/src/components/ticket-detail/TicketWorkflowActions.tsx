@@ -26,6 +26,7 @@ import {
   statusLabel,
   TransitionEdge,
   validateResolutionNote,
+  withinRequesterReopenWindow,
 } from '../../lib/ticketWorkflow';
 
 /** Chiều cao thanh thao tác dính đáy trên màn hình hẹp, để trang chừa đủ khoảng trống. */
@@ -76,6 +77,7 @@ const isRejectEdge = (edge: TransitionEdge): boolean =>
 
 /** Nút xác nhận gọi đúng tên việc sẽ xảy ra, không dùng "Xác nhận" chung chung. */
 export function confirmLabel(edge: TransitionEdge): string {
+  if (edge.from === 'resolved' && edge.to === 'in_progress' && edge.requesterOnly) return 'Gửi lại để xử lý';
   if (edge.to === 'cancelled') return 'Hủy phiếu này';
   if (isRejectEdge(edge)) return 'Từ chối yêu cầu';
   if (edge.to === 'waiting_user') return 'Gửi yêu cầu bổ sung';
@@ -91,10 +93,12 @@ export const TRANSITION_NOTE_MIN = 5;
  * để biết vì sao phiếu dừng lại hoặc cần trả lời điều gì.
  */
 export function noteRequired(edge: TransitionEdge): boolean {
-  return isRejectEdge(edge) || edge.to === 'cancelled' || edge.to === 'waiting_user';
+  return isRejectEdge(edge) || edge.to === 'cancelled' || edge.to === 'waiting_user' ||
+    (edge.from === 'resolved' && edge.to === 'in_progress' && edge.requesterOnly === true);
 }
 
 function noteRequiredMessage(edge: TransitionEdge): string {
+  if (edge.from === 'resolved' && edge.requesterOnly) return `Lý do chưa khắc phục cần ít nhất ${TRANSITION_NOTE_MIN} ký tự.`;
   if (isRejectEdge(edge)) return `Lý do từ chối cần ít nhất ${TRANSITION_NOTE_MIN} ký tự.`;
   if (edge.to === 'cancelled') return `Lý do hủy cần ít nhất ${TRANSITION_NOTE_MIN} ký tự.`;
   return `Hãy ghi rõ thông tin cần bổ sung, ít nhất ${TRANSITION_NOTE_MIN} ký tự.`;
@@ -102,6 +106,7 @@ function noteRequiredMessage(edge: TransitionEdge): string {
 
 /** Nhãn ô ghi chú nói rõ ghi chú dùng để làm gì trong từng thao tác. */
 function noteLabel(edge: TransitionEdge): string {
+  if (edge.from === 'resolved' && edge.requesterOnly) return 'Lý do chưa khắc phục';
   if (isRejectEdge(edge)) return 'Lý do từ chối';
   if (edge.to === 'cancelled') return 'Lý do hủy';
   if (edge.to === 'waiting_user') return 'Thông tin cần người tạo phiếu bổ sung';
@@ -109,6 +114,7 @@ function noteLabel(edge: TransitionEdge): string {
 }
 
 function notePlaceholder(edge: TransitionEdge): string {
+  if (edge.from === 'resolved' && edge.requesterOnly) return 'VD: VPN vẫn ngắt kết nối sau vài phút dù đã thử hướng dẫn.';
   if (isRejectEdge(edge)) return 'VD: Yêu cầu cấp quyền cần trưởng phòng xác nhận trước.';
   if (edge.to === 'cancelled') return 'VD: Sự cố đã tự hết sau khi khởi động lại máy.';
   if (edge.to === 'waiting_user') return 'VD: Gửi giúp ảnh chụp thông báo lỗi và phiên bản Office đang dùng.';
@@ -122,6 +128,12 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
   onBottomBarChange,
 }) => {
   const { roles, profile } = useAuth();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (ticket.status !== 'resolved' || !ticket.resolved_at) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, [ticket.id, ticket.status, ticket.resolved_at]);
 
   const [activeEdge, setActiveEdge] = useState<TransitionEdge | null>(null);
   const [note, setNote] = useState<string>('');
@@ -153,8 +165,9 @@ export const TicketWorkflowActions: React.FC<TicketWorkflowActionsProps> = ({
     () =>
       getAllowedTransitions(ticket.status, roles, {
         isRequester: Boolean(profile && ticket.requester_id === profile.id),
+        canRequesterReopen: withinRequesterReopenWindow(ticket.resolved_at, now),
       }),
-    [ticket.status, ticket.requester_id, roles, profile]
+    [ticket.status, ticket.requester_id, ticket.resolved_at, now, roles, profile]
   );
 
   /** Exactly one primary action: resolving/closing > first forward transition. */
