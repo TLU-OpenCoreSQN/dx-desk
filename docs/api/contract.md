@@ -1,5 +1,26 @@
 # Hợp đồng API tuần 3–4
 
+## Phần thêm: tìm kiếm và lọc danh sách phiếu phía máy chủ (chưa phát hành)
+
+`GET /tickets` nhận thêm bốn tham số, kết hợp được với `queue`, `status`, `team_id`, `assignee_id`
+và `limit/offset` ở dưới. `total` luôn đếm sau khi lọc, nên phân trang và số đếm "cần chú ý"
+đúng trên toàn bộ dữ liệu, không chỉ 25 dòng của trang đang xem. RLS giữ nguyên: tìm kiếm không
+bao giờ trả phiếu mà người gọi không đọc được.
+
+- `q` (chuỗi, tối đa 200 ký tự): tìm không phân biệt hoa thường trong tiêu đề, mô tả, mã phiếu,
+  tên người phụ trách, tên nhóm và tên người yêu cầu. Ký tự `%`, `_`, `\` của người dùng được
+  thoát (`ESCAPE '\'`), không làm ký tự đại diện. Chuỗi rỗng hoặc chỉ khoảng trắng bị bỏ qua.
+- `priority=low|normal|high|critical`.
+- `sla=breached|at_risk`: `breached` là đã vi phạm (cờ `sla_breached`) hoặc còn mở mà hạn hiệu
+  lực đã qua; `at_risk` là còn chạy (không tạm dừng, chưa kết thúc) và đã dùng ≥ 80% cửa sổ SLA.
+  Hạn hiệu lực = `sla_due_at + sla_paused_ms` (+ thời gian đang chờ nếu `waiting_user`), cùng quy
+  ước với `apps/web/src/lib/sla.ts`.
+- `sort=newest|sla_due`: `newest` (mặc định) mới tạo trước; `sla_due` xếp việc gấp lên đầu theo
+  thứ tự quá hạn → sắp quá hạn → đang chạy → tạm dừng → không có SLA → đã kết thúc, rồi hạn hiệu
+  lực gần nhất, rồi mức ưu tiên.
+- Giá trị ngoài danh sách cho phép (ví dụ `sort=oldest`, `sla=late`, `priority=urgent`) hoặc `q`
+  dài quá 200 ký tự trả 400 với thông báo tiếng Việt cố định.
+
 ## Phần thêm tuần 4 (0.3.0)
 
 - `GET /tickets` nhận `queue=my_open|team_unassigned|team_assigned|pending_approval`,
@@ -71,7 +92,8 @@ Issuer phải khớp chính xác, audience `dxdesk-api`, thuật toán RS256.
   Ghi đúng một lượt "Đã tự xử lý được", **không** tạo ticket. Chủ thể lấy từ JWT; gửi `user_id` bị 400.
   Bài không thuộc gợi ý của danh mục → 422. RLS: mỗi người chỉ đọc lượt của mình, kể cả Agent/Manager;
   số đếm theo tuần (không định danh) ở view `reporting.self_service_weekly` cho Metabase (W5-06, vai trò `reporting_reader`).
-- `GET /api/tickets?limit=25&offset=0`: `{data:Ticket[],limit,offset,total}`.
+- `GET /api/tickets?limit=25&offset=0`: `{data:Ticket[],limit,offset,total}`; bộ lọc `q`, `priority`,
+  `sla`, `sort` xem mục "tìm kiếm và lọc danh sách phiếu phía máy chủ" ở đầu tài liệu.
 - `GET /api/tickets/:id`: một Ticket, 404 nếu không tồn tại hoặc không có quyền
   (RLS ẩn bản ghi của người khác với Employee).
 - `GET /api/tickets/:id/events`: `{data:[{id,ticket_id,actor_id,event_type,payload,created_at,actor_type,actor_name}]}`.

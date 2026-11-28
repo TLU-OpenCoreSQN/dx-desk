@@ -921,6 +921,42 @@ test('W4 SLA clock boundaries, pause exclusion, persisted breach and superseded 
   assert.equal((await admin.query('SELECT count(*)::int n FROM private.sla_notices WHERE ticket_id=$1',[ticket.id])).rows[0].n,count);
 });
 
+test('W7 server-side search, priority/SLA filters and urgent-first sort cover every page', async () => {
+  const marker = `SRV-${randomUUID().slice(0, 8)}`;
+  const ago = hours => new Date(Date.now() - hours * 3600_000).toISOString();
+  const insert = async (label, hours, { status = 'in_progress', waiting = null, priority = 'normal' } = {}) => (await admin.query(
+    `INSERT INTO public.tickets (requester_id,category_id,title,description,status,priority,created_at,waiting_since)
+     VALUES($1,$2,$3,'Server-side list filter fixture with a controlled clock',$4,$5,$6,$7) RETURNING id`,
+    [users.a.sub, category, `${marker} ${label}`, status, priority, ago(hours), waiting])).rows[0].id;
+  const running = await insert('running', 1);
+  const breached = await insert('breached', 25);
+  const paused = await insert('paused', 30, { status: 'waiting_user', waiting: ago(20) });
+  const atRisk = await insert('at risk', 20);
+  const high = await insert('high', 0.05, { priority: 'high' });
+  const list = async (params, key = 'a') => {
+    const response = await call(apiUrl, `/api/tickets?${new URLSearchParams({ q: marker, ...params })}`, key);
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    return response.body;
+  };
+  const firstPage = await list({ limit: '2' });
+  assert.equal(firstPage.total, 5, 'Search counts every match, not only the rows of the current page');
+  assert.equal(firstPage.data.length, 2);
+  const urgent = (await list({ sort: 'sla_due' })).data.map(row => row.id);
+  assert.deepEqual(urgent.slice(0, 2), [breached, atRisk], 'Breached then at-risk tickets lead regardless of creation order');
+  assert.equal(urgent.at(-1), paused, 'Paused SLA clocks sort after running ones');
+  assert.deepEqual(new Set(urgent.slice(2, 4)), new Set([running, high]));
+  assert.deepEqual((await list({ sla: 'breached' })).data.map(row => row.id), [breached]);
+  assert.deepEqual((await list({ sla: 'at_risk' })).data.map(row => row.id), [atRisk]);
+  assert.deepEqual((await list({ priority: 'high' })).data.map(row => row.id), [high]);
+  assert.equal((await list({ q: `${marker.toLowerCase()} at risk` })).total, 1, 'Search is case-insensitive');
+  assert.equal((await list({ q: running.slice(0, 8) })).data[0].id, running, 'Search matches the ticket code');
+  assert.equal((await list({ q: `${marker}%` })).total, 0, 'LIKE wildcards in the search term are escaped');
+  assert.equal((await list({}, 'b')).total, 0, 'Search never widens RLS: another employee sees nothing');
+  for (const bad of ['sort=random', 'sla=late', 'priority=urgent', `q=${'x'.repeat(201)}`]) {
+    assert.equal((await call(apiUrl, `/api/tickets?${bad}`, 'a')).status, 400, bad);
+  }
+});
+
 test('W5-08 category suggestions, single self-service record and owner-only reads on API and REST', async () => {
   const vpnArticle = '20000000-0000-4000-8000-000000000001';
   const suggestions = await call(apiUrl, `/api/categories/${category}/articles`);

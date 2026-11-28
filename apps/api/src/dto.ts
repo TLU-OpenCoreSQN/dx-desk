@@ -10,6 +10,8 @@ export const TICKET_STATUS_VALUES = [
   'pending_approval', 'resolved', 'closed', 'cancelled',
 ] as const;
 
+export const TICKET_PRIORITY_VALUES = ['low', 'normal', 'high', 'critical'] as const;
+
 // W3-06/ADR 0007: trần dung lượng tệp đính kèm — khớp chính xác CHECK của
 // attachments.size_bytes trong 001_schema.sql (10 MiB).
 export const MAX_ATTACHMENT_BYTES = 10485760;

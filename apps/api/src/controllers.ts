@@ -20,6 +20,7 @@ import { TransitionViolation, validateTransition } from './state-machine';
 import { activeRoles, checkRequirementFields, criticalViolation, initialStatusFor } from './rules';
 import { TicketListQuery } from './dto-week4';
 import { TICKET_SELECT } from './week4';
+import { likePattern, searchClause, SLA_AT_RISK, SLA_BREACHED, TICKET_ORDER } from './ticket-list';
 
 @Controller('api')
 export class HealthController {
@@ -158,10 +159,16 @@ export class DeskController {
       if (query.status) filter('t.status=', query.status);
       if (query.team_id) filter('t.assigned_team_id=', query.team_id);
       if (query.assignee_id || query.assignee) filter('t.assigned_to=', query.assignee_id ?? request.claims.sub);
+      if (query.priority) filter('t.priority=', query.priority);
+      const term = query.q?.trim();
+      if (term) { values.push(likePattern(term)); clauses.push(searchClause(values.length)); }
+      if (query.sla === 'breached') clauses.push(SLA_BREACHED);
+      if (query.sla === 'at_risk') clauses.push(SLA_AT_RISK);
       const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : '';
+      const order = TICKET_ORDER[query.sort === 'sla_due' ? 'sla_due' : 'newest'];
       const total = Number((await client.query(`SELECT count(*) AS total FROM public.tickets t${where}`, values)).rows[0].total);
       const data = (await client.query(`SELECT ${TICKET_SELECT} FROM public.tickets t${where}
-        ORDER BY t.created_at DESC,t.id DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+        ORDER BY ${order} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, query.limit, query.offset])).rows;
       return { data, total, limit: query.limit, offset: query.offset, queue: query.queue ?? null };
     });

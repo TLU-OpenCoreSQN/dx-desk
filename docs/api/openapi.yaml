@@ -499,9 +499,41 @@ paths:
             type: string
             enum:
               - me
+        - in: query
+          name: q
+          description: >-
+            Tìm không phân biệt hoa thường trong tiêu đề, mô tả, mã phiếu, tên người phụ trách, tên nhóm và
+            tên người yêu cầu. Ký tự đại diện của người dùng được thoát; chuỗi rỗng bị bỏ qua.
+          schema:
+            type: string
+            maxLength: 200
+        - in: query
+          name: priority
+          schema:
+            type: string
+            enum: [ low, normal, high, critical ]
+        - in: query
+          name: sla
+          description: >-
+            breached: đã vi phạm hoặc còn mở mà hạn hiệu lực (sla_due_at + thời gian tạm dừng) đã qua.
+            at_risk: còn chạy và đã dùng từ 80% cửa sổ SLA.
+          schema:
+            type: string
+            enum: [ breached, at_risk ]
+        - in: query
+          name: sort
+          description: >-
+            newest (mặc định): mới tạo trước. sla_due: quá hạn, sắp quá hạn, đang chạy, tạm dừng, không SLA,
+            đã kết thúc; trong mỗi nhóm theo hạn hiệu lực gần nhất rồi mức ưu tiên.
+          schema:
+            type: string
+            enum: [ newest, sla_due ]
+            default: newest
       responses:
         "200":
-          description: Yêu cầu nhìn thấy theo RLS, mới nhất trước
+          description: >-
+            Yêu cầu nhìn thấy theo RLS sau khi lọc; total đếm toàn bộ kết quả lọc, không chỉ trang hiện tại.
+            Mặc định mới nhất trước.
           content:
             application/json:
               schema:
